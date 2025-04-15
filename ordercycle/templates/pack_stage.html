@@ -1,0 +1,1794 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Packing Stage</title>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <style>
+        /* Base styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        h1, h2, h3, h4 {
+            color: #333;
+        }
+        
+        /* Search section styles */
+        .search-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .search-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .btn {
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-warning {
+            background-color: #ffc107;
+            color: #333;
+        }
+        .btn-info {
+            background-color: #17a2b8;
+            color: white;
+        }
+        .btn:hover {
+            opacity: 0.9;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Picklist info styles */
+        .picklist-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+            margin-bottom: 20px;
+        }
+        .picklist-info p {
+            margin: 5px 0;
+        }
+        
+        /* Product display styles */
+        .product-info {
+            display: flex;
+            flex-wrap: wrap;
+            margin-top: 20px;
+            background-color: #f0f8ff;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #28a745;
+        }
+        .product-image {
+            flex: 0 0 150px;
+            margin-right: 20px;
+        }
+        .product-image img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .product-details {
+            flex: 1;
+        }
+        .product-actions {
+            flex-basis: 100%;
+            margin-top: 15px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        /* Items table styles */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .items-table th,
+        .items-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .items-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        .item-packed {
+            background-color: #d1e7dd;
+        }
+
+        /* Status indicator */
+        .status-indicator {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .status-packed {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        /* Loading indicator */
+        .loading {
+            display: none;
+            margin-left: 10px;
+        }
+        .loading:after {
+            content: " ";
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            margin-left: 5px;
+            border-radius: 50%;
+            border: 2px solid #007bff;
+            border-color: #007bff transparent #007bff transparent;
+            animation: loading-animation 1.2s linear infinite;
+        }
+        @keyframes loading-animation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Message display */
+        .message {
+            padding: 10px 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .message-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .message-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .message-info {
+            background-color: #cce5ff;
+            color: #004085;
+            border: 1px solid #b8daff;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .product-info {
+                flex-direction: column;
+            }
+            .product-image {
+                margin-right: 0;
+                margin-bottom: 15px;
+            }
+        }
+        
+        /* Barcode scanner */
+        .scanner-container {
+            position: relative;
+            margin-bottom: 15px;
+        }
+        .camera-icon {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #007bff;
+            font-size: 20px;
+        }
+        #scanner {
+            display: none;
+            margin-top: 10px;
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        /* Tab navigation */
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+            margin-right: 5px;
+            background-color: #f8f9fa;
+        }
+        .tab.active {
+            background-color: #fff;
+            border-color: #ddd;
+            border-bottom-color: #fff;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* Print frame */
+        #print-frame {
+            display: none;
+            width: 0;
+            height: 0;
+            border: 0;
+        }
+        
+        /* QZ Tray status styles */
+        .qz-status {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #17a2b8;
+        }
+        
+        .qz-status h3 {
+            margin-top: 0;
+            color: #17a2b8;
+        }
+        
+        .status-disconnected {
+            color: #dc3545;
+        }
+        
+        .status-connecting {
+            color: #ffc107;
+        }
+        
+        .status-connected {
+            color: #28a745;
+        }
+        
+        .status-error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        /* Printer controls */
+        .printer-controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #28a745;
+        }
+        
+        .printer-controls h3 {
+            margin-top: 0;
+            color: #28a745;
+        }
+        
+        .printer-selection {
+            margin-bottom: 15px;
+        }
+        
+        .printer-selection select {
+            display: block;
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            margin-top: 5px;
+        }
+        
+        .printer-selection label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .printer-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .printer-info {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+        
+        .label-printer-option {
+            font-weight: bold;
+            color: #28a745;
+        }
+        
+        /* Print status indicator */
+        .print-status {
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        
+        .print-status.active {
+            display: block;
+        }
+        
+        .print-status-success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .print-status-error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .print-status-pending {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Packing Stage</h1>
+        
+        <!-- Tab Navigation -->
+        <div class="tabs">
+            <div class="tab active" data-tab="picklist">Picklist Search</div>
+            <div class="tab" data-tab="awb">AWB Search</div>
+        </div>
+        
+        <!-- Picklist Search Tab -->
+        <div id="picklist-tab" class="tab-content active">
+            <!-- Search Section -->
+            <div class="card">
+                <h2>Search Picklist</h2>
+                <div class="search-container">
+                    <div class="scanner-container">
+                        <input type="text" id="picklist-search" class="search-input" placeholder="Enter or scan Picklist ID...">
+                        <i class="camera-icon" id="picklist-scanner-toggle">📷</i>
+                    </div>
+                    <div id="scanner-picklist" style="display: none;">
+                        <video id="picklist-video" width="100%" height="200"></video>
+                    </div>
+                    <button id="search-picklist-btn" class="btn btn-primary">Search Picklist</button>
+                    <div id="picklist-loading" class="loading"></div>
+                </div>
+                
+                <!-- Picklist Info (hidden initially) -->
+                <div id="picklist-info" class="picklist-info" style="display: none;">
+                    <h3>Picklist Information</h3>
+                    <p><strong>ID:</strong> <span id="picklist-id"></span></p>
+                    <p><strong>Platform:</strong> <span id="picklist-platform"></span></p>
+                    <p><strong>Type:</strong> <span id="picklist-type"></span></p>
+                    <p><strong>Total Items:</strong> <span id="picklist-quantity"></span></p>
+                    <p><strong>Created:</strong> <span id="picklist-created"></span></p>
+                </div>
+                
+                <!-- Message display area -->
+                <div id="message-area"></div>
+            </div>
+        </div>
+        
+        <!-- AWB Search Tab -->
+        <div id="awb-tab" class="tab-content">
+            <div class="card">
+                <h2>Search by AWB Number</h2>
+                <div class="search-container">
+                    <div class="scanner-container">
+                        <input type="text" id="awb-search" class="search-input" placeholder="Enter or scan AWB Number...">
+                        <i class="camera-icon" id="awb-scanner-toggle">📷</i>
+                    </div>
+                    <div id="scanner-awb" style="display: none;">
+                        <video id="awb-video" width="100%" height="200"></video>
+                    </div>
+                    <button id="search-awb-btn" class="btn btn-primary">Search AWB</button>
+                    <div id="awb-loading" class="loading"></div>
+                </div>
+                
+                <!-- AWB Search Results (hidden initially) -->
+                <div id="awb-info" class="picklist-info" style="display: none;">
+                    <h3>Order Information</h3>
+                    <p><strong>Order Number:</strong> <span id="awb-order-number"></span></p>
+                    <p><strong>AWB:</strong> <span id="awb-number"></span></p>
+                    <p><strong>Platform:</strong> <span id="awb-platform"></span></p>
+                    <p><strong>SKU:</strong> <span id="awb-sku"></span></p>
+                    <button id="print-awb-label-btn" class="btn btn-info">Print Label</button>
+                </div>
+                
+                <!-- Message display area for AWB -->
+                <div id="awb-message-area"></div>
+            </div>
+        </div>
+        
+        <!-- Product Search (hidden initially) -->
+        <div id="product-search-section" class="card" style="display: none;">
+            <h2>Search Product</h2>
+            <div class="search-container">
+                <div class="scanner-container">
+                    <input type="text" id="product-search" class="search-input" placeholder="Enter or scan Product ID...">
+                    <i class="camera-icon" id="product-scanner-toggle">📷</i>
+                </div>
+                <div id="scanner-product" style="display: none;">
+                    <video id="product-video" width="100%" height="200"></video>
+                </div>
+                <button id="search-product-btn" class="btn btn-primary">Search Product</button>
+                <div id="product-loading" class="loading"></div>
+            </div>
+            
+            <!-- Product Info (hidden initially) -->
+            <div id="product-info" class="product-info" style="display: none;">
+                <div class="product-image">
+                    <img id="product-image" src="{% static 'images/placeholder.png' %}" alt="Product Image" onerror="handleImageError(this)">
+                </div>
+                <div class="product-details">
+                    <h3 id="product-name">Product Name</h3>
+                    <p><strong>SKU:</strong> <span id="product-sku"></span></p>
+                    <p><strong>Product ID:</strong> <span id="product-id"></span></p>
+                    <p><strong>Location:</strong> <span id="product-location"></span></p>
+                    <p><strong>Box #:</strong> <span id="product-box"></span></p>
+                    <p><strong>MRP:</strong> ₹<span id="product-mrp"></span></p>
+                </div>
+                <div class="product-actions">
+                    <button id="print-label-btn" class="btn btn-info">Print Label</button>
+                    <button id="mark-packed-btn" class="btn btn-success">Mark as Packed</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Items Table (hidden initially) -->
+        <div id="items-section" class="card" style="display: none;">
+            <div class="items-header">
+                <h2>Picklist Items</h2>
+                <button id="complete-picklist-btn" class="btn btn-warning" style="float: right;">Complete Picklist</button>
+                <div style="clear: both;"></div>
+            </div>
+            
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>Order #</th>
+                        <th>SKU</th>
+                        <th>Quantity</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="items-table-body">
+                    <!-- Items will be populated here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Hidden iframe for printing -->
+    <iframe id="print-frame" name="print-frame"></iframe>
+
+    <script>
+        // Global variables
+        let qzReady = false;
+        let qzConnection = null;
+        let defaultPrinter = ''; // This will be set when QZ connects
+        let labelPrinter = ''; // This will be set to detected label printer
+        let availablePrinters = [];
+        let labelPrinters = [];
+        let currentPicklistId = null;
+        let currentPicklistItems = [];
+        let currentProduct = null;
+        let currentPicklistPlatform = null;
+        
+        // Common label printer models to match against
+        const COMMON_LABEL_PRINTERS = [
+            'zebra', 'zdesigner', 'dymo', 'brother ql', 'datamax', 'tsc', 'sato', 
+            'citizen', 'intermec', 'godex', 'argox', 'brady', 'cab', 'bixolon',
+            'honeywell', 'tm-', 'ql-', 'gk420', 'gx420', 'gx430', 'zd410', 'zd420',
+            'zd620', 'zt', 'zq', 'tlp', 'tsc', 'thermalprinter', 'thermal printer'
+        ];
+        
+        // CSRF Token helper function
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        // DOM Elements
+        const picklistSearchInput = document.getElementById('picklist-search');
+        const productSearchInput = document.getElementById('product-search');
+        const awbSearchInput = document.getElementById('awb-search');
+        const searchPicklistBtn = document.getElementById('search-picklist-btn');
+        const searchProductBtn = document.getElementById('search-product-btn');
+        const searchAwbBtn = document.getElementById('search-awb-btn');
+        const picklistInfo = document.getElementById('picklist-info');
+        const productInfo = document.getElementById('product-info');
+        const awbInfo = document.getElementById('awb-info');
+        const productSearchSection = document.getElementById('product-search-section');
+        const itemsSection = document.getElementById('items-section');
+        const markPackedBtn = document.getElementById('mark-packed-btn');
+        const printLabelBtn = document.getElementById('print-label-btn');
+        const printAwbLabelBtn = document.getElementById('print-awb-label-btn');
+        const completePicklistBtn = document.getElementById('complete-picklist-btn');
+        const messageArea = document.getElementById('message-area');
+        const awbMessageArea = document.getElementById('awb-message-area');
+        const picklistLoading = document.getElementById('picklist-loading');
+        const productLoading = document.getElementById('product-loading');
+        const awbLoading = document.getElementById('awb-loading');
+        const printFrame = document.getElementById('print-frame');
+
+        // Enhanced QZ Tray initialization with printer detection
+        // Function to initialize QZ Tray with proper error handling
+function initQZ() {
+    console.log("Initializing QZ Tray connection...");
+    
+    // First check if the QZ library loaded
+    if (typeof qz === 'undefined') {
+        console.error("QZ Tray library not loaded properly");
+        showMessage("QZ Tray library not loaded. Please check if QZ Tray is installed and reload the page.", "error");
+        
+        // Add reload button to error message for convenience
+        const messageArea = document.getElementById('message-area');
+        if (messageArea) {
+            const reloadBtn = document.createElement('button');
+            reloadBtn.className = 'btn btn-primary';
+            reloadBtn.style.marginLeft = '10px';
+            reloadBtn.textContent = 'Reload Page';
+            reloadBtn.onclick = function() { location.reload(); };
+            
+            if (messageArea.lastChild) {
+                messageArea.lastChild.appendChild(document.createElement('br'));
+                messageArea.lastChild.appendChild(reloadBtn);
+            }
+        }
+        return;
+    }
+    
+    if (!qzReady) {
+        // Show connecting status
+        updateQZStatus("Connecting to QZ Tray...", "connecting");
+        
+        try {
+            // Set certificate (can be empty for unsigned) - FIX: Removed the catch block here
+            qz.security.setCertificatePromise(function(resolve, reject) {
+                resolve();
+            });
+            
+            // Set signing function (leave empty for unsigned)
+            qz.security.setSignaturePromise(function(toSign) {
+                return function(resolve, reject) {
+                    resolve();
+                };
+            });
+            
+            // Connect to QZ Tray with enhanced error handling
+            qz.websocket.connect({
+                retries: 3,
+                delay: 1000
+            }).then(function() {
+                qzReady = true;
+                qzConnection = qz.websocket;
+                
+                // Update connection status
+                updateQZStatus("Connected to QZ Tray", "connected");
+                console.log("Successfully connected to QZ Tray");
+                
+                // Get list of available printers
+                detectPrinters();
+            }).catch(function(err) {
+                console.error("QZ Tray connection error:", err);
+                
+                let errorMsg = "Failed to connect to QZ Tray. ";
+                
+                // Provide specific troubleshooting advice based on error type
+                if (err.message && err.message.includes("SecurityError")) {
+                    errorMsg += "Browser security blocked the connection. ";
+                } else if (err.message && err.message.includes("NetworkError")) {
+                    errorMsg += "QZ Tray is not running or is blocked by a firewall. ";
+                } else if (err.message && err.message.includes("timeout")) {
+                    errorMsg += "Connection timed out. QZ Tray may not be running. ";
+                }
+                
+                errorMsg += "Please ensure QZ Tray is installed and running.";
+                updateQZStatus(errorMsg, "error");
+                
+                // Add a download link for QZ Tray
+                const statusElem = document.getElementById('qz-status-message');
+                if (statusElem && statusElem.parentNode) {
+                    const downloadLink = document.createElement('div');
+                    downloadLink.innerHTML = '<a href="https://qz.io/download/" target="_blank" class="btn btn-info" style="margin-top: 10px;">Download QZ Tray</a>';
+                    statusElem.parentNode.appendChild(downloadLink);
+                }
+            });
+        } catch (e) {
+            console.error("Unexpected error initializing QZ:", e);
+            updateQZStatus("Unexpected error: " + e.message, "error");
+        }
+    } else {
+        // Already connected, just refresh printer list
+        detectPrinters();
+    }
+}
+
+       // Enhanced printer detection with better error handling
+
+// Function to detect all printers and identify label printers
+function detectPrinters() {
+    // Show a temporary message
+    showMessage("Detecting available printers...", "info");
+    
+    qz.printers.find()
+    .then(function(printers) {
+        availablePrinters = printers;
+        console.log("Available printers:", availablePrinters);
+        
+        if (printers.length === 0) {
+            showMessage("No printers detected. Please check your printer connections.", "warning");
+            updateQZStatus("Connected, but no printers found", "warning");
+            return;
+        }
+        
+        // Identify label printers by name
+        labelPrinters = printers.filter(function(printer) {
+            const printerLower = printer.toLowerCase();
+            // Check if printer name contains any of the common label printer terms
+            return COMMON_LABEL_PRINTERS.some(term => printerLower.includes(term));
+        });
+        
+        console.log("Detected label printers:", labelPrinters);
+        
+        // Get default printer
+        return qz.printers.getDefault();
+    })
+    .then(function(printer) {
+        if (!printer) {
+            console.warn("No default printer found");
+            return;
+        }
+        
+        defaultPrinter = printer;
+        console.log("Default printer:", defaultPrinter);
+        
+        // Set label printer - prioritize detected label printers
+        if (labelPrinters.length > 0) {
+            labelPrinter = labelPrinters[0]; // Use first detected label printer
+            console.log("Auto-selected label printer:", labelPrinter);
+            showMessage(`Label printer detected: ${labelPrinter}`, "success");
+        } else {
+            // Fall back to default printer if no label printer found
+            labelPrinter = defaultPrinter;
+            console.log("No label printer detected, using default:", labelPrinter);
+            showMessage(`No label printer detected. Using default printer: ${labelPrinter}`, "info");
+        }
+        
+        // Update printer selection in UI
+        updatePrinterSelection();
+    })
+    .catch(function(err) {
+        console.error("Error finding printers:", err);
+        showMessage("Failed to detect printers. Check if QZ Tray has printer permissions.", "error");
+        
+        // Attempt to continue with a local browser print fallback
+        showMessage("Print operations will fall back to browser printing.", "warning");
+    });
+}
+
+        // Function to update QZ status display
+        function updateQZStatus(message, status) {
+            const statusElem = document.getElementById('qz-status-message');
+            if (statusElem) {
+                statusElem.textContent = message;
+                
+                // Update status appearance based on connection state
+                statusElem.className = ''; // Reset classes
+                statusElem.classList.add('status-' + status);
+            }
+            
+            // Update connect button state
+            const connectBtn = document.getElementById('connect-qz');
+            if (connectBtn) {
+                if (status === 'connected') {
+                    connectBtn.textContent = 'Refresh Printer List';
+                } else {
+                    connectBtn.textContent = 'Connect QZ Tray';
+                }
+            }
+        }
+
+        // Function to update printer selection UI
+        function updatePrinterSelection() {
+            const printerSelect = document.getElementById('printer-select');
+            if (!printerSelect) {
+                // Create printer selection if it doesn't exist
+                createPrinterUI();
+                return;
+            }
+            
+            // Clear existing options
+            printerSelect.innerHTML = '';
+            
+            // Add all available printers to the select dropdown
+            availablePrinters.forEach(function(printer) {
+                const option = document.createElement('option');
+                option.value = printer;
+                
+                // Mark label printers with an indicator
+                if (labelPrinters.includes(printer)) {
+                    option.textContent = printer + ' (Label Printer)';
+                    option.classList.add('label-printer-option');
+                } else {
+                    option.textContent = printer;
+                }
+                
+                // Select the current label printer
+                if (printer === labelPrinter) {
+                    option.selected = true;
+                }
+                
+                printerSelect.appendChild(option);
+            });
+        }
+
+        // Create Printer UI section
+        function createPrinterUI() {
+            // Create printer selection UI
+            const printerControls = document.createElement('div');
+            printerControls.className = 'card printer-controls';
+            printerControls.innerHTML = `
+                <h3>Printer Selection</h3>
+                <div class="printer-selection">
+                    <label for="printer-select">Select Printer:</label>
+                    <select id="printer-select" class="form-control"></select>
+                </div>
+                <div class="printer-actions">
+                    <button id="test-print-btn" class="btn btn-info">Test Print</button>
+                    <button id="refresh-printers-btn" class="btn btn-secondary">Refresh Printers</button>
+                </div>
+                <div class="printer-info">
+                    <p><small>Label printers are automatically detected and selected for label printing.</small></p>
+                </div>
+            `;
+            
+            // Add printer controls after QZ status or at the top of the container
+            const qzStatus = document.querySelector('.qz-status');
+            if (qzStatus) {
+                qzStatus.parentNode.insertBefore(printerControls, qzStatus.nextSibling);
+            } else {
+                const container = document.querySelector('.container');
+                if (container) {
+                    container.insertBefore(printerControls, container.firstChild);
+                }
+            }
+            
+            // Populate printer select
+            updatePrinterSelection();
+            
+            // Add event listeners for printer controls
+            document.getElementById('printer-select').addEventListener('change', function() {
+                labelPrinter = this.value;
+                console.log("Selected printer changed to:", labelPrinter);
+                showMessage(`Selected printer: ${labelPrinter}`, "info");
+            });
+            
+            document.getElementById('test-print-btn').addEventListener('click', function() {
+                printTestLabel();
+            });
+            
+            document.getElementById('refresh-printers-btn').addEventListener('click', function() {
+                detectPrinters();
+            });
+        }
+
+        // Function to print a test label
+        function printTestLabel() {
+            if (!qzReady) {
+                showMessage("QZ Tray is not connected. Please connect first.", "error");
+                return;
+            }
+            
+            if (!labelPrinter) {
+                showMessage("No printer selected. Please select a printer first.", "error");
+                return;
+            }
+            
+            showMessage("Sending test print to " + labelPrinter + "...", "info");
+            
+            // Configure printer
+            const config = qz.configs.create(labelPrinter, {
+                colorType: 'grayscale',
+                copies: 1,
+                density: 144,
+                margins: {top: 0, right: 0, bottom: 0, left: 0},
+                size: {width: 4, height: 6, units: 'in'},
+                orientation: 'portrait'
+            });
+            
+            // Simple test print data - ZPL for Zebra printers or plain text for others
+            let printData;
+            
+            if (labelPrinter.toLowerCase().includes('zebra') || 
+                labelPrinter.toLowerCase().includes('zdesigner')) {
+                // ZPL for Zebra printers
+                printData = [
+                    '^XA',
+                    '^FO50,50^ADN,36,20^FDQZ Tray Test Print^FS',
+                    '^FO50,100^ADN,36,20^FDPrinter: ' + labelPrinter + '^FS',
+                    '^FO50,150^ADN,36,20^FDDate: ' + new Date().toLocaleString() + '^FS',
+                    '^FO50,200^GB350,200,3^FS',
+                    '^FO100,220^ADN,36,20^FDTEST LABEL^FS',
+                    '^FO100,270^ADN,36,20^FDDO NOT USE^FS',
+                    '^XZ'
+                ];
+            } else {
+                // Simple text for non-Zebra printers
+                printData = [
+                    'QZ Tray Test Print\n',
+                    'Printer: ' + labelPrinter + '\n',
+                    'Date: ' + new Date().toLocaleString() + '\n\n',
+                    '=====================================\n',
+                    '             TEST LABEL              \n',
+                    '             DO NOT USE              \n',
+                    '====================================='
+                ];
+            }
+            
+            // Send print job
+            qz.print(config, printData).then(function() {
+                showMessage("Test label sent to printer successfully!", "success");
+            }).catch(function(err) {
+                console.error("Test print error:", err);
+                showMessage("Error sending test print: " + err.message, "error");
+            });
+        }
+        
+        // Tab functionality
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                // Remove active class from all tabs and tab contents
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                this.classList.add('active');
+                
+                // Show corresponding tab content
+                const tabId = this.getAttribute('data-tab');
+                document.getElementById(tabId + '-tab').classList.add('active');
+            });
+        });
+        
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("DOM loaded - checking QZ Tray library status");
+    
+            // Check if window.qzLoadError was set by the script loader
+            if (window.qzLoadError) {
+                console.error("QZ Tray failed to load properly");
+                const container = document.querySelector('.container');
+                if (container) {
+                    const errorMsg = document.createElement('div');
+                    errorMsg.className = 'card';
+                    errorMsg.style.backgroundColor = '#f8d7da';
+                    errorMsg.style.borderColor = '#f5c6cb';
+                    errorMsg.style.color = '#721c24';
+                    errorMsg.style.padding = '20px';
+                    errorMsg.innerHTML = `
+                        <h3>QZ Tray Connection Error</h3>
+                        <p><strong>Error:</strong> QZ Tray library could not be loaded.</p>
+                        <p>Please make sure:</p>
+                        <ol>
+                            <li>You have <a href="https://qz.io/download/" target="_blank">QZ Tray installed</a> on your computer</li>
+                            <li>QZ Tray is running (check your system tray/menu bar)</li>
+                            <li>Your browser allows connections to localhost</li>
+                        </ol>
+                        <button onclick="location.reload()" class="btn btn-primary">Reload Page</button>
+                    `;
+                    container.insertBefore(errorMsg, container.firstChild);
+                }
+            }
+            // Check if picklist ID is provided in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const picklistIdParam = urlParams.get('picklist_id');
+            if (picklistIdParam) {
+                picklistSearchInput.value = picklistIdParam;
+                searchPicklist();
+            }
+            
+            // Create QZ status section
+            const container = document.querySelector('.container');
+            const qzStatusDiv = document.createElement('div');
+            qzStatusDiv.className = 'qz-status card';
+            qzStatusDiv.innerHTML = `
+                <h3>QZ Tray Connection</h3>
+                <p id="qz-status-message" class="status-disconnected">Not connected</p>
+                <button id="connect-qz" class="btn btn-primary">Connect QZ Tray</button>
+            `;
+            container.insertBefore(qzStatusDiv, container.firstChild);
+            
+            // Add event listener for the connect button
+            document.getElementById('connect-qz').addEventListener('click', function() {
+                initQZ();
+            });
+            
+            // Initialize QZ Tray automatically with a slight delay
+            setTimeout(initQZ, 1000);
+            
+            // Picklist search button
+            searchPicklistBtn.addEventListener('click', searchPicklist);
+            
+            // Product search button
+            searchProductBtn.addEventListener('click', searchProduct);
+            
+            // AWB search button
+            searchAwbBtn.addEventListener('click', searchAwb);
+            
+            // Mark as packed button
+            markPackedBtn.addEventListener('click', markProductAsPacked);
+            
+            // Print label buttons
+            printLabelBtn.addEventListener('click', function() {
+                if (currentProduct && currentPicklistItems) {
+                    const matchingItems = currentPicklistItems.filter(item => item.sku === currentProduct.sku);
+                    if (matchingItems.length > 0) {
+                        printOrderLabel(currentPicklistPlatform, matchingItems[0].order_number);
+                    } else {
+                        showMessage('No matching order found for this product', 'error');
+                    }
+                }
+            });
+            
+            printAwbLabelBtn.addEventListener('click', function() {
+                const orderNumber = document.getElementById('awb-order-number').textContent;
+                const platform = document.getElementById('awb-platform').textContent;
+                if (orderNumber && platform) {
+                    printOrderLabel(platform, orderNumber);
+                }
+            });
+            
+            // Complete picklist button
+            completePicklistBtn.addEventListener('click', completePicklist);
+            
+            // Enter key in search inputs
+            picklistSearchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchPicklist();
+                }
+            });
+            
+            productSearchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchProduct();
+                }
+            });
+            
+            awbSearchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchAwb();
+                }
+            });
+            
+            // Scanner toggle buttons
+            document.getElementById('picklist-scanner-toggle').addEventListener('click', function() {
+                toggleScanner('picklist');
+            });
+            
+            document.getElementById('product-scanner-toggle').addEventListener('click', function() {
+                toggleScanner('product');
+            });
+            
+            document.getElementById('awb-scanner-toggle').addEventListener('click', function() {
+                toggleScanner('awb');
+            });
+        });
+        
+// Function that strictly prints only the first page of a PDF
+function printOrderLabel(platform, orderNumber) {
+    showMessage('Preparing label for printing...', 'info');
+
+    if (!qzReady) {
+        initQZ();
+        showMessage("QZ Tray not connected. Please connect first.", "error");
+        return;
+    }
+
+    const requestBody = {
+        platform: platform,
+        order_number: orderNumber
+    };
+
+    fetch('/api/print-label/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(requestBody)
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.message || 'Error retrieving label');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (!data.pdf_url) {
+            throw new Error('No PDF URL available for this order');
+        }
+
+        let pdfUrl = data.pdf_url;
+        if (!pdfUrl.startsWith('http')) {
+            if (pdfUrl.startsWith('/')) {
+                pdfUrl = window.location.origin + pdfUrl;
+            } else {
+                pdfUrl = window.location.origin + '/' + pdfUrl;
+            }
+        }
+
+        showMessage("Downloading and extracting first page...", "info");
+
+        fetch(pdfUrl)
+            .then(response => response.arrayBuffer())
+            .then(async arrayBuffer => {
+                const { PDFDocument } = PDFLib;
+                const fullPdf = await PDFDocument.load(arrayBuffer);
+                const firstPagePdf = await PDFDocument.create();
+
+                const [firstPage] = await firstPagePdf.copyPages(fullPdf, [0]);
+                firstPagePdf.addPage(firstPage);
+
+                const firstPageBytes = await firstPagePdf.save();
+
+                // Convert PDF bytes to base64
+                const base64Data = arrayBufferToBase64(firstPageBytes);
+
+                // Get dimensions from the first page (in points)
+                const { width, height } = firstPage.getSize();
+
+                // Convert from PDF points (1 point = 1/72 inch) to inches
+                const widthInInches = width / 72;
+                const heightInInches = height / 72;
+
+                // Create QZ print config using original PDF size
+                const config = qz.configs.create(labelPrinter, {
+                    size: { width: widthInInches, height: heightInInches, units: 'in' },
+                    margins: { top: 0, right: 0, bottom: 0, left: 0 },
+                    orientation: 'portrait',
+                    copies: 1,
+                    colorType: 'grayscale',
+                    density: 300
+                });
+
+                const printData = [{
+                    type: 'pdf',
+                    format: 'base64',
+                    data: base64Data
+                }];
+
+                showMessage(`Printing label for order ${orderNumber}...`, "info");
+
+                qz.print(config, printData)
+                    .then(() => {
+                        showMessage(`Label for order ${orderNumber} printed successfully!`, "success");
+                    })
+                    .catch(err => {
+                        console.error("Printing error:", err);
+                        showMessage(`Printing failed: ${err.message}`, "error");
+                    });
+            })
+            .catch(error => {
+                console.error("PDF processing error:", error);
+                showMessage(`Error processing PDF: ${error.message}`, "error");
+            });
+    })
+    .catch(error => {
+        console.error("API error:", error);
+        showMessage(`Error: ${error.message}`, 'error');
+    });
+}
+
+// Helper: Convert Uint8Array to base64 string
+function arrayBufferToBase64(buffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+
+    for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+
+    return btoa(binary);
+}
+
+
+        function printUsingBrowser(pdfUrl, firstPageOnly) {
+    // Function is disabled as per requirements
+    console.warn("Browser printing is disabled");
+    showMessage("Browser printing is disabled. Please ensure QZ Tray is properly configured.", "error");
+    return false;
+}
+        
+        // Function to search for a picklist
+        function searchPicklist() {
+            const picklistId = picklistSearchInput.value.trim();
+            
+            if (!picklistId) {
+                showMessage('Please enter a Picklist ID', 'error');
+                return;
+            }
+            
+            // Show loading indicator
+            picklistLoading.style.display = 'inline-block';
+            
+            // Hide previous results
+            picklistInfo.style.display = 'none';
+            productSearchSection.style.display = 'none';
+            productInfo.style.display = 'none';
+            itemsSection.style.display = 'none';
+            
+            // Make the API request
+            fetch(`/api/picklists/search/?picklist_id=${picklistId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.message || 'Error searching for picklist');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Hide loading indicator
+                    picklistLoading.style.display = 'none';
+                    
+                    // Store current picklist ID, platform and items
+                    currentPicklistId = data.picklist.picklist_id;
+                    currentPicklistPlatform = data.picklist.platform;
+                    currentPicklistItems = data.picklist.items;
+                    
+                    // Display picklist info
+                    document.getElementById('picklist-id').textContent = data.picklist.picklist_id;
+                    document.getElementById('picklist-platform').textContent = data.picklist.platform;
+                    document.getElementById('picklist-type').textContent = data.picklist.picklist_type;
+                    document.getElementById('picklist-quantity').textContent = data.picklist.quantity;
+                    document.getElementById('picklist-created').textContent = data.picklist.created_at;
+                    
+                    // Show the picklist info
+                    picklistInfo.style.display = 'block';
+                    
+                    // Show the product search section
+                    productSearchSection.style.display = 'block';
+                    
+                    // Populate and show the items table
+                    populateItemsTable(data.picklist.items);
+                    itemsSection.style.display = 'block';
+                    
+                    // Show success message
+                    showMessage('Picklist found! You can now search for products to pack.', 'success');
+                    
+                    // Focus on product search input
+                    productSearchInput.focus();
+                })
+                .catch(error => {
+                    // Hide loading indicator
+                    picklistLoading.style.display = 'none';
+                    
+                    // Show error message
+                    showMessage(error.message, 'error');
+                });
+        }
+        
+        // Function to search for a product
+        function searchProduct() {
+            const productId = productSearchInput.value.trim();
+            
+            if (!productId) {
+                showMessage('Please enter a Product ID', 'error');
+                return;
+            }
+            
+            // Show loading indicator
+            productLoading.style.display = 'inline-block';
+            
+            // Hide previous results
+            productInfo.style.display = 'none';
+            
+            // Make the API request
+            fetch(`/api/products/search/?product_id=${productId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.message || 'Error searching for product');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Hide loading indicator
+                    productLoading.style.display = 'none';
+                    
+                    // Store current product
+                    currentProduct = data.product;
+                    
+                    // Display product info
+                    document.getElementById('product-name').textContent = data.product.generic_name || 'Product';
+                    document.getElementById('product-sku').textContent = data.product.sku;
+                    document.getElementById('product-id').textContent = data.product.product_id;
+                    document.getElementById('product-location').textContent = data.product.location;
+                    document.getElementById('product-box').textContent = data.product.box_no || 'N/A';
+                    document.getElementById('product-mrp').textContent = data.product.mrp.toFixed(2);
+                    
+                    // Set product image if available
+                    if (data.product.image_url) {
+                        document.getElementById('product-image').src = data.product.image_url;
+                    } else {
+                        document.getElementById('product-image').src = "/static/images/placeholder.png";
+                    }
+                    
+                    // Check if this product is in the picklist
+                    const matchingItems = currentPicklistItems.filter(item => item.sku === data.product.sku);
+                    
+                    if (matchingItems.length === 0) {
+                        showMessage('Warning: This product is not in the current picklist!', 'error');
+                        // Disable the buttons
+                        markPackedBtn.disabled = true;
+                        printLabelBtn.disabled = true;
+                    } else {
+                        const packedItems = matchingItems.filter(item => item.picked === true);
+                        
+                        if (packedItems.length === matchingItems.length) {
+                            showMessage('This product has already been packed.', 'info');
+                            // Disable the mark as packed button but allow printing
+                            markPackedBtn.disabled = true;
+                            printLabelBtn.disabled = false;
+                        } else {
+                            showMessage(`Product found! Ready to print label and mark as packed.`, 'success');
+                            // Enable both buttons
+                            markPackedBtn.disabled = false;
+                            printLabelBtn.disabled = false;
+                        }
+                    }
+                    
+                    // Show the product info
+                    productInfo.style.display = 'block';
+                })
+                .catch(error => {
+                    // Hide loading indicator
+                    productLoading.style.display = 'none';
+                    
+                    // Show error message
+                    showMessage(error.message, 'error');
+                });
+        }
+        
+        // Function to search by AWB
+        function searchAwb() {
+            const awb = awbSearchInput.value.trim();
+            
+            if (!awb) {
+                showMessageAwb('Please enter an AWB number', 'error');
+                return;
+            }
+            
+            // Show loading indicator
+            awbLoading.style.display = 'inline-block';
+            
+            // Hide previous results
+            awbInfo.style.display = 'none';
+            
+            // Make the API request
+            fetch(`/api/search-awb/?awb=${awb}`)
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.message || 'Error searching for AWB');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Hide loading indicator
+                    awbLoading.style.display = 'none';
+                    
+                    // Display order info
+                    document.getElementById('awb-order-number').textContent = data.order.order_number;
+                    document.getElementById('awb-number').textContent = data.order.awb;
+                    document.getElementById('awb-platform').textContent = data.order.platform;
+                    document.getElementById('awb-sku').textContent = data.order.sku;
+                    
+                    // Show the order info
+                    awbInfo.style.display = 'block';
+                    
+                    // Show success message
+                    showMessageAwb('Order found!', 'success');
+                })
+                .catch(error => {
+                    // Hide loading indicator
+                    awbLoading.style.display = 'none';
+                    
+                    // Show error message
+                    showMessageAwb(error.message, 'error');
+                });
+        }
+        
+        // Function to mark a product as packed
+        function markProductAsPacked() {
+            if (!currentPicklistId || !currentProduct) {
+                showMessage('No picklist or product selected', 'error');
+                return;
+            }
+            
+            // Disable the button to prevent double-clicks
+            markPackedBtn.disabled = true;
+            
+            // Show loading indicator in the message area
+            showMessage('Processing...', 'info');
+            
+            // Prepare request body
+            const requestBody = {
+                picklist_id: currentPicklistId,
+                sku: currentProduct.sku
+            };
+            
+            // Make the API request
+            fetch('/api/products/mark-packed/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(requestBody)
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.message || 'Error marking product as packed');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Show success message
+                    showMessage(data.message, 'success');
+                    
+                    // Update the items table - mark all matching SKUs as picked
+                    currentPicklistItems.forEach(item => {
+                        if (item.sku === currentProduct.sku) {
+                            item.picked = true;
+                        }
+                    });
+                    
+                    // Repopulate the items table
+                    populateItemsTable(currentPicklistItems);
+                    
+                    // Keep the button disabled to prevent double-marking
+                    markPackedBtn.disabled = true;
+                    
+                    // Clear product search input and focus on it for the next product
+                    productSearchInput.value = '';
+                    productSearchInput.focus();
+                    
+                    // Hide the product info to encourage searching for the next product
+                    productInfo.style.display = 'none';
+                    
+                    // Check if all items are packed
+                    if (data.all_packed) {
+                        showMessage('All items are now packed! You can complete the picklist.', 'success');
+                    }
+                })
+                .catch(error => {
+                    // Show error message
+                    showMessage(error.message, 'error');
+                    // Re-enable the button in case of error
+                    markPackedBtn.disabled = false;
+                });
+        }
+        
+        // Function to complete a picklist
+        function completePicklist() {
+            if (!currentPicklistId) {
+                showMessage('No picklist selected', 'error');
+                return;
+            }
+            
+            // Check if all items are packed
+            const unpacked = currentPicklistItems.filter(item => !item.picked);
+            
+            if (unpacked.length > 0) {
+                if (!confirm(`There are still ${unpacked.length} unpacked items. Are you sure you want to complete this picklist?`)) {
+                    return;
+                }
+            }
+            
+            // Show loading indicator in the message area
+            showMessage('Processing...', 'info');
+            
+            // Get CSRF token
+            const csrftoken = getCookie('csrftoken');
+            
+            // Make the API request
+            fetch(`/api/picklists/${currentPicklistId}/complete/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({}) // Add an empty JSON body
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.message || 'Error completing picklist');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Show success message
+                    showMessage(data.message, 'success');
+                    
+                    // Reset the form
+                    resetForm();
+                    
+                    // Show completion message
+                    setTimeout(() => {
+                        alert('Picklist has been marked as completed!');
+                    }, 100);
+                })
+                .catch(error => {
+                    // Show error message
+                    showMessage(error.message, 'error');
+                });
+        }
+        
+        // Function to show message in the main message area
+        function showMessage(message, type) {
+            const messageArea = document.getElementById('message-area');
+            
+            // Create message element
+            const messageElement = document.createElement('div');
+            messageElement.className = `message message-${type}`;
+            messageElement.textContent = message;
+            
+            // Clear previous messages
+            messageArea.innerHTML = '';
+            
+            // Add new message
+            messageArea.appendChild(messageElement);
+            
+            // Auto-remove success and info messages after 5 seconds
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    if (messageArea.contains(messageElement)) {
+                        messageArea.removeChild(messageElement);
+                    }
+                }, 5000);
+            }
+        }
+        
+        // Function to show message in the AWB tab message area
+        function showMessageAwb(message, type) {
+            const messageArea = document.getElementById('awb-message-area');
+            
+            // Create message element
+            const messageElement = document.createElement('div');
+            messageElement.className = `message message-${type}`;
+            messageElement.textContent = message;
+            
+            // Clear previous messages
+            messageArea.innerHTML = '';
+            
+            // Add new message
+            messageArea.appendChild(messageElement);
+            
+            // Auto-remove success and info messages after 5 seconds
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    if (messageArea.contains(messageElement)) {
+                        messageArea.removeChild(messageElement);
+                    }
+                }, 5000);
+            }
+        }
+        
+        // Function to reset the form
+        function resetForm() {
+            // Clear inputs
+            picklistSearchInput.value = '';
+            productSearchInput.value = '';
+            
+            // Hide sections
+            picklistInfo.style.display = 'none';
+            productSearchSection.style.display = 'none';
+            productInfo.style.display = 'none';
+            itemsSection.style.display = 'none';
+            
+            // Reset variables
+            currentPicklistId = null;
+            currentPicklistItems = [];
+            currentProduct = null;
+            
+            // Clear message area
+            messageArea.innerHTML = '';
+            
+            // Focus on picklist search
+            picklistSearchInput.focus();
+        }
+        
+        // Barcode scanner functionality
+        function toggleScanner(type) {
+            const scannerElement = document.getElementById(`scanner-${type}`);
+            const videoElement = document.getElementById(`${type}-video`);
+            
+            if (scannerElement.style.display === 'none') {
+                // Initialize barcode scanner
+                scannerElement.style.display = 'block';
+                
+                // Request camera access
+                navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                    .then(function(stream) {
+                        videoElement.srcObject = stream;
+                        videoElement.setAttribute('playsinline', true);
+                        videoElement.play();
+                        
+                        // Start scanning
+                        requestAnimationFrame(function() {
+                            startScanning(type, videoElement, stream);
+                        });
+                    })
+                    .catch(function(error) {
+                        scannerElement.style.display = 'none';
+                        showMessage('Error accessing camera: ' + error.message, 'error');
+                    });
+            } else {
+                // Stop scanner
+                scannerElement.style.display = 'none';
+                if (videoElement.srcObject) {
+                    videoElement.srcObject.getTracks().forEach(track => track.stop());
+                }
+            }
+        }
+
+        function handleImageError(img) {
+            try {
+                // Use a fully qualified path with static tag fallback for Django
+                img.src = "/static/images/no_image.jpg";
+                img.alt = "No Image Available";
+                
+                // Add inline styling as a fallback
+                img.style.backgroundColor = "#f8f9fa";
+                img.style.border = "1px dashed #ced4da";
+                img.style.padding = "15px";
+                img.style.minHeight = "100px";
+                img.style.display = "flex";
+                img.style.alignItems = "center";
+                img.style.justifyContent = "center";
+                
+                // Add a CSS class for styling
+                img.classList.add('no-image-placeholder');
+                
+                console.log("Image error handled for:", img.alt);
+            } catch (e) {
+                console.error("Error in handleImageError:", e);
+            }
+        }
+        
+        // Function to scan barcodes (requires a barcode scanning library)
+        function startScanning(type, videoElement, stream) {
+            // This is a placeholder. In a real implementation, you would use a barcode scanning library.
+            // For example, you could use QuaggaJS, ZXing, or another library for this purpose.
+            
+            // For demonstration, we'll simulate a scanner with a timeout
+            setTimeout(() => {
+                const testBarcode = type === 'picklist' ? '111123' : (type === 'awb' ? 'AWB12345678' : 'PROD001');
+                
+                // Fill the appropriate input with the scanned barcode
+                if (type === 'picklist') {
+                    picklistSearchInput.value = testBarcode;
+                    searchPicklist();
+                } else if (type === 'awb') {
+                    awbSearchInput.value = testBarcode;
+                    searchAwb();
+                } else {
+                    productSearchInput.value = testBarcode;
+                    searchProduct();
+                }
+                
+                // Stop scanner
+                document.getElementById(`scanner-${type}`).style.display = 'none';
+                stream.getTracks().forEach(track => track.stop());
+                
+            }, 2000); // Simulate scanning after 2 seconds
+            
+            // In a real implementation, you would continuously analyze video frames to detect barcodes
+        }
+        
+        // Function to populate the items table
+        function populateItemsTable(items) {
+            const tableBody = document.getElementById('items-table-body');
+            tableBody.innerHTML = '';
+            
+            // Counter for unpacked items
+            let unpacked = 0;
+            
+            items.forEach(item => {
+                const row = document.createElement('tr');
+                
+                if (item.picked) {
+                    row.classList.add('item-packed');
+                } else {
+                    unpacked++;
+                }
+                
+                row.innerHTML = `
+                    <td>${item.order_number}</td>
+                    <td>${item.sku}</td>
+                    <td>${item.quantity}</td>
+                    <td>${item.location}</td>
+                    <td>
+                        <span class="status-indicator ${item.picked ? 'status-packed' : 'status-pending'}">
+                            ${item.picked ? 'Packed' : 'Pending'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-info btn-print-item" data-order="${item.order_number}">Print Label</button>
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+                
+                // Add event listener to the print button
+                const printBtn = row.querySelector('.btn-print-item');
+                printBtn.addEventListener('click', function() {
+                    const orderNumber = this.getAttribute('data-order');
+                    printOrderLabel(currentPicklistPlatform, orderNumber);
+                });
+            });
+            
+            // Update the Complete Picklist button based on unpacked items
+            const completeBtn = document.getElementById('complete-picklist-btn');
+            if (unpacked === 0) {
+                completeBtn.textContent = 'Complete Picklist';
+                completeBtn.classList.remove('btn-warning');
+                completeBtn.classList.add('btn-success');
+            } else {
+                completeBtn.textContent = `Complete Picklist (${unpacked} items pending)`;
+                completeBtn.classList.remove('btn-success');
+                completeBtn.classList.add('btn-warning');
+            }
+        }
+    </script>
+    <!-- Replace your existing script loading code at the end of the body with this improved version -->
+<script>
+    // Load scripts immediately before DOM content loaded
+    (function() {
+        // Function to dynamically load scripts in sequence
+        function loadScriptsSequentially(scripts, callback) {
+            if (scripts.length === 0) {
+                if (callback) callback();
+                return;
+            }
+            
+            const script = document.createElement('script');
+            script.src = scripts[0];
+            
+            script.onload = function() {
+                console.log(`Script loaded: ${scripts[0]}`);
+                loadScriptsSequentially(scripts.slice(1), callback);
+            };
+            
+            script.onerror = function() {
+                console.error(`Failed to load script: ${scripts[0]}`);
+                // Try an alternative CDN if available
+                if (scripts[0].includes('jsdelivr')) {
+                    const altScript = scripts[0].replace('cdn.jsdelivr.net', 'cdnjs.cloudflare.com');
+                    console.log(`Trying alternative source: ${altScript}`);
+                    loadScriptsSequentially([altScript, ...scripts.slice(1)], callback);
+                } else if (scripts[0].includes('cdnjs')) {
+                    const altScript = scripts[0].replace('cdnjs.cloudflare.com', 'cdn.jsdelivr.net/npm');
+                    console.log(`Trying alternative source: ${altScript}`);
+                    loadScriptsSequentially([altScript, ...scripts.slice(1)], callback);
+                } else {
+                    loadScriptsSequentially(scripts.slice(1), callback);
+                }
+            };
+            
+            document.head.appendChild(script);
+        }
+    
+        // Load scripts in this order - starting with jsdelivr CDN
+        const scripts = [
+            'https://cdn.jsdelivr.net/npm/rsvp@4.8.5/dist/rsvp.min.js',
+            'https://cdn.jsdelivr.net/npm/jsrsasign@10.5.1/lib/jsrsasign-all-min.js',
+            'https://cdn.jsdelivr.net/npm/qz-tray@2.2.1/qz-tray.min.js',
+            'https://unpkg.com/pdf-lib/dist/pdf-lib.min.js'
+        ];
+        
+        loadScriptsSequentially(scripts, function() {
+            console.log('All QZ Tray scripts loaded!');
+            
+            // Test if QZ object exists and initialize if ready
+            if (typeof qz !== 'undefined') {
+                console.log('QZ Tray library loaded correctly');
+                window.qzLoaded = true;
+                
+                // Don't call initQZ yet - wait for DOM content loaded
+                document.addEventListener('DOMContentLoaded', function() {
+                    console.log("DOM loaded - initializing QZ Tray connection");
+                    if (typeof initQZ === 'function') {
+                        setTimeout(initQZ, 1000);
+                    }
+                });
+            } else {
+                console.error('QZ Tray library not available despite successful script load');
+                window.qzLoadError = true;
+            }
+        });
+    })();
+    </script>
+</body>
+</html>

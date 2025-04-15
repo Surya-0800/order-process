@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location-Based Order Processing</title>
+    <style>
+        /* Base styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            text-align: center;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .btn {
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        .btn:hover {
+            opacity: 0.9;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Location-specific styles */
+        .location-card {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .location-item {
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px 15px;
+            display: flex;
+            flex-direction: column;
+            min-width: 150px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .location-item:hover {
+            background-color: #e6e6e6;
+        }
+        .location-item.selected {
+            background-color: #d1e7dd;
+            border-color: #badbcc;
+            color: #0f5132;
+        }
+        .location-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+        .location-count {
+            font-size: 0.9em;
+            color: #555;
+        }
+        
+        /* Order table styles */
+        .order-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            text-align: left;
+        }
+        .order-table th, .order-table td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        .order-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        .order-location {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .location-tag {
+            background-color: #e9ecef;
+            border-radius: 20px;
+            padding: 3px 10px;
+            font-size: 0.85em;
+        }
+        .location-tag.selected {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+        
+        /* Filter and controls section */
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .limit-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        select, input {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #007bff;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Loading indicator */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Summary section */
+        .summary-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .summary-box p {
+            margin: 5px 0;
+        }
+        .summary-box strong {
+            margin-right: 5px;
+        }
+        
+        /* Empty state */
+        .empty-state {
+            padding: 40px;
+            color: #6c757d;
+        }
+        
+        /* Responsive styles */
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 15px;
+            }
+            .filter-group, .limit-group {
+                flex-wrap: wrap;
+            }
+            .location-item {
+                flex: 1 1 40%;
+            }
+
+
+        }
+
+        .include-unknown-section {
+            margin: 10px 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        
+        .include-unknown-section label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .include-unknown-section input[type="checkbox"] {
+            margin-right: 8px;
+            width: 16px;
+            height: 16px;
+        }
+        
+        /* Style for unknown location */
+        .location-item[data-location="Unknown"] {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .location-item[data-location="Unknown"].selected {
+            background-color: #f1aeb5;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            font-weight: bold;
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">← Back to Dashboard</a>
+        <h1>Location-Based Order Processing</h1>
+        
+        <div class="card">
+            <div class="controls">
+                <div class="filter-group">
+                    <label for="platform-select">Platform:</label>
+                    <select id="platform-select" onchange="loadLocationData()">
+                        <option value="AMAZON">Amazon</option>
+                        <option value="FLIPKART">Flipkart</option>
+                        <option value="FIRSTCRY">FirstCry</option>
+                    </select>
+                    
+                    <label for="order-type-select">Order Type:</label>
+                    <select id="order-type-select" onchange="loadLocationData()">
+                        <option value="single">Single</option>
+                        <option value="multi">Multiple</option>
+                    </select>
+                </div>
+                
+                <div class="limit-group">
+                    <div>
+                        <label for="batch-limit">Batch Limit:</label>
+                        <select id="batch-limit">
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="150">150</option>
+                            <option value="200">200</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="sku-limit">SKU Limit:</label>
+                        <select id="sku-limit">
+                            <option value="0">No Limit</option>
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="75">75</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <h3>Select Locations to Process</h3>
+            <p>Click on locations to select/deselect them for processing</p>
+            
+            <div id="loading-locations" class="loading" style="display: none;"></div>
+            <div id="location-container" class="location-card">
+                <!-- Location cards will be populated here -->
+                <div class="empty-state">
+                    Loading locations...
+                </div>
+            </div>
+            
+            <div class="summary-box" id="selection-summary">
+                <p><strong>Selected Locations:</strong> <span id="selected-location-count">0</span></p>
+                <p><strong>Total Orders:</strong> <span id="selected-order-count">0</span></p>
+                <p><strong>Unique SKUs:</strong> <span id="selected-sku-count">0</span></p>
+            </div>
+            
+            <button id="process-btn" class="btn btn-success" disabled>
+                Process Selected Locations
+            </button>
+        </div>
+
+        <div class="include-unknown-section">
+            <label>
+                <input type="checkbox" id="include-unknown" checked> 
+                Include Unknown Locations
+            </label>
+        </div>
+        
+        <div class="card">
+            <h2>Orders by Location</h2>
+            <div id="loading-orders" class="loading" style="display: none;"></div>
+            
+            <div id="orders-container">
+                <!-- Order table will be populated here -->
+                <div class="empty-state">
+                    Please select at least one location to view orders
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let allOrders = [];
+        let selectedLocations = [];
+        let locationData = {};
+        
+        // DOM elements
+        const platformSelect = document.getElementById('platform-select');
+        const orderTypeSelect = document.getElementById('order-type-select');
+        const batchLimitSelect = document.getElementById('batch-limit');
+        const skuLimitSelect = document.getElementById('sku-limit');
+        const locationContainer = document.getElementById('location-container');
+        const ordersContainer = document.getElementById('orders-container');
+        const processBtn = document.getElementById('process-btn');
+        const selectedLocationCountEl = document.getElementById('selected-location-count');
+        const selectedOrderCountEl = document.getElementById('selected-order-count');
+        const selectedSkuCountEl = document.getElementById('selected-sku-count');
+        
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const platform = urlParams.get('platform');
+            const orderType = urlParams.get('order_type');
+            
+            // Set initial values from URL parameters
+            if (platform) {
+                platformSelect.value = platform.toUpperCase();
+            }
+            if (orderType) {
+                orderTypeSelect.value = orderType.toLowerCase();
+            }
+            
+            // Load initial data
+            loadLocationData();
+            
+            // Add event listener for process button
+            processBtn.addEventListener('click', processSelectedLocations);
+        });
+        
+        // Function to load location data
+function loadLocationData() {
+    // Show loading indicator
+    document.getElementById('loading-locations').style.display = 'inline-block';
+    locationContainer.innerHTML = '<div class="empty-state">Loading locations...</div>';
+    
+    // Reset selections
+    selectedLocations = [];
+    updateSummary();
+    
+    // Get current filter values
+    const platform = platformSelect.value;
+    const orderType = orderTypeSelect.value;
+    
+    // Fetch location data from API
+    fetch(`/api/location-counts/?platform=${platform}&order_type=${orderType}&status=Ready to Process`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Hide loading indicator
+            document.getElementById('loading-locations').style.display = 'none';
+            
+            // Store location data
+            locationData = data;
+            
+            // Render location cards
+            if (data.locations && data.locations.length > 0) {
+                renderLocationCards(data.locations);
+            } else {
+                locationContainer.innerHTML = '<div class="empty-state">No locations found with orders</div>';
+            }
+
+            // Select "Unknown" location by default
+            const unknownLocationCard = document.querySelector('.location-item[data-location="Unknown"]');
+            if (unknownLocationCard) {
+                toggleLocationSelection("Unknown", unknownLocationCard);
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching location data:', error);
+            document.getElementById('loading-locations').style.display = 'none';
+            locationContainer.innerHTML = '<div class="empty-state">Error loading locations. Please try again.</div>';
+        });
+}
+        
+        // Function to render location cards
+        function renderLocationCards(locations) {
+            locationContainer.innerHTML = '';
+            
+            locations.forEach(location => {
+                const card = document.createElement('div');
+                card.className = 'location-item';
+                card.dataset.location = location.location;
+                
+                card.innerHTML = `
+                    <div class="location-name">${location.location}</div>
+                    <div class="location-count">
+                        <span>${location.count} items</span> in <span>${location.order_count} orders</span>
+                    </div>
+                `;
+                
+                // Add click event to toggle selection
+                card.addEventListener('click', function() {
+                    toggleLocationSelection(location.location, card);
+                });
+                
+                locationContainer.appendChild(card);
+            });
+        }
+        
+        // Function to toggle location selection
+        function toggleLocationSelection(location, card) {
+            const index = selectedLocations.indexOf(location);
+            
+            if (index === -1) {
+                // Location not selected, add it
+                selectedLocations.push(location);
+                card.classList.add('selected');
+            } else {
+                // Location already selected, remove it
+                selectedLocations.splice(index, 1);
+                card.classList.remove('selected');
+            }
+            
+            // Update the summary
+            updateSummary();
+            
+            // Load orders for selected locations
+            if (selectedLocations.length > 0) {
+                loadOrdersByLocation();
+            } else {
+                ordersContainer.innerHTML = '<div class="empty-state">Please select at least one location to view orders</div>';
+            }
+            
+            // Enable/disable process button
+            processBtn.disabled = selectedLocations.length === 0;
+        }
+        
+        // Function to update summary information
+        function updateSummary() {
+            selectedLocationCountEl.textContent = selectedLocations.length;
+            
+            // If no locations selected, reset counts
+            if (selectedLocations.length === 0) {
+                selectedOrderCountEl.textContent = '0';
+                selectedSkuCountEl.textContent = '0';
+                return;
+            }
+            
+            // Calculate order count based on selected locations
+            // This is just an estimate until orders are loaded
+            let selectedOrderCount = 0;
+            const selectedSkus = new Set();
+            
+            for (const loc of locationData.locations) {
+                if (selectedLocations.includes(loc.location)) {
+                    selectedOrderCount += loc.order_count;
+                    // We can't accurately count unique SKUs here without loading all orders
+                }
+            }
+            
+            selectedOrderCountEl.textContent = selectedOrderCount;
+            
+            // We'll update the SKU count when we load the orders
+            if (allOrders.length > 0) {
+                const uniqueSkus = new Set(
+                    allOrders
+                        .filter(order => {
+                            return order.locations.some(loc => selectedLocations.includes(loc.location));
+                        })
+                        .map(order => order.sku)
+                );
+                selectedSkuCountEl.textContent = uniqueSkus.size;
+            } else {
+                selectedSkuCountEl.textContent = '(loading)';
+            }
+        }
+        
+        // Update the function to load orders
+function loadOrdersByLocation() {
+    // Show loading indicator
+    document.getElementById('loading-orders').style.display = 'inline-block';
+    ordersContainer.innerHTML = '<div class="empty-state">Loading orders...</div>';
+    
+    // Get current filter values
+    const platform = platformSelect.value;
+    const orderType = orderTypeSelect.value;
+    const includeUnknown = document.getElementById('include-unknown').checked;
+    
+    // Create URL with selected locations
+    let url = `/api/orders-by-location/?platform=${platform}&order_type=${orderType}&status=Ready to Process&include_unknown=${includeUnknown}`;
+    selectedLocations.forEach(loc => {
+        url += `&locations=${encodeURIComponent(loc)}`;
+    });
+    
+    // Fetch orders from API
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Hide loading indicator
+            document.getElementById('loading-orders').style.display = 'none';
+            
+            // Store orders data
+            allOrders = data;
+            
+            // Update SKU count
+            const uniqueSkus = new Set(data.map(order => order.sku));
+            selectedSkuCountEl.textContent = uniqueSkus.size;
+            
+            // Render orders table
+            if (data.length > 0) {
+                renderOrdersTable(data);
+            } else {
+                ordersContainer.innerHTML = '<div class="empty-state">No orders found for selected locations</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching orders:', error);
+            document.getElementById('loading-orders').style.display = 'none';
+            ordersContainer.innerHTML = '<div class="empty-state">Error loading orders. Please try again.</div>';
+        });
+}
+
+        function displayOrders(data, orderType) {
+            const tableBody = document.getElementById('orderTableBody');
+            tableBody.innerHTML = '';
+            
+            data.forEach(order => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="checkbox-cell">
+                        <input type="checkbox" class="order-checkbox" value="${order.order_number}">
+                    </td>
+                    <td>${order.order_number}</td>
+                    <td>${order.sku}</td>
+                    <td>${order.quantity}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+        
+        // Function to render orders table
+        function renderOrdersTable(orders) {
+            let html = `
+                <table class="order-table">
+                    <thead>
+                        <tr>
+                            <th>Order Number</th>
+                            <th>SKU</th>
+                            <th>Quantity</th>
+                            <th>Locations</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            orders.forEach(order => {
+                const locationTags = order.locations.map(loc => {
+                    const isSelected = selectedLocations.includes(loc.location);
+                    const className = isSelected ? 'location-tag selected' : 'location-tag';
+                    return `<span class="${className}" title="Box: ${loc.box_no || 'N/A'}">${loc.location}</span>`;
+                }).join(' ');
+                
+                html += `
+                    <tr>
+                        <td>${order.order_number}</td>
+                        <td>${order.sku}</td>
+                        <td>${order.quantity}</td>
+                        <td class="order-location">${locationTags}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            
+            ordersContainer.innerHTML = html;
+        }
+        
+        // Function to process selected locations
+        function processSelectedLocations() {
+            if (selectedLocations.length === 0 && !document.getElementById('include-unknown').checked) {
+                alert('Please select at least one location or include unknown locations');
+                return;
+            }
+            
+            // Get current values
+            const platform = platformSelect.value;
+            const orderType = orderTypeSelect.value;
+            const batchLimit = batchLimitSelect.value;
+            const skuLimit = skuLimitSelect.value;
+            const includeUnknown = document.getElementById('include-unknown').checked;
+            
+            // Confirm with user
+            let confirmMsg = `Are you sure you want to process orders from ${selectedLocations.length} locations`;
+            if (includeUnknown) {
+                confirmMsg += " (including unknown locations)";
+            }
+            confirmMsg += "?";
+            
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+            
+            // Disable process button and show loading
+            processBtn.disabled = true;
+            processBtn.innerHTML = 'Processing... <span class="loading"></span>';
+            
+            // Prepare request data
+            const requestData = {
+                platform: platform,
+                order_type: orderType.toUpperCase(),
+                locations: selectedLocations,
+                include_unknown: includeUnknown,
+                batch_limit: batchLimit,
+                sku_limit: skuLimit,
+                next_status: 'Pick'
+            };
+            
+            // Send request to backend
+            fetch('/api/process-location-orders/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(`Server returned ${response.status} ${response.statusText}: ${text}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Process orders response:', data);
+                
+                // Format success message
+                let message = '';
+                if (data.processed_count < data.total_count) {
+                    message = `Processed ${data.processed_count} out of ${data.total_count} selected orders`;
+                } else {
+                    message = `All ${data.processed_count} orders processed successfully`;
+                }
+                
+                if (data.picklist_ids && data.picklist_ids.length > 1) {
+                    message += `\nCreated ${data.picklist_ids.length} picklists due to batch/SKU limits:`;
+                    data.picklist_ids.forEach((id, index) => {
+                        message += `\n${index + 1}. ${id}`;
+                    });
+                } else if (data.main_picklist_id) {
+                    message += `\nPicklist ID: ${data.main_picklist_id}`;
+                }
+                
+                alert(message);
+                
+                // Reset UI
+                processBtn.disabled = false;
+                processBtn.textContent = 'Process Selected Locations';
+                
+                // Refresh data
+                loadLocationData();
+            })
+            .catch(error => {
+                console.error('Error processing orders:', error);
+                alert(`Error processing orders: ${error.message}`);
+                
+                // Reset UI
+                processBtn.disabled = false;
+                processBtn.textContent = 'Process Selected Locations';
+            });
+        }
+        
+        // Helper function to get unique items from an array
+        function getUniqueItems(array) {
+            return [...new Set(array)];
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+Requirement already satisfied: pdfminer-six in /home/surya/code/mycode/Order Process Cycle/my_env/lib/python3.12/site-packages (20231228)
+Requirement already satisfied: charset-normalizer>=2.0.0 in /home/surya/code/mycode/Order Process Cycle/my_env/lib/python3.12/site-packages (from pdfminer-six) (3.4.1)
+Requirement already satisfied: cryptography>=36.0.0 in /home/surya/code/mycode/Order Process Cycle/my_env/lib/python3.12/site-packages (from pdfminer-six) (44.0.1)
+Requirement already satisfied: cffi>=1.12 in /home/surya/code/mycode/Order Process Cycle/my_env/lib/python3.12/site-packages (from cryptography>=36.0.0->pdfminer-six) (1.17.1)
+Requirement already satisfied: pycparser in /home/surya/code/mycode/Order Process Cycle/my_env/lib/python3.12/site-packages (from cffi>=1.12->cryptography>=36.0.0->pdfminer-six) (2.22)

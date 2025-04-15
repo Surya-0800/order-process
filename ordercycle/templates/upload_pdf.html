@@ -1,0 +1,2176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Management Dashboard</title>
+    <style>
+        /* Base styles from original */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            text-align: center;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .form-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+        .upload-section {
+            flex: 1;
+            text-align: left;
+        }
+        .action-section {
+            flex: 1;
+            text-align: left;
+        }
+        input[type="file"] {
+            margin-bottom: 10px;
+            width: 100%;
+        }
+        .btn {
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn:hover {
+            opacity: 0.9;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        h1, h2, h3 {
+            color: #333;
+        }
+        .pdf-list {
+            list-style: none;
+            padding: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            text-align: left;
+        }
+        .pdf-item {
+            background: white;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .pdf-link {
+            text-decoration: none;
+            color: #007bff;
+        }
+        .pdf-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* Enhanced table styles */
+        .status-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .status-table th {
+            background-color: #f8f9fa;
+            padding: 15px;
+            text-align: left;
+            border-bottom: 2px solid #dee2e6;
+            font-weight: 600;
+        }
+        
+        .status-table td {
+            padding: 20px 15px;
+            border-bottom: 1px solid #dee2e6;
+            vertical-align: top;
+        }
+        .platform-cell {
+            font-weight: bold;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .count-badge {
+            background-color: #007bff;
+            color: white;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.85em;
+        }
+
+        .order-info-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .order-info-section {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            border-radius: 6px;
+            padding: 10px;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .info-value {
+            font-size: 1.1em;
+        }
+        
+        .info-item.single-orders {
+            background-color: #e8f5e9;
+            border: 1px solid #c8e6c9;
+            color: #2e7d32;
+        }
+        
+        .info-item.multi-orders {
+            background-color: #fff3e0;
+            border: 1px solid #ffe0b2;
+            color: #f57c00;
+        }
+        
+        .info-item.batch-size {
+            background-color: #e3f2fd;
+            border: 1px solid #bbdefb;
+            color: #1976d2;
+        }
+        
+        .info-item.sku-limit {
+            background-color: #e8eaf6;
+            border: 1px solid #c5cae9;
+            color: #3949ab;
+        }
+        
+        .info-item select {
+            width: 100%;
+            padding: 4px 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            background-color: white;
+        }
+
+        .action-buttons-section {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .action-row {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .action-btn {
+            flex: 1;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            font-weight: 500;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .action-btn:hover {
+            opacity: 0.9;
+        }
+        
+        .action-btn[disabled] {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        
+        .view-btn {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .process-btn {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .location-btn {
+            background-color: #5c6bc0;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* New styles for order types */
+        .order-types {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .order-type {
+            flex: 1;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .single-orders {
+            background-color: #e8f5e9;
+            border: 1px solid #c8e6c9;
+            color: #2e7d32;
+        }
+        .multi-orders {
+            background-color: #fff3e0;
+            border: 1px solid #ffe0b2;
+            color: #f57c00;
+        }
+        .batch-size {
+            background-color: #e3f2fd;
+            border: 1px solid #bbdefb;
+            color: #1976d2;
+        }
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+        .btn-single {
+            background-color: #2e7d32;
+            color: white;
+        }
+        .btn-multi {
+            background-color: #f57c00;
+            color: white;
+        }
+
+        /* Tab styles */
+        .tab-container {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #f2f2f2;
+            margin-right: 5px;
+            border-radius: 5px 5px 0 0;
+        }
+        .tab.active {
+            background-color: #007bff;
+            color: white;
+        }
+        .loading {
+            display: inline-block;
+            margin-left: 10px;
+            color: #007bff;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        .modal-content {
+            position: relative;
+            background-color: #fff;
+            margin: 5% auto;
+            padding: 20px;
+            width: 80%;
+            max-width: 800px;
+            border-radius: 8px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .close-modal {
+            position: absolute;
+            right: 20px;
+            top: 10px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+        .order-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .order-table th,
+        .order-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .order-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        .checkbox-cell {
+            width: 40px;
+            text-align: center;
+        }
+        .order-type {
+            cursor: pointer;
+        }
+        .order-type:hover {
+            opacity: 0.9;
+        }
+        
+        /* Batch form inside the table */
+        .batch-size select {
+            padding: 6px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            width: 100%;
+            max-width: 150px;
+            font-size: 14px;
+        }
+        .batch-info {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        /* Picklist styles */
+      .picklist-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 15px;
+      }
+
+      .picklist-actions {
+          display: flex;
+          gap: 10px;
+      }
+
+      .btn-print {
+          background-color: #28a745;
+          color: white;
+      }
+
+      .btn-pack {
+          background-color: #17a2b8;
+          color: white;
+      }
+
+      .status-badge {
+          display: inline-block;
+          padding: 6px 12px;
+          border-radius: 4px;
+          font-weight: bold;
+          text-align: center;
+          min-width: 80px;
+      }
+
+      /* Green for CREATED status */
+      .status-created {
+          background-color: #e8f5e9 !important;
+          color: #2e7d32 !important;
+          border: 1px solid #81c784 !important;
+      }
+
+      /* Blue for PRINTED status */
+      .status-printed {
+          background-color: #e3f2fd !important;
+          color: #1565c0 !important;
+          border: 1px solid #64b5f6 !important;
+      }
+
+      .status-packing {
+          background-color: #fff3e0 !important;
+          color: #e65100 !important;
+          border: 1px solid #ffb74d !important;
+      }
+
+      .status-completed {
+          background-color: #d1e7dd !important;
+          color: #0f5132 !important;
+          border: 1px solid #badbcc !important;
+      }
+
+      /* Picklist detail modal */
+      .picklist-info {
+          background-color: #f8f9fa;
+          padding: 10px 15px;
+          border-radius: 4px;
+          margin-bottom: 20px;
+          border-left: 4px solid #007bff;
+      }
+
+      .picklist-info p {
+          margin: 5px 0;
+      }
+
+      .picklist-info strong {
+          margin-right: 5px;
+      }
+
+      .item-picked {
+          background-color: #d1e7dd;
+      }
+
+      /* Additional styles for file upload form */
+    .file-upload-group {
+        margin-bottom: 15px;
+    }
+
+    .file-upload-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #333;
+    }
+
+    .file-upload-group input[type="file"] {
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        width: 100%;
+        background-color: #f8f9fa;
+    }
+
+    #processing-status {
+        margin-top: 10px;
+        padding: 10px;
+        border-radius: 4px;
+        background-color: #f8f9fa;
+        min-height: 100px;
+    }
+
+    #processing-status h4 {
+        margin-top: 0;
+        color: #28a745;
+    }
+
+    #processing-status ul {
+        padding-left: 20px;
+        margin-bottom: 0;
+    }
+
+    #processing-status .error {
+        color: #dc3545;
+    }
+
+    .btn-success {
+        margin-top: 10px;
+    }
+    .sku-limit {
+        background-color: #e8eaf6;
+        border: 1px solid #c5cae9;
+        color: #3949ab;
+    }
+    
+    /* Adjust the flex layout for the order-types to accommodate the new selector */
+    .order-types {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 10px 0;
+    }
+    
+    .order-type {
+        flex: 1 1 45%;  /* Allow wrapping to 2 items per row */
+        min-width: 200px;
+        padding: 10px;
+        border-radius: 6px;
+        text-align: center;
+    }
+    .location-link {
+        display: inline-block;
+        margin-left: 5px;
+        color: inherit;
+        text-decoration: none;
+        padding: 2px 5px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+
+    .btn-location {
+        background-color: #6c757d;
+        color: white;
+        text-decoration: none;
+        display: inline-block;
+        margin-top: 5px;
+    }
+    .btn-location:hover {
+        background-color: #5a6268;
+        color: white;
+    }
+    .btn-location[disabled] {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+    
+    .location-link:hover {
+        background-color: rgba(0, 0, 0, 0.1);
+    }
+    
+    .location-icon {
+        font-style: normal;
+        font-size: 14px;
+    }
+    
+    /* Make sure the order-types can accommodate the location links */
+    .order-type {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PDF Management Dashboard</h1>
+        
+        <!-- Upload and Actions Card -->
+        <div class="card">
+          <div class="form-container">
+              <div class="upload-section">
+                  <h3>Upload Files</h3>
+                  <form id="upload-form" enctype="multipart/form-data">
+                      <div class="file-upload-group">
+                          <label for="pdf-file">PDF File:</label>
+                          <input type="file" id="pdf-file" name="pdf_file" accept="application/pdf" required>
+                      </div>
+                      <div class="file-upload-group">
+                          <label for="data-file">Data File (XLSX/CSV/TXT):</label>
+                          <input type="file" id="data-file" name="data_file" accept=".csv,.txt,.xlsx,.xls" required>
+                      </div>
+                      <button type="submit" class="btn btn-success">Process Files</button>
+                  </form>
+              </div>
+              <div class="action-section">
+                  <h3>Processing Status</h3>
+                  <div id="processing-status">
+                      No files processed yet.
+                  </div>
+                  <span id="loading-indicator" class="loading" style="display: none;">Processing...</span>
+              </div>
+          </div>
+      </div>
+        
+        <!-- Order Status Card -->
+        <div class="card">
+            <h2>Order Status Dashboard</h2>
+            
+            <div class="tab-container">
+                <div class="tab active" data-status="Ready to Process">Ready to Process</div>
+                <div class="tab" data-status="Pick">Pick</div>
+                <div class="tab" data-status="Pack">Pack</div>
+                <div class="tab" data-status="Dispatch">Dispatch</div>
+            </div>
+            
+            <div id="status-content">
+                <table class="status-table">
+                    <thead>
+                        <tr>
+                            <th>Platform</th>
+                            <th>Order Types</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="platform-list">
+                        <!-- Platform data will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Order Modal -->
+        <div id="orderModal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h2 id="modalTitle"></h2>
+                <div class="batch-info">
+                    <p>Selected batch limit: <span id="currentBatchLimit">50</span> orders</p>
+                    <p>Selected SKU limit: <span id="currentSkuLimit">No Limit</span></p>
+                    <p id="orderCountInfo"></p>
+                    <p id="skuCountInfo"></p>
+                </div>
+                <div id="orderTableContainer">
+                    <table class="order-table">
+                        <thead>
+                            <tr>
+                                <th class="checkbox-cell"><input type="checkbox" id="selectAll"></th>
+                                <th>Order Number</th>
+                                <th>SKU</th>
+                                <th>Quantity</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderTableBody">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="process-selected">
+                    <button class="btn btn-primary" id="processSelectedBtn">Process Selected Orders</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Picklist Modal -->
+<div id="picklistModal" class="modal">
+  <div class="modal-content">
+      <span class="close-modal" onclick="document.getElementById('picklistModal').style.display='none'">&times;</span>
+      <h2 id="picklistModalTitle"></h2>
+      
+      <div class="picklist-info">
+          <p><strong>Platform:</strong> <span id="picklistPlatform"></span></p>
+          <p><strong>Status:</strong> <span id="picklistStatus"></span></p>
+          <p><strong>Total Items:</strong> <span id="picklistTotalItems"></span></p>
+          <p><strong>Created At:</strong> <span id="picklistCreatedAt"></span></p>
+      </div>
+      
+      <div id="picklistTableContainer">
+          <table class="order-table">
+              <thead>
+                  <tr>
+                      <th class="checkbox-cell"><input type="checkbox" id="selectAllPicklistItems"></th>
+                      <th>Order Number</th>
+                      <th>SKU</th>
+                      <th>Quantity</th>
+                      <th>Status</th>
+                  </tr>
+              </thead>
+              <tbody id="picklistTableBody">
+              </tbody>
+          </table>
+      </div>
+      
+      <div class="picklist-actions" style="margin-top: 20px;">
+          <button class="btn btn-primary" id="picklistActionBtn">Mark Selected as Picked</button>
+          <button class="btn btn-print" id="printPicklistBtn">Print Picklist</button>
+          <button class="btn btn-pack" id="moveToPackingBtn">Move to Packing</button>
+      </div>
+  </div>
+</div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentStatus = 'Ready to Process';
+        const platformNames = ['AMAZON', 'FLIPKART', 'FIRSTCRY', 'MEESHO'];
+        const defaultBatchSize = 50;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+    const uploadForm = document.getElementById('upload-form');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const processingStatus = document.getElementById('processing-status');
+    
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const pdfFile = document.getElementById('pdf-file').files[0];
+            const dataFile = document.getElementById('data-file').files[0];
+            
+            if (!pdfFile || !dataFile) {
+                alert('Please select both a PDF file and a data file (CSV/TXT/XLSX).');
+                return;
+            }
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('pdf_file', pdfFile);
+            formData.append('data_file', dataFile);
+            
+            // Show loading indicator
+            loadingIndicator.style.display = 'inline-block';
+            processingStatus.innerHTML = '<p>Processing files...</p>';
+            
+            // Send request to process files
+            fetch('http://127.0.0.1:8000/api/process-files/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                loadingIndicator.style.display = 'none';
+                
+                // Display processing results
+                let resultsHtml = '<h4>Processing Complete</h4>';
+                resultsHtml += `<p>${data.message}</p>`;
+                
+                if (data.results) {
+                    resultsHtml += '<ul>';
+                    if (data.results.flipkart_processed > 0) {
+                        resultsHtml += `<li>Flipkart orders: ${data.results.flipkart_processed}</li>`;
+                    }
+                    if (data.results.amazon_processed > 0) {
+                        resultsHtml += `<li>Amazon orders: ${data.results.amazon_processed}</li>`;
+                    }
+                    if (data.results.firstcry_processed > 0) {
+                        resultsHtml += `<li>FirstCry orders: ${data.results.firstcry_processed}</li>`;
+                    }
+                    resultsHtml += '</ul>';
+                }
+                
+                // Show any errors
+                if (data.results && data.results.errors && data.results.errors.length > 0) {
+                    resultsHtml += '<p>Errors:</p><ul>';
+                    data.results.errors.forEach(error => {
+                        resultsHtml += `<li>${error}</li>`;
+                    });
+                    resultsHtml += '</ul>';
+                }
+                
+                processingStatus.innerHTML = resultsHtml;
+                
+                // Reset the form
+                uploadForm.reset();
+                
+                // Update order status table
+                updateOrderStatusTable(currentStatus);
+            })
+            .catch(error => {
+                loadingIndicator.style.display = 'none';
+                processingStatus.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+                console.error('Error processing files:', error);
+            });
+        });
+    }
+});
+
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchPDFs();
+            updateOrderStatusTable(currentStatus);
+            
+            // Tab click handler
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    currentStatus = this.dataset.status;
+                    updateOrderStatusTable(currentStatus);
+                });
+            });
+            
+            // Split PDFs button handler
+            document.getElementById('split-btn').addEventListener('click', splitPDFs);
+            
+            // Form submission handler
+            document.getElementById('upload-form').addEventListener('submit', uploadPDF);
+
+            // Modal event listeners
+            const modal = document.getElementById('orderModal');
+            const closeBtn = document.querySelector('.close-modal');
+            const selectAllCheckbox = document.getElementById('selectAll');
+            const processSelectedBtn = document.getElementById('processSelectedBtn');
+
+            // Close modal when clicking close button or outside
+            closeBtn.onclick = function() {
+                modal.style.display = 'none';
+            }
+
+            window.onclick = function(event) {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            }
+
+            // Select all checkbox functionality
+            selectAllCheckbox.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('.order-checkbox');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+            });
+
+            // Process selected orders
+            processSelectedBtn.addEventListener('click', function() {
+                const selectedOrders = Array.from(document.querySelectorAll('.order-checkbox:checked'))
+                    .map(checkbox => checkbox.value);
+
+                if (selectedOrders.length === 0) {
+                    alert('Please select orders to process');
+                    return;
+                }
+
+                const nextStatus = getNextStatus(currentStatus);
+                processSelectedOrders(selectedOrders, undefined, nextStatus);
+            });
+        });
+        
+        // Function to get the next status in the workflow
+        function getNextStatus(currentStatus) {
+            const statusFlow = {
+                'Ready to Process': 'Pick',
+                'Pick': 'Pack',
+                'Pack': 'Dispatch',
+                'Dispatch': 'Completed'
+            };
+            
+            return statusFlow[currentStatus] || 'Pick';
+        }
+        
+        // Function to upload PDF
+        function uploadPDF(event) {
+            event.preventDefault();
+            let formData = new FormData();
+            let fileInput = document.getElementById('file');
+            let file = fileInput.files[0];
+            
+            if (!file) {
+                alert("Please select a PDF file.");
+                return;
+            }
+            
+            formData.append('file', file);
+
+            fetch('http://127.0.0.1:8000/api/pdfs/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('PDF uploaded successfully!');
+                fetchPDFs();
+                fileInput.value = '';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error uploading PDF. Please try again.');
+            });
+        }
+
+        // Function to fetch PDFs
+        function fetchPDFs() {
+            fetch('http://127.0.0.1:8000/api/pdfs/')
+            .then(response => response.json())
+            .then(data => {
+                let list = document.getElementById('pdf-list');
+                if (!list) return; // List might not exist if removed from UI
+                
+                list.innerHTML = '';
+                
+                if (data.length === 0) {
+                    list.innerHTML = '<p>No PDFs uploaded yet.</p>';
+                    return;
+                }
+                
+                data.forEach(pdf => {
+                    let li = document.createElement('li');
+                    li.className = 'pdf-item';
+                    const fileName = pdf.file.split('/').pop();
+                    li.innerHTML = `
+                        <a href="${pdf.file}" target="_blank" class="pdf-link">${fileName}</a>
+                        <span class="pdf-date">${new Date(pdf.uploaded_at || Date.now()).toLocaleString()}</span>
+                    `;
+                    list.appendChild(li);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching PDFs:', error);
+                if (document.getElementById('pdf-list')) {
+                    document.getElementById('pdf-list').innerHTML = '<p>Error loading PDFs. Please refresh.</p>';
+                }
+            });
+        }
+        
+        // Function to split PDFs
+        function splitPDFs() {
+            const loadingIndicator = document.getElementById('loading-indicator');
+            loadingIndicator.style.display = 'inline-block';
+            
+            fetch('http://127.0.0.1:8000/api/read-pdfs/')
+            .then(response => response.json())
+            .then(data => {
+                loadingIndicator.style.display = 'none';
+                alert('PDFs split successfully!');
+                updateOrderStatusTable(currentStatus);
+            })
+            .catch(error => {
+                loadingIndicator.style.display = 'none';
+                console.error('Error splitting PDFs:', error);
+                alert('Error splitting PDFs. Please try again.');
+            });
+        }
+        
+        // Function to update order status table
+        function updateOrderStatusTable(status) {
+            fetch(`http://127.0.0.1:8000/api/order-counts/?status=${status}`)
+            .then(response => response.json())
+            .then(data => {
+                const tableBody = document.getElementById('platform-list');
+                tableBody.innerHTML = '';
+                
+                platformNames.forEach(platform => {
+                    const platformData = data[platform] || { total: 0, single: 0, multi: 0 };
+                    const row = document.createElement('tr');
+                    const platformId = platform.toLowerCase();
+                    
+                    row.innerHTML = `
+                        <td>
+                            <div class="platform-cell">
+                                ${platform} <span class="count-badge">${platformData.total}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="order-info-container">
+                                <!-- Order Information Section -->
+                                <div class="order-info-section">
+                                    <div class="info-item single-orders">
+                                        <div class="info-label">Single Orders:</div>
+                                        <div class="info-value">${platformData.single}</div>
+                                    </div>
+                                    <div class="info-item multi-orders">
+                                        <div class="info-label">Multi Orders:</div>
+                                        <div class="info-value">${platformData.multi}</div>
+                                    </div>
+                                    <div class="info-item batch-size">
+                                        <div class="info-label">Batch Size:</div>
+                                        <div class="info-value">
+                                            <select id="batch-limit-${platformId}" onchange="updateBatchLimit('${platformId}')">
+                                                <option value="50">50</option>
+                                                <option value="100">100</option>
+                                                <option value="150">150</option>
+                                                <option value="200">200</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="info-item sku-limit">
+                                        <div class="info-label">SKU Limit:</div>
+                                        <div class="info-value">
+                                            <select id="sku-limit-${platformId}" onchange="updateSkuLimit('${platformId}')">
+                                                <option value="0">No Limit</option>
+                                                <option value="10">10</option>
+                                                <option value="25">25</option>
+                                                <option value="50">50</option>
+                                                <option value="75">75</option>
+                                                <option value="100">100</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Actions Section -->
+                                <div class="action-buttons-section">
+                                    <div class="action-row">
+                                        <button class="btn action-btn view-btn" onclick="showOrderDetails('${platform}', 'single', ${platformData.single})" 
+                                                ${platformData.single === 0 ? 'disabled' : ''}>
+                                            View Single
+                                        </button>
+                                        <button class="btn action-btn process-btn" onclick="processOrders('${platform}', '${status}', 'single')" 
+                                                ${platformData.single === 0 ? 'disabled' : ''}>
+                                            Process Single
+                                        </button>
+                                        <a href="/location-orders/?platform=${platform}&order_type=single" class="btn action-btn location-btn"
+                                        ${platformData.single === 0 ? 'disabled' : ''}>
+                                            Single by Location
+                                        </a>
+                                    </div>
+                                    <div class="action-row">
+                                        <button class="btn action-btn view-btn" onclick="showOrderDetails('${platform}', 'multi', ${platformData.multi})" 
+                                                ${platformData.multi === 0 ? 'disabled' : ''}>
+                                            View Multi
+                                        </button>
+                                        <button class="btn action-btn process-btn" onclick="processOrders('${platform}', '${status}', 'multi')" 
+                                                ${platformData.multi === 0 ? 'disabled' : ''}>
+                                            Process Multi
+                                        </button>
+                                        <a href="/location-orders/?platform=${platform}&order_type=multi" class="btn action-btn location-btn"
+                                        ${platformData.multi === 0 ? 'disabled' : ''}>
+                                            Multi by Location
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    `;
+                    
+                    tableBody.appendChild(row);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching order counts:', error);
+                document.getElementById('platform-list').innerHTML = `
+                    <tr><td colspan="3">Error loading order data. Please refresh.</td></tr>
+                `;
+            });
+        }
+        
+        // Function to update batch limit
+        function updateBatchLimit(platformId) {
+            const batchLimitSelect = document.getElementById(`batch-limit-${platformId}`);
+            const batchLimit = batchLimitSelect.value;
+            console.log(`Updated batch limit for ${platformId} to ${batchLimit}`);
+            
+            // Update the current batch limit in modal if open
+            const currentBatchLimitDisplay = document.getElementById('currentBatchLimit');
+            if (currentBatchLimitDisplay) {
+                currentBatchLimitDisplay.textContent = batchLimit;
+            }
+            
+            // If modal is open for this platform, refresh the data
+            const modal = document.getElementById('orderModal');
+            if (modal.style.display === 'block' && modal.dataset.platform.toLowerCase() === platformId) {
+                showOrderDetails(modal.dataset.platform, modal.dataset.orderType);
+            }
+        }
+
+        // Function to process orders
+// Modified processOrders function to properly apply batch limits
+function processOrders(platform, status, orderType) {
+    console.log(`processOrders called with platform=${platform}, status=${status}, orderType=${orderType}`);
+    
+    const platformId = platform.toLowerCase();
+    const batchLimitSelect = document.getElementById(`batch-limit-${platformId}`);
+    const batchLimit = batchLimitSelect ? batchLimitSelect.value : defaultBatchSize;
+    const nextStatus = getNextStatus(status);
+    
+    console.log(`Batch limit: ${batchLimit}, Next status: ${nextStatus}`);
+    
+    // If orderType is 'all', we need to fetch and process both single and multi orders
+    if (orderType === 'all') {
+        console.log('Processing all orders');
+        // First, fetch single orders
+        fetch(`http://127.0.0.1:8000/api/single-orders/?platform=${platform}&status=${status}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error fetching single orders: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(singleData => {
+                console.log(`Fetched ${singleData.length} single orders`);
+                
+                // Then fetch multi orders
+                fetch(`http://127.0.0.1:8000/api/multi-orders/?platform=${platform}&status=${status}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Error fetching multi orders: ${response.status} ${response.statusText}`);
+                        }
+                        return response.json();
+                    })
+                    .then(multiData => {
+                        console.log(`Fetched ${multiData.length} multi orders`);
+                        
+                        // Combine the orders
+                        const allOrders = singleData.concat(multiData);
+                        const orderIds = allOrders.map(order => order.order_number);
+                        
+                        console.log(`Combined orders: ${orderIds.length}`);
+                        
+                        if (orderIds.length === 0) {
+                            alert(`No orders to process for ${platform}`);
+                            return;
+                        }
+                        
+                        // Process the combined list with batch limit
+                        processSelectedOrders(orderIds, batchLimit, nextStatus, platform, 'MIXED');
+                    })
+                    .catch(error => {
+                        console.error('Error fetching multi orders:', error);
+                        alert(`Error fetching multi orders: ${error.message}`);
+                    });
+            })
+            .catch(error => {
+                console.error('Error fetching single orders:', error);
+                alert(`Error fetching single orders: ${error.message}`);
+            });
+    } else {
+        // For single or multi orders, use the appropriate endpoint
+        const endpoint = orderType === 'single' ? 'single-orders' : 'multi-orders';
+        const apiOrderType = orderType === 'single' ? 'SINGLE' : 'MULTI';
+        
+        console.log(`Processing ${orderType} orders from endpoint: ${endpoint}`);
+        
+        // Don't limit the orders in the fetch, get all available orders
+        fetch(`http://127.0.0.1:8000/api/${endpoint}/?platform=${platform}&status=${status}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error fetching ${orderType} orders: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log(`Fetched ${data.length} ${orderType} orders`, data);
+                
+                if (data.length === 0) {
+                    alert(`No ${orderType} orders to process for ${platform}`);
+                    return;
+                }
+                
+                const orderIds = data.map(order => order.order_number);
+                console.log(`Order IDs to process: ${orderIds.length}`);
+                
+                // We'll let the backend limit the batch size
+                processSelectedOrders(orderIds, batchLimit, nextStatus, platform, apiOrderType);
+            })
+            .catch(error => {
+                console.error(`Error fetching ${orderType} orders:`, error);
+                alert(`Error fetching ${orderType} orders: ${error.message}`);
+            });
+    }
+}
+
+// Modified processSelectedOrders function to handle batch limits correctly
+function processSelectedOrders(selectedOrders, batchLimit, nextStatus, platform, orderType) {
+    console.log('processSelectedOrders called with:', {
+        selectedOrdersCount: selectedOrders.length, 
+        batchLimit, 
+        nextStatus, 
+        platform, 
+        orderType
+    });
+    
+    if (!selectedOrders || selectedOrders.length === 0) {
+        alert('No orders to process');
+        return;
+    }
+    
+    if (!batchLimit) {
+        if (platform) {
+            const platformId = platform.toLowerCase();
+            const batchLimitSelect = document.getElementById(`batch-limit-${platformId}`);
+            batchLimit = batchLimitSelect ? batchLimitSelect.value : defaultBatchSize;
+        } else {
+            batchLimit = defaultBatchSize;
+        }
+    }
+    
+    // Get SKU limit from the platform's selector
+    let skuLimit = '0';
+    if (platform) {
+        const platformId = platform.toLowerCase();
+        const skuLimitSelect = document.getElementById(`sku-limit-${platformId}`);
+        skuLimit = skuLimitSelect ? skuLimitSelect.value : '0';
+    }
+    
+    if (!nextStatus) {
+        nextStatus = getNextStatus(currentStatus);
+    }
+    
+    if (!platform) {
+        // Try to get platform from modal if available
+        const modal = document.getElementById('orderModal');
+        platform = modal?.dataset?.platform || 'UNKNOWN';
+    }
+    
+    if (!orderType) {
+        // Try to get order type from modal if available
+        const modal = document.getElementById('orderModal');
+        orderType = modal?.dataset?.orderType === 'single' ? 'SINGLE' : 'MULTI';
+    }
+    
+    // Make sure batchLimit is a number
+    batchLimit = parseInt(batchLimit, 10);
+    if (isNaN(batchLimit) || batchLimit <= 0) {
+        batchLimit = defaultBatchSize;
+    }
+    
+    // Make sure skuLimit is a number
+    skuLimit = parseInt(skuLimit, 10);
+    if (isNaN(skuLimit)) {
+        skuLimit = 0;
+    }
+    
+    console.log(`Sending request with batch limit: ${batchLimit} and SKU limit: ${skuLimit}`);
+    
+    // Send all order IDs to backend, backend will apply the limits
+    fetch('http://127.0.0.1:8000/api/process-orders/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            orders: selectedOrders,
+            batch_limit: batchLimit,
+            sku_limit: skuLimit,
+            next_status: nextStatus,
+            platform: platform.toUpperCase(),
+            order_type: orderType.toUpperCase()
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.text().then(text => {
+                throw new Error(`Server returned ${response.status} ${response.statusText}: ${text}`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Process orders response:', data);
+        
+        let message = '';
+        if (data.processed_count < data.total_count) {
+            message = `Processed ${data.processed_count} out of ${data.total_count} selected orders`;
+        } else {
+            message = `All ${data.processed_count} orders processed successfully`;
+        }
+        
+        if (data.picklist_ids && data.picklist_ids.length > 1) {
+            message += `\nCreated ${data.picklist_ids.length} picklists due to batch/SKU limits:`;
+            data.picklist_ids.forEach((id, index) => {
+                message += `\n${index + 1}. ${id}`;
+            });
+        } else if (data.main_picklist_id) {
+            message += `\nPicklist ID: ${data.main_picklist_id}`;
+        }
+        
+        alert(message);
+        
+        // Close modal if open
+        if (document.getElementById('orderModal').style.display === 'block') {
+            document.getElementById('orderModal').style.display = 'none';
+        }
+        
+        // Refresh the table to show updated counts
+        setTimeout(() => updateOrderStatusTable(currentStatus), 500);
+    })
+    .catch(error => {
+        console.error('Error processing orders:', error);
+        alert(`Error processing orders: ${error.message}`);
+    });
+}
+function updateSkuLimit(platformId) {
+    const skuLimitSelect = document.getElementById(`sku-limit-${platformId}`);
+    const skuLimit = skuLimitSelect.value;
+    console.log(`Updated SKU limit for ${platformId} to ${skuLimit}`);
+    
+    // Update the current SKU limit in modal if open
+    const currentSkuLimitDisplay = document.getElementById('currentSkuLimit');
+    if (currentSkuLimitDisplay) {
+        currentSkuLimitDisplay.textContent = skuLimit === '0' ? 'No Limit' : skuLimit;
+    }
+    
+    // If modal is open for this platform, refresh the data
+    const modal = document.getElementById('orderModal');
+    if (modal.style.display === 'block' && modal.dataset.platform.toLowerCase() === platformId) {
+        showOrderDetails(modal.dataset.platform, modal.dataset.orderType);
+    }
+}
+        // Function to show order details
+        function showOrderDetails(platform, orderType, count) {
+            if (count === 0) {
+                alert('No orders available');
+                return;
+            }
+    
+            const modal = document.getElementById('orderModal');
+            modal.dataset.platform = platform;
+            modal.dataset.orderType = orderType;
+            
+            const modalTitle = document.getElementById('modalTitle');
+            modalTitle.textContent = `${platform} ${orderType === 'single' ? 'Single' : 'Multi'} Orders`;
+            
+            const platformId = platform.toLowerCase();
+            const batchLimitSelect = document.getElementById(`batch-limit-${platformId}`);
+            const batchLimit = batchLimitSelect ? batchLimitSelect.value : defaultBatchSize;
+            
+            const skuLimitSelect = document.getElementById(`sku-limit-${platformId}`);
+            const skuLimit = skuLimitSelect ? skuLimitSelect.value : '0';
+            
+            const currentBatchLimitDisplay = document.getElementById('currentBatchLimit');
+            currentBatchLimitDisplay.textContent = batchLimit;
+            
+            // Add this line to update SKU limit display
+            const currentSkuLimitDisplay = document.getElementById('currentSkuLimit');
+            currentSkuLimitDisplay.textContent = skuLimit === '0' ? 'No Limit' : skuLimit;
+            
+            fetch(`http://127.0.0.1:8000/api/${orderType}-orders/?platform=${platform}&batch_limit=${batchLimit}&status=${currentStatus}`)
+                .then(response => response.json())
+                .then(data => {
+                    displayOrders(data, orderType);
+                    
+                    // Update order count info
+                    const orderCountInfo = document.getElementById('orderCountInfo');
+                    if (data.length < count) {
+                        orderCountInfo.textContent = `Displaying ${data.length} of ${count} total orders (limited by batch size).`;
+                    } else {
+                        orderCountInfo.textContent = `Displaying all ${count} orders.`;
+                    }
+                    
+                    // Add SKU count info to the modal
+                    const uniqueSkus = new Set(data.map(order => order.sku));
+                    const skuCountInfo = document.getElementById('skuCountInfo');
+                    skuCountInfo.textContent = `Contains ${uniqueSkus.size} unique SKUs.`;
+                    
+                    modal.style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error fetching order details');
+                });
+        }
+        function redirectToPicklistDetails(picklistId) {
+            // Create a temporary form to submit the POST request
+            const form = document.createElement('form');
+            form.method = 'GET';
+            form.action = `/picklist-details/${picklistId}/`;
+            document.body.appendChild(form);
+            form.submit();
+        }
+        function displayPicklists() {
+    fetch('http://127.0.0.1:8000/api/picklists/')
+        .then(response => response.json())
+        .then(data => {
+            const contentDiv = document.getElementById('status-content');
+            
+            // Define status order for sorting
+            const statusOrder = {
+                'CREATED': 1,
+                'PRINTED': 2,
+                'PACKING': 3
+            };
+            
+            // Sort the data by status and then by created_at date
+            data.sort((a, b) => {
+                const statusCompare = (statusOrder[a.status] || 999) - (statusOrder[b.status] || 999);
+                if (statusCompare !== 0) return statusCompare;
+                return new Date(b.created_at) - new Date(a.created_at);
+            });
+            
+            // Filter picklists
+            const filteredPicklists = data.filter(p => 
+                p.status === 'CREATED' || p.status === 'PRINTED'
+            );
+            
+            if (filteredPicklists.length === 0) {
+                contentDiv.innerHTML = '<div class="card"><p class="text-center">No picklists available for picking</p></div>';
+                return;
+            }
+            
+            // Create a basic table structure without custom styles
+            let html = `
+                <div class="picklist-header">
+                    <h3>Picklists</h3>
+                </div>
+                <table class="status-table" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th style="width: 20%; text-align: left; padding: 12px; border-bottom: 2px solid #ddd;">Picklist ID</th>
+                            <th style="width: 20%; text-align: left; padding: 12px; border-bottom: 2px solid #ddd;">Type of Picklist</th>
+                            <th style="width: 20%; text-align: center; padding: 12px; border-bottom: 2px solid #ddd;">Qty of Picklist</th>
+                            <th style="width: 20%; text-align: left; padding: 12px; border-bottom: 2px solid #ddd;">Platform</th>
+                            <th style="width: 20%; text-align: center; padding: 12px; border-bottom: 2px solid #ddd;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            filteredPicklists.forEach(picklist => {
+                const statusClass = `status-${picklist.status.toLowerCase()}`;
+                const rowStyle = picklist.status === 'PRINTED' ? 'background-color: #f9f9f9;' : '';
+                
+                html += `
+                    <tr style="${rowStyle}">
+                        <td style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">
+                            <a href="javascript:void(0)" onclick="redirectToPicklistDetails('${picklist.picklist_id}')" class="picklist-link">
+                                ${picklist.picklist_id}
+                            </a>
+                        </td>
+                        <td style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">${picklist.picklist_type}</td>
+                        <td style="padding: 12px; text-align: center; border-bottom: 1px solid #ddd;">${picklist.quantity}</td>
+                        <td style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">${picklist.platform}</td>
+                        <td style="padding: 12px; text-align: center; border-bottom: 1px solid #ddd;">
+                            <span class="status-badge ${statusClass}" style="display: inline-block; padding: 6px 12px; border-radius: 4px; font-weight: bold; min-width: 80px;">
+                                ${picklist.status}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            
+            contentDiv.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error fetching picklists:', error);
+            document.getElementById('status-content').innerHTML = '<div class="card"><p class="text-center">Error loading picklists. Please refresh.</p></div>';
+        });
+}
+function displayOrders(data, orderType) {
+    console.log("Displaying orders:", data);  // Add this debug log
+    
+    if (!Array.isArray(data)) {
+        console.error("Expected array but got:", data);
+        return;
+    }
+    
+    const tableBody = document.getElementById('orderTableBody');
+    if (!tableBody) {
+        console.error("Cannot find orderTableBody element");
+        return;
+    }
+    
+    tableBody.innerHTML = '';
+    
+    data.forEach(order => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="checkbox-cell">
+                <input type="checkbox" class="order-checkbox" value="${order.order_number}">
+            </td>
+            <td>${order.order_number}</td>
+            <td>${order.sku}</td>
+            <td>${order.quantity}</td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+      function viewPicklistDetails(picklistId) {
+              fetch(`http://127.0.0.1:8000/api/picklists/${picklistId}/`)
+                  .then(response => response.json())
+                  .then(data => {
+                      // Create and display a modal with picklist details
+                      const modal = document.getElementById('orderModal');
+                      const modalTitle = document.getElementById('modalTitle');
+                      modalTitle.textContent = `Picklist ${picklistId} (${data.picklist_type}) - ${data.platform}`;
+                      
+                      const orderTableBody = document.getElementById('orderTableBody');
+                      orderTableBody.innerHTML = '';
+                      
+                      data.items.forEach(item => {
+                          const row = document.createElement('tr');
+                          row.innerHTML = `
+                              <td class="checkbox-cell">
+                                  <input type="checkbox" class="order-checkbox" value="${item.order_number}" ${item.picked ? 'checked disabled' : ''}>
+                              </td>
+                              <td>${item.order_number}</td>
+                              <td>${item.sku}</td>
+                              <td>${item.quantity}</td>
+                          `;
+                          orderTableBody.appendChild(row);
+                      });
+                      
+                      // Change the process button to mark items as picked
+                      const processButton = document.getElementById('processSelectedBtn');
+                      processButton.textContent = 'Mark as Picked';
+                      processButton.onclick = function() {
+                          markItemsAsPicked(picklistId);
+                      };
+                      
+                      modal.style.display = 'block';
+                  })
+                  .catch(error => {
+                      console.error('Error:', error);
+                      alert('Error fetching picklist details');
+                  });
+          }
+
+          // Function to mark picklist items as picked
+          function markItemsAsPicked(picklistId) {
+              const selectedOrders = Array.from(document.querySelectorAll('.order-checkbox:checked:not([disabled])'))
+                  .map(checkbox => checkbox.value);
+              
+              if (selectedOrders.length === 0) {
+                  alert('Please select items to mark as picked');
+                  return;
+              }
+              
+              fetch(`http://127.0.0.1:8000/api/picklists/${picklistId}/mark-picked/`, {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                      order_numbers: selectedOrders
+                  })
+              })
+              .then(response => response.json())
+              .then(data => {
+                  alert(data.message);
+                  document.getElementById('orderModal').style.display = 'none';
+                  displayPicklists();
+              })
+              .catch(error => {
+                  console.error('Error:', error);
+                  alert('Error marking items as picked');
+              });
+          }
+
+          // Function to update picklist status
+          function updatePicklistStatus(picklistId, status) {
+              fetch(`http://127.0.0.1:8000/api/picklists/${picklistId}/status/`, {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                      status: status
+                  })
+              })
+              .then(response => response.json())
+              .then(data => {
+                  alert(data.message);
+                  displayPicklists();
+              })
+              .catch(error => {
+                  console.error('Error:', error);
+                  alert('Error updating picklist status');
+              });
+          }
+
+          // Modify tab click handler to display picklists when in Pick status
+          document.querySelectorAll('.tab').forEach(tab => {
+              tab.addEventListener('click', function() {
+                  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                  this.classList.add('active');
+                  currentStatus = this.dataset.status;
+                  
+                  if (currentStatus === 'Pick') {
+                      displayPicklists();
+                  } else {
+                      updateOrderStatusTable(currentStatus);
+                  }
+              });
+          });
+
+        // Function to display orders in modal
+        function displayCompletedPicklists() {
+    fetch('http://127.0.0.1:8000/api/picklists/')
+        .then(response => response.json())
+        .then(data => {
+            const contentDiv = document.getElementById('status-content');
+            
+            // Filter picklists to show only those with COMPLETED status
+            const completedPicklists = data.filter(p => p.status === 'COMPLETED');
+            
+            if (completedPicklists.length === 0) {
+                contentDiv.innerHTML = '<div class="card"><p class="text-center">No completed picklists available</p></div>';
+                return;
+            }
+            
+            let html = `
+                <div class="picklist-header">
+                    <h3>Completed Picklists</h3>
+                </div>
+                <table class="status-table">
+                    <thead>
+                        <tr>
+                            <th>Picklist ID</th>
+                            <th>Type of Picklist</th>
+                            <th>Qty of Picklist</th>
+                            <th>Platform</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="completed-picklist-table-body">
+            `;
+            
+            completedPicklists.forEach(picklist => {
+                html += `
+                    <tr>
+                        <td>
+                            <a href="javascript:void(0)" onclick="redirectToPicklistDetails('${picklist.picklist_id}')" class="picklist-link">
+                                ${picklist.picklist_id}
+                            </a>
+                        </td>
+                        <td>${picklist.picklist_type}</td>
+                        <td>${picklist.quantity}</td>
+                        <td>${picklist.platform}</td>
+                        <td><span class="status-badge status-completed">COMPLETED</span></td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            
+            contentDiv.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error fetching completed picklists:', error);
+            document.getElementById('status-content').innerHTML = '<div class="card"><p class="text-center">Error loading picklists. Please refresh.</p></div>';
+        });
+}
+        // Function to display picklists in the Dispatch tab
+        function displayCompletedPicklists() {
+            fetch('http://127.0.0.1:8000/api/picklists/')
+                .then(response => response.json())
+                .then(data => {
+                    const contentDiv = document.getElementById('status-content');
+                    
+                    // Filter picklists to show only those with COMPLETED status
+                    const completedPicklists = data.filter(p => p.status === 'COMPLETED');
+                    
+                    if (completedPicklists.length === 0) {
+                        contentDiv.innerHTML = '<div class="card"><p class="text-center">No completed picklists available</p></div>';
+                        return;
+                    }
+                    
+                    let html = `
+                        <div class="picklist-header">
+                            <h3>Completed Picklists</h3>
+                        </div>
+                        <table class="status-table">
+                            <thead>
+                                <tr>
+                                    <th>Picklist ID</th>
+                                    <th>Type of Picklist</th>
+                                    <th>Qty of Picklist</th>
+                                    <th>Platform</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="completed-picklist-table-body">
+                    `;
+                    
+                    completedPicklists.forEach(picklist => {
+                        html += `
+                            <tr>
+                                <td>
+                                    <a href="/picklist-details/${picklist.picklist_id}/" class="picklist-link">
+                                        ${picklist.picklist_id}
+                                    </a>
+                                </td>
+                                <td>${picklist.picklist_type}</td>
+                                <td>${picklist.quantity}</td>
+                                <td>${picklist.platform}</td>
+                                <td><span class="status-badge status-completed">COMPLETED</span></td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += `
+                            </tbody>
+                        </table>
+                    `;
+                    
+                    contentDiv.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error fetching completed picklists:', error);
+                    document.getElementById('status-content').innerHTML = '<div class="card"><p class="text-center">Error loading picklists. Please refresh.</p></div>';
+                });
+        }
+
+        // Function to view picklist details
+        function viewPicklistDetails(picklistId) {
+            fetch(`http://127.0.0.1:8000/api/picklists/${picklistId}/`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Populate the picklist modal
+                    document.getElementById('picklistModalTitle').textContent = `Picklist ${picklistId}`;
+                    document.getElementById('picklistPlatform').textContent = data.platform;
+                    document.getElementById('picklistStatus').textContent = data.status;
+                    document.getElementById('picklistTotalItems').textContent = data.items.length;
+                    document.getElementById('picklistCreatedAt').textContent = data.created_at;
+                    
+                    const tableBody = document.getElementById('picklistTableBody');
+                    tableBody.innerHTML = '';
+                    
+                    data.items.forEach(item => {
+                        const row = document.createElement('tr');
+                        if (item.picked) {
+                            row.classList.add('item-picked');
+                        }
+                        
+                        row.innerHTML = `
+                            <td class="checkbox-cell">
+                                <input type="checkbox" class="picklist-item-checkbox" value="${item.order_number}" 
+                                      ${item.picked ? 'checked disabled' : ''}>
+                            </td>
+                            <td>${item.order_number}</td>
+                            <td>${item.sku}</td>
+                            <td>${item.quantity}</td>
+                            <td>${item.picked ? 'Picked' : 'Pending'}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                    
+                    // Configure buttons based on picklist status
+                    const actionBtn = document.getElementById('picklistActionBtn');
+                    const printBtn = document.getElementById('printPicklistBtn');
+                    const packingBtn = document.getElementById('moveToPackingBtn');
+                    
+                    // Store picklist ID for button actions
+                    actionBtn.dataset.picklistId = picklistId;
+                    printBtn.dataset.picklistId = picklistId;
+                    packingBtn.dataset.picklistId = picklistId;
+                    
+                    if (data.status === 'CREATED') {
+                        printBtn.style.display = 'inline-block';
+                        printBtn.onclick = () => updatePicklistStatus(picklistId, 'PRINTED');
+                    } else {
+                        printBtn.style.display = 'none';
+                    }
+                    
+                    if (data.status === 'PRINTED' || data.status === 'CREATED') {
+                        packingBtn.style.display = 'inline-block';
+                        packingBtn.onclick = () => updatePicklistStatus(picklistId, 'PACKING');
+                    } else {
+                        packingBtn.style.display = 'none';
+                    }
+                    
+                    // Configure "Mark as Picked" button
+                    actionBtn.textContent = 'Mark Selected as Picked';
+                    actionBtn.onclick = () => {
+                        const selectedItems = Array.from(document.querySelectorAll('.picklist-item-checkbox:checked:not([disabled])'))
+                            .map(checkbox => checkbox.value);
+                        
+                        if (selectedItems.length === 0) {
+                            alert('Please select items to mark as picked');
+                            return;
+                        }
+                        
+                        markItemsAsPicked(picklistId, selectedItems);
+                    };
+                    
+                    // Configure select all checkbox
+                    const selectAllCheckbox = document.getElementById('selectAllPicklistItems');
+                    selectAllCheckbox.checked = false;
+                    selectAllCheckbox.onchange = () => {
+                        const checkboxes = document.querySelectorAll('.picklist-item-checkbox:not([disabled])');
+                        checkboxes.forEach(checkbox => {
+                            checkbox.checked = selectAllCheckbox.checked;
+                        });
+                    };
+                    
+                    // Show the modal
+                    document.getElementById('picklistModal').style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error fetching picklist details:', error);
+                    alert('Error loading picklist details. Please try again.');
+                });
+        }
+
+        function markItemsAsPicked(picklistId, selectedItems) {
+            fetch(`http://127.0.0.1:8000/api/picklists/${picklistId}/mark-picked/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    order_numbers: selectedItems
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert(data.message);
+                // Refresh the picklist details
+                viewPicklistDetails(picklistId);
+                // Refresh the picklists list
+                displayPicklists();
+            })
+            .catch(error => {
+                console.error('Error marking items as picked:', error);
+                alert('Error updating picked status. Please try again.');
+            });
+        }
+
+        // Function to update picklist status
+        function updatePicklistStatus(picklistId, status) {
+            fetch(`http://127.0.0.1:8000/api/picklists/${picklistId}/status/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    status: status
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert(data.message);
+                // Close the modal if open
+                document.getElementById('picklistModal').style.display = 'none';
+                
+                // Refresh the appropriate tab content based on the current status
+                switch(currentStatus) {
+                    case 'Pick':
+                        displayPicklists();
+                        break;
+                    case 'Pack':
+                        displayPackingPicklists();
+                        break;
+                    case 'Dispatch':
+                        displayCompletedPicklists();
+                        break;
+                    default:
+                        // If we're not on a picklist-related tab, do nothing
+                        break;
+                }
+            })
+            .catch(error => {
+                console.error('Error updating picklist status:', error);
+                alert('Error updating picklist status. Please try again.');
+            });
+        }
+
+        // Modified updateOrderStatusTable function to handle different tabs
+        function updateOrderStatusTable(status) {
+            if (status === 'Pick') {
+                displayPicklists();
+                return;
+            } else if (status === 'Pack') {
+                displayPackingPicklists();
+                return;
+            } else if (status === 'Dispatch') {
+                displayCompletedPicklists();
+                return;
+            }
+            
+            fetch(`http://127.0.0.1:8000/api/order-counts/?status=${status}`)
+            .then(response => response.json())
+            .then(data => {
+                const contentDiv = document.getElementById('status-content');
+                
+                // Create the table structure if it doesn't exist
+                contentDiv.innerHTML = `
+                    <table class="status-table">
+                        <thead>
+                            <tr>
+                                <th>Platform</th>
+                                <th>Order Types</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="platform-list">
+                            <!-- Platform data will be populated here -->
+                        </tbody>
+                    </table>
+                `;
+                
+                const tableBody = document.getElementById('platform-list');
+                tableBody.innerHTML = '';
+                
+                platformNames.forEach(platform => {
+                    const platformData = data[platform] || { total: 0, single: 0, multi: 0 };
+                    const row = document.createElement('tr');
+                    const platformId = platform.toLowerCase();
+                    
+                    row.innerHTML = `
+                    <td>
+                        <div class="platform-cell">
+                            ${platform} <span class="count-badge">${platformData.total}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="order-info-container">
+                            <!-- Order Information Section -->
+                            <div class="order-info-section">
+                                <div class="info-item single-orders">
+                                    <div class="info-label">Single Orders:</div>
+                                    <div class="info-value">${platformData.single}</div>
+                                </div>
+                                <div class="info-item multi-orders">
+                                    <div class="info-label">Multi Orders:</div>
+                                    <div class="info-value">${platformData.multi}</div>
+                                </div>
+                                <div class="info-item batch-size">
+                                    <div class="info-label">Batch Size:</div>
+                                    <div class="info-value">
+                                        <select id="batch-limit-${platformId}" onchange="updateBatchLimit('${platformId}')">
+                                            <option value="50">50</option>
+                                            <option value="100">100</option>
+                                            <option value="150">150</option>
+                                            <option value="200">200</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="info-item sku-limit">
+                                    <div class="info-label">SKU Limit:</div>
+                                    <div class="info-value">
+                                        <select id="sku-limit-${platformId}" onchange="updateSkuLimit('${platformId}')">
+                                            <option value="0">No Limit</option>
+                                            <option value="10">10</option>
+                                            <option value="25">25</option>
+                                            <option value="50">50</option>
+                                            <option value="75">75</option>
+                                            <option value="100">100</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Actions Section -->
+                            <div class="action-buttons-section">
+                                <div class="action-row">
+                                    <button class="btn action-btn view-btn" onclick="showOrderDetails('${platform}', 'single', ${platformData.single})" 
+                                            ${platformData.single === 0 ? 'disabled' : ''}>
+                                        View Single
+                                    </button>
+                                    <button class="btn action-btn process-btn" onclick="processOrders('${platform}', '${status}', 'single')" 
+                                            ${platformData.single === 0 ? 'disabled' : ''}>
+                                        Process Single
+                                    </button>
+                                    <a href="/location-orders/?platform=${platform}&order_type=single" class="btn action-btn location-btn"
+                                    ${platformData.single === 0 ? 'disabled' : ''}>
+                                        Single by Location
+                                    </a>
+                                </div>
+                                <div class="action-row">
+                                    <button class="btn action-btn view-btn" onclick="showOrderDetails('${platform}', 'multi', ${platformData.multi})" 
+                                            ${platformData.multi === 0 ? 'disabled' : ''}>
+                                        View Multi
+                                    </button>
+                                    <button class="btn action-btn process-btn" onclick="processOrders('${platform}', '${status}', 'multi')" 
+                                            ${platformData.multi === 0 ? 'disabled' : ''}>
+                                        Process Multi
+                                    </button>
+                                    <a href="/location-orders/?platform=${platform}&order_type=multi" class="btn action-btn location-btn"
+                                    ${platformData.multi === 0 ? 'disabled' : ''}>
+                                        Multi by Location
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                `;
+                    
+                    tableBody.appendChild(row);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching order counts:', error);
+                document.getElementById('status-content').innerHTML = `
+                    <div class="card">
+                        <p class="text-center">Error loading order data. Please refresh.</p>
+                    </div>
+                `;
+            });
+        }
+        
+        // Function to display picklists in the PACKING status
+function displayPackingPicklists() {
+    fetch('http://127.0.0.1:8000/api/picklists/')
+        .then(response => response.json())
+        .then(data => {
+            const contentDiv = document.getElementById('status-content');
+            
+            // Filter picklists to show only those with PACKING status
+            const packingPicklists = data.filter(p => p.status === 'PACKING');
+            
+            if (packingPicklists.length === 0) {
+                contentDiv.innerHTML = `
+                    <div class="card">
+                        <p class="text-center">No picklists available for packing</p>
+                        <p class="text-center"><a href="/pack/" class="btn btn-primary">Go to Packing Interface</a></p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = `
+                <div class="picklist-header">
+                    <h3>Picklists Ready for Packing</h3>
+                    <a href="/pack/" class="btn btn-primary">Go to Packing Interface</a>
+                </div>
+                <table class="status-table">
+                    <thead>
+                        <tr>
+                            <th>Picklist ID</th>
+                            <th>Type of Picklist</th>
+                            <th>Qty of Picklist</th>
+                            <th>Platform</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="packing-picklist-table-body">
+            `;
+            
+            packingPicklists.forEach(picklist => {
+                html += `
+                    <tr>
+                        <td>
+                            <a href="/picklist-details/${picklist.picklist_id}/" class="picklist-link">
+                                ${picklist.picklist_id}
+                            </a>
+                        </td>
+                        <td>${picklist.picklist_type}</td>
+                        <td>${picklist.quantity}</td>
+                        <td>${picklist.platform}</td>
+                        <td>
+                            <span class="status-badge status-packing">
+                                ${picklist.status}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-primary" onclick="startPacking('${picklist.picklist_id}')">
+                                Pack Now
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            
+            contentDiv.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error fetching packing picklists:', error);
+            document.getElementById('status-content').innerHTML = `
+                <div class="card">
+                    <p class="text-center">Error loading picklists. Please refresh.</p>
+                </div>
+            `;
+        });
+}
+
+// Function to start packing a specific picklist
+function startPacking(picklistId) {
+    // Redirect to the packing interface with the picklist ID as a parameter
+    window.location.href = `/pack/?picklist_id=${picklistId}`;
+}
+// Event listener for tab navigation
+document.addEventListener('DOMContentLoaded', function() {
+
+  
+    // Setup for orderModal
+    const orderModal = document.getElementById('orderModal');
+    const orderCloseBtn = orderModal.querySelector('.close-modal');
+    
+    orderCloseBtn.onclick = function() {displayPicklists
+        orderModal.style.display = 'none';
+    }
+    
+    // Setup for picklistModal
+    const picklistModal = document.getElementById('picklistModal');
+    const picklistCloseBtn = picklistModal.querySelector('.close-modal');
+    
+    picklistCloseBtn.onclick = function() {
+        picklistModal.style.display = 'none';
+    }
+    
+    // Close modals when clicking outside
+    window.onclick = function(event) {
+        if (event.target === orderModal) {
+            orderModal.style.display = 'none';
+        }
+        if (event.target === picklistModal) {
+            picklistModal.style.display = 'none';
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+    const style = document.createElement('style');
+    style.textContent = `
+        .picklist-link {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .picklist-link:hover {
+            text-decoration: underline;
+        }
+    `;
+    document.head.appendChild(style);
+});
+
+    // Initialize the tab functionality
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            currentStatus = this.dataset.status;
+            
+            switch(currentStatus) {
+                case 'Ready to Process':
+                    updateOrderStatusTable(currentStatus);
+                    break;
+                case 'Pick':
+                    displayPicklists();
+                    break;
+                case 'Pack':
+                    displayPackingPicklists();
+                    break;
+                case 'Dispatch':
+                    displayCompletedPicklists();
+                    break;
+                default:
+                    updateOrderStatusTable(currentStatus);
+                    break;
+            }
+        });
+    });
+    
+    // Initialize with the currently active tab
+    const activeTab = document.querySelector('.tab.active');
+    if (activeTab) {
+        activeTab.click();
+    }
+});
+
+    </script>
+</body>
+</html>
