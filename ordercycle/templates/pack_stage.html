@@ -1083,78 +1083,138 @@ function printOrderLabel(platform, orderNumber) {
 
         let pdfUrl = data.pdf_url;
         if (!pdfUrl.startsWith('http')) {
-            if (pdfUrl.startsWith('/')) {
-                pdfUrl = window.location.origin + pdfUrl;
-            } else {
-                pdfUrl = window.location.origin + '/' + pdfUrl;
-            }
+            pdfUrl = window.location.origin + (pdfUrl.startsWith('/') ? '' : '/') + pdfUrl;
         }
 
-        showMessage("Downloading and processing label...", "info");
+        showMessage("Downloading label...", "info");
 
         fetch(pdfUrl)
             .then(response => response.arrayBuffer())
             .then(async arrayBuffer => {
-                const { PDFDocument } = PDFLib;
+                const platformUpper = (data.platform || '').toUpperCase();
+                const { PDFDocument, degrees } = PDFLib;
+
                 const fullPdf = await PDFDocument.load(arrayBuffer);
-                
-                // Create a new PDF with 4x6 dimensions (4 inches x 6 inches)
                 const newPdf = await PDFDocument.create();
-                
-                // Determine which page to use based on platform
-                let pageIndex = 0; // Default to first page
-                
-                if ((data.platform || '').toUpperCase() === 'FIRSTCRY') {
-                    // For FIRSTCRY, use the last page
+
+                let pageIndex = 0;
+                if (platformUpper === 'FIRSTCRY') {
                     pageIndex = fullPdf.getPageCount() - 1;
                 }
-                
-                // Copy the selected page
-                const [selectedPage] = await newPdf.copyPages(fullPdf, [pageIndex]);
-                
-                // Add the page to the new document
-                const page = newPdf.addPage(selectedPage);
 
+                const [selectedPage] = await newPdf.copyPages(fullPdf, [pageIndex]);
+                const page = newPdf.addPage(selectedPage);
                 const { width, height } = page.getSize();
 
-                console.log(data);
-
-                if ((data.platform || '').toUpperCase() === 'FLIPKART') {
-                    var cropLeft = 180; // Shift right by 30 points
-                    var cropTop = 0; // Shift down by 20 points
-                    var cropWidth = width - 360; // Remove 30 points from each horizontal side
-                    var cropHeight = height - 25;
-
+                if (platformUpper === 'FLIPKART') {
+                    const cropLeft = 180;
+                    const cropTop = 0;
+                    const cropWidth = width - 360;
+                    const cropHeight = height - 25;
                     page.setCropBox(cropLeft, cropTop, cropWidth, cropHeight);
                 }
-                
-                console.log(page.getSize());
-                
+
+                if (platformUpper === 'MEESHO') {
+                    // Rotate the content 90 degrees and resize to 6x4 inches (landscape)
+                    page.setCropBox(0, 0, width, height); // Keep entire page
+                    page.setRotation(degrees(90));
+                    page.setSize(432, 288); // 6 inches (432pt) x 4 inches (288pt)
+                    console.log("Meesho label: rotated and resized to 6x4 landscape");
+                }
+
                 // Save the new PDF
                 const newPdfBytes = await newPdf.save();
                 const blob = new Blob([newPdfBytes], { type: 'application/pdf' });
-                const url = URL.createObjectURL(blob);
+
+                // Trigger download
+                const downloadUrl = URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.href = url;
+                a.href = downloadUrl;
                 a.download = `label_${orderNumber}.pdf`;
                 a.click();
-                URL.revokeObjectURL(url);
+                URL.revokeObjectURL(downloadUrl);
 
                 showMessage(`Label for order ${orderNumber} downloaded successfully!`, "success");
-                     
-                // Convert to base64 for printing
+
+                // Convert to base64 for QZ printing
                 const base64Data = arrayBufferToBase64(newPdfBytes);
 
-                // Create QZ print config with 4x6 dimensions
-                const config = qz.configs.create(labelPrinter, {
-                    size: { width: 4, height: 6, units: 'in' },
-                    margins: { top: 0, right: 0, bottom: 0, left: 0 },
-                    orientation: 'portrait',
-                    copies: 1,
-                    colorType: 'grayscale',
-                    density: 300,
-                    scale: 'fit' // Important: scale to fit the printer dimensions
-                });
+                // Printer config
+                let config;
+                if (platformUpper === 'MEESHO') {
+                    showMessage(`Processing Meesho label for order ${orderNumber}...`, "info");
+                
+                    const base64Data = arrayBufferToBase64(arrayBuffer);
+                
+                    const config = qz.configs.create(labelPrinter, {
+                        size: { width: 6, height: 4, units: 'in' }, // Landscape
+                        margins: { top: 0, right: 0, bottom: 0, left: 0 },
+                        orientation: 'landscape',
+                        copies: 1,
+                        colorType: 'grayscale',
+                        scale: 'fit',
+                        scaleContent: true,
+                        fitToPage: true,
+                        rotate: 90, // Let the printer handle rotation
+                        density: 300,
+                        interpolation: 'bicubic',
+                        rasterize: true,
+                        altPrinting: true,
+                        forceRasterize: true
+                    });
+                
+                    const printData = [{
+                        type: 'pdf',
+                        format: 'base64',
+                        data: base64Data
+                    }];
+                
+                    showMessage(`Printing Meesho label for order ${orderNumber}...`, "info");
+                
+                    qz.print(config, printData)
+                        .then(() => {
+                            showMessage(`Label for order ${orderNumber} printed successfully!`, "success");
+                        })
+                        .catch(err => {
+                            console.error("Printing error:", err);
+                            showMessage(`Printing failed: ${err.message}`, "error");
+                
+                            const retryBtn = document.createElement('button');
+                            retryBtn.className = 'btn btn-warning';
+                            retryBtn.textContent = 'Retry Print';
+                            retryBtn.onclick = function () {
+                                printOrderLabel(platform, orderNumber);
+                            };
+                
+                            const messageDiv = document.querySelector('.message-error');
+                            if (messageDiv) {
+                                messageDiv.appendChild(document.createElement('br'));
+                                messageDiv.appendChild(retryBtn);
+                            }
+                        });
+                
+                    // Also trigger download for user
+                    const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `label_${orderNumber}.pdf`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                
+                    return; // Skip remaining logic
+                }
+                 else {
+                    config = qz.configs.create(labelPrinter, {
+                        size: { width: 4, height: 6, units: 'in' },
+                        margins: { top: 0, right: 0, bottom: 0, left: 0 },
+                        orientation: 'portrait',
+                        copies: 1,
+                        colorType: 'grayscale',
+                        density: 300,
+                        scale: 'fit'
+                    });
+                }
 
                 const printData = [{
                     type: 'pdf',
@@ -1171,15 +1231,14 @@ function printOrderLabel(platform, orderNumber) {
                     .catch(err => {
                         console.error("Printing error:", err);
                         showMessage(`Printing failed: ${err.message}`, "error");
-                        
-                        // Add fallback browser print option if QZ print fails
+
                         const retryBtn = document.createElement('button');
                         retryBtn.className = 'btn btn-warning';
                         retryBtn.textContent = 'Retry Print';
-                        retryBtn.onclick = function() { 
+                        retryBtn.onclick = function () {
                             printOrderLabel(platform, orderNumber);
                         };
-                        
+
                         const messageDiv = document.querySelector('.message-error');
                         if (messageDiv) {
                             messageDiv.appendChild(document.createElement('br'));
@@ -1198,6 +1257,7 @@ function printOrderLabel(platform, orderNumber) {
         showMessage(`Error: ${error.message}`, 'error');
     });
 }
+
 
 // Helper: Convert Uint8Array to base64 string
 function arrayBufferToBase64(buffer) {

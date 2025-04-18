@@ -18,7 +18,7 @@ from django.db.models import Count
 from django.db.models import Count, Q, Subquery, OuterRef
 import os,re
 import fitz  # PyMuPDF for reading PDF text
-from .models import PDFUpload,AmazonOrders,FlipkarOrders,FirstcryOrders
+from .models import PDFUpload,AmazonOrders,FlipkarOrders,FirstcryOrders,MeeshoOrders
 from .serializers import PDFUploadSerializer
 from collections import defaultdict
 from PyPDF2 import PdfReader, PdfWriter
@@ -27,7 +27,7 @@ from process.flipkart_process import csv_to_dataframe as flipkart_csv_to_dt,grab
 from process.firstcry_process import excel_to_dataframe,grab_required_fields as firstcry_grab_fields,split_pdf_by_orderid as firstcry_split_pdf_by_order_id
 from process.amazon_process import txt_to_dataframe,grab_required_fields,split_pdf_by_orderid
 from process.meesho_process import excel_to_dataframe as meesho_excel_to_df,grab_required_fields as meesho_grab_fields,split_pdf_custom as meesho_split_pdf_custom
-from .models import Picklist, PicklistItem, MasterTable, Picker, PicklistItemLocation,UserProfile,MeeshoOrders
+from .models import Picklist, PicklistItem, MasterTable, Picker, PicklistItemLocation,UserProfile
 import tempfile
 import shutil
 from django.shortcuts import render
@@ -79,7 +79,7 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
             'flipkart_processed': 0,
             'amazon_processed': 0,
             'firstcry_processed': 0,
-            'meesho_processed':0,
+            'meesho_processed': 0,
             'errors': []
         }
         
@@ -191,14 +191,14 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
                       
                       results['amazon_processed'] += 1
 
-                elif "CustomerAddress" in text:
+                elif "CustomerAddress" in text or "Customer Address" in text:
                     df = meesho_excel_to_df(data_path)
                     final_output_dict = meesho_grab_fields(df.to_dict(orient="records"))
-                    meesho_data = meesho_split_pdf_custom(pdf_path, r"C:\Users\teja0\Downloads\Order Process Cycle-20250403T030855Z-001\Order Process Cycle\orderCycleProject\media\meeshoPdfs", final_output_dict,top_ratio=0.345)
+                    meesho_data = meesho_split_pdf_custom(pdf_path, r"C:\Users\teja0\Downloads\Order Process Cycle-20250403T030855Z-001\Order Process Cycle\orderCycleProject\media\meeshoPdfs", final_output_dict,top_ratio=0.413)
                     for order_number, order_data in meesho_data.items():
                       order_type = "Single"
                       # The second element (index 1) contains the list of items
-                      items = order_data[1]
+                      items = order_data[0]
                       if len(items) >1:
                           order_type = "Multiple"
                       
@@ -223,6 +223,8 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
                       results['meesho_processed'] += 1
                 
                 else:
+                    import pdb
+                    pdb.set_trace()
                     results['errors'].append(f"Unknown platform for {pdf_file.name}")
                     
             except Exception as e:
@@ -276,6 +278,12 @@ class OrderCountsViewSet(ViewSet):
         counts['FIRSTCRY']['total'] = firstcry_orders.values('order_number').distinct().count()
         counts['FIRSTCRY']['single'] = firstcry_orders.filter(order_type='Single').values('order_number').distinct().count()
         counts['FIRSTCRY']['multi'] = firstcry_orders.filter(order_type='Multiple').values('order_number').distinct().count()
+
+        # Meesho orders
+        meesho_orders = MeeshoOrders.objects.filter(status=status)
+        counts['MEESHO']['total'] = meesho_orders.values('order_number').distinct().count()
+        counts['MEESHO']['single'] = meesho_orders.filter(order_type='Single').values('order_number').distinct().count()
+        counts['MEESHO']['multi'] = meesho_orders.filter(order_type='Multiple').values('order_number').distinct().count()
         
         return Response(counts)
 
@@ -324,6 +332,21 @@ class OrderCountsViewSet(ViewSet):
         elif platform == 'FIRSTCRY':
             # Get single orders based on order_type field and include only distinct order numbers
             single_orders = FirstcryOrders.objects.filter(
+                order_type='Single',
+                status=status
+            ).order_by('order_number').distinct('order_number')
+            
+            # Serialize the data
+            data = [{
+                'order_number': order.order_number,
+                'sku': order.sku,
+                'quantity': order.quantity,
+                'pdf_url': order.pdf_url
+            } for order in single_orders]
+
+        elif platform == 'MEESHO':
+            # Get single orders based on order_type field and include only distinct order numbers
+            single_orders = MeeshoOrders.objects.filter(
                 order_type='Single',
                 status=status
             ).order_by('order_number').distinct('order_number')
@@ -403,6 +426,21 @@ class OrderCountsViewSet(ViewSet):
                 'quantity': order.quantity,
                 'pdf_url': order.pdf_url
             } for order in multi_orders]
+
+        elif platform == 'MEESHO':
+            # Get multi orders based on order_type field and include only distinct order numbers
+            multi_orders = MeeshoOrders.objects.filter(
+                order_type='Multiple',
+                status=status
+            ).order_by('order_number').distinct('order_number')
+            
+            # Serialize the data
+            data = [{
+                'order_number': order.order_number,
+                'sku': order.sku,
+                'quantity': order.quantity,
+                'pdf_url': order.pdf_url
+            } for order in multi_orders]
         
         # Apply batch limit if provided
         if batch_limit:
@@ -455,6 +493,8 @@ class OrderCountsViewSet(ViewSet):
                 order_model = FlipkarOrders
             elif platform == 'FIRSTCRY':
                 order_model = FirstcryOrders
+            elif platform == 'MEESHO':
+                order_model = MeeshoOrders
             else:
                 # Handle unknown platform
                 return Response({
@@ -1029,6 +1069,8 @@ class LocationOrdersViewSet(viewsets.ViewSet):
             order_model = FlipkarOrders
         elif platform.upper() == 'FIRSTCRY':
             order_model = FirstcryOrders
+        elif platform.upper() == 'MEESHO':
+            order_model = MeeshoOrders
         else:
             return Response({
                 'error': f'Unknown platform: {platform}'
@@ -1126,6 +1168,8 @@ class LocationOrdersViewSet(viewsets.ViewSet):
             order_model = FlipkarOrders
         elif platform.upper() == 'FIRSTCRY':
             order_model = FirstcryOrders
+        elif platform.upper() == 'MEESHO':
+            order_model = MeeshoOrders
         else:
             return Response({
                 'error': f'Unknown platform: {platform}'
@@ -1244,6 +1288,8 @@ class LocationOrdersViewSet(viewsets.ViewSet):
                 order_model = FlipkarOrders
             elif platform == 'FIRSTCRY':
                 order_model = FirstcryOrders
+            elif platform == 'MEESHO':
+                order_model = MeeshoOrders
             else:
                 return Response({
                     'status': 'error',
@@ -1381,7 +1427,7 @@ class LocationOrdersViewSet(viewsets.ViewSet):
             }, status=500)
 
 
-def picklist_detail_view(request, picklist_id):
+def picklist_detail_view(self, request, picklist_id):
     """
     Render the picklist details page
     """
@@ -1753,6 +1799,8 @@ def print_order_label(request):
             order = FlipkarOrders.objects.filter(order_number=order_number).first()
         elif platform.upper() == 'FIRSTCRY':
             order = FirstcryOrders.objects.filter(order_number=order_number).first()
+        elif platform.upper() == 'MEESHO':
+            order = MeeshoOrders.objects.filter(order_number=order_number).first()
         else:
             return JsonResponse({
                 'status': 'error',
@@ -1797,6 +1845,8 @@ def print_order_label(request):
                 pdf_url = f'flipkartPdfs/{filename}'
             elif platform.upper() == 'FIRSTCRY':
                 pdf_url = f'firstcryPdfs/{filename}'
+            elif platform.upper() == 'MEESHO':
+                pdf_url = f'meeshoPdfs/{filename}'
             else:
                 pdf_url = f'orderPdfs/{filename}'
             
@@ -1933,6 +1983,68 @@ def print_order_label(request):
             'message': f'Error processing print request: {str(e)}'
         }, status=500)
 
+@require_http_methods(["GET"])
+def search_product(request):
+    """
+    Search for a product by product ID
+    """
+    product_id = request.GET.get('product_id', '')
+    
+    if not product_id:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Product ID is required'
+        }, status=400)
+    
+    try:
+        # Construct the image path based on product ID
+        image_path = f"/media/ASINWISEIMAGES/{product_id}.jpg"
+        
+        # Check if the file exists (optional, but helpful)
+        import os
+        from django.conf import settings
+        
+        full_image_path = os.path.join(settings.MEDIA_ROOT, "ASINWISEIMAGES", f"{product_id}.jpg")
+        if not os.path.exists(full_image_path):
+            # If image doesn't exist, use a default "not found" image
+            image_path = "/static/images/no_image_found.jpg"
+        
+        # Find the product in the master table
+        product = MasterTable.objects.filter(product_id=product_id).first()
+        
+        if not product:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Product with ID {product_id} not found'
+            }, status=404)
+        
+        # Return product details
+        return JsonResponse({
+            'status': 'success',
+            'product': {
+                'sku': product.sku,
+                'image_url': image_path,
+                'location': product.location,
+                'product_id': product.product_id,
+                'box_no': product.box_no or '',
+                'mrp': float(product.mrp) if product.mrp else 0,
+                'generic_name': product.generic_name or '',
+                'pack_check': product.pack_check or '',
+                'pack_remarks': product.pack_remarks or ''
+            }
+        })
+    
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error searching for product: {str(e)}'
+        }, status=500)
+
+def pack_stage_view(request):
+    """
+    Render the packing stage page
+    """
+    return render(request, 'pack_stage.html')
 
 @require_http_methods(["GET"])
 def get_printer_list(request):
@@ -2025,7 +2137,6 @@ def get_printer_preferences(request):
             'message': f'Error getting printer preferences: {str(e)}'
         }, status=500)
 
-
 @require_http_methods(["POST"])
 def send_test_print(request):
     """
@@ -2062,6 +2173,193 @@ def send_test_print(request):
             'message': f'Error initiating test print: {str(e)}'
         }, status=500)
 
+@require_http_methods(["POST"])
+def mark_picklist_completed(request, picklist_id):
+    """
+    Mark a picklist as completed
+    """
+    try:
+        # Print request details for debugging
+        print("Headers:", request.headers)
+        print("CSRF Token:", request.META.get('HTTP_X_CSRFTOKEN', 'Not provided'))
+        
+        picklist = get_object_or_404(Picklist, picklist_id=picklist_id, status='PACKING')
+        
+        # Update the picklist status to COMPLETED
+        picklist.status = 'COMPLETED'
+        picklist.save()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Picklist {picklist_id} marked as completed'
+        })
+    
+    except Exception as e:
+        print(f"Error completing picklist: {str(e)}")
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error marking picklist as completed: {str(e)}'
+        }, status=500)
+
+@require_http_methods(["POST"])
+def mark_product_packed(request):
+    """
+    Mark a product as packed in a picklist
+    """
+    try:
+        data = json.loads(request.body)
+        picklist_id = data.get('picklist_id')
+        sku = data.get('sku')
+        
+        if not picklist_id or not sku:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Picklist ID and SKU are required'
+            }, status=400)
+        
+        # Find the picklist
+        picklist = get_object_or_404(Picklist, picklist_id=picklist_id, status='PACKING')
+        
+        # Find all items with the matching SKU in this picklist
+        items = PicklistItem.objects.filter(picklist=picklist, sku=sku)
+        
+        if not items.exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': f'No items with SKU {sku} found in picklist {picklist_id}'
+            }, status=404)
+        
+        # Track items that were successfully packed
+        packed_items = 0
+        
+        # Mark all matching items as packed
+        for item in items:
+            # First update the PicklistItem table
+            item.picked = True
+            item.save()
+            
+            # Also update PicklistItemLocation if it exists
+            try:
+                location_info, created = PicklistItemLocation.objects.get_or_create(
+                    picklist_item=item,
+                    defaults={'location': 'Unknown', 'picked': False}
+                )
+                location_info.picked = True
+                location_info.picked_at = timezone.now()
+                location_info.save()
+            except Exception as e:
+                print(f"Error updating location info: {str(e)}")
+                # Continue anyway - the PicklistItem is already updated
+            
+            packed_items += 1
+        
+        # Check if all items are now packed by looking at PicklistItem model
+        # This fixes the issue where we were using location_info.picked
+        all_packed = not PicklistItem.objects.filter(picklist=picklist, picked=False).exists()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Items with SKU {sku} marked as packed ({packed_items} items)',
+            'all_packed': all_packed
+        })
+    
+    except Exception as e:
+        print(f"Error in mark_product_packed: {str(e)}")
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error marking product as packed: {str(e)}'
+        }, status=500)
+
+@require_http_methods(["GET"])
+def search_picklist(request):
+    """
+    Search for a picklist by ID
+    """
+    picklist_id = request.GET.get('picklist_id', '')
+    if not picklist_id:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Picklist ID is required'
+        }, status=400)
+    
+    try:
+        # Get picklist with PACKING status (this is correct)
+        picklist = Picklist.objects.get(picklist_id=picklist_id, status='PACKING')
+        
+        # Get picklist items with their details
+        items = PicklistItem.objects.filter(picklist=picklist).select_related('location_info')
+        
+        items_data = []
+        for item in items:
+            # Get location info if available
+            location = "Unknown"
+            
+            # FIX: Default picked status to False instead of using the location_info.picked value
+            # This ensures items start as "not packed" in the packing stage
+            picked = False
+            
+            picker_id = None
+            
+            if hasattr(item, 'location_info'):
+                location = item.location_info.location
+                # We're intentionally NOT using item.location_info.picked here
+                # Because in the packing stage, we want to start fresh
+                
+                # Only use the picker ID from location_info
+                picker_id = item.location_info.picker.picker_id if item.location_info.picker else None
+            
+            items_data.append({
+                'id': item.id,
+                'order_number': item.order_number,
+                'sku': item.sku,
+                'quantity': item.quantity,
+                'location': location,
+                'picked': picked,  # Always False for packing stage
+                'picker_id': picker_id
+            })
+        
+        return JsonResponse({
+            'status': 'success',
+            'picklist': {
+                'picklist_id': picklist.picklist_id,
+                'picklist_type': picklist.picklist_type,
+                'quantity': picklist.quantity,
+                'status': picklist.status,
+                'platform': picklist.platform,
+                'created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'items': items_data
+            }
+        })
+    
+    except Picklist.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Picklist with ID {picklist_id} not found or not in PACKING status'
+        }, status=404)
+
+@require_http_methods(["GET"])
+def get_picklist_barcode(request, picklist_id):
+    """
+    API endpoint to generate barcode data for a picklist
+    This could be used as an alternative to client-side barcode generation
+    """
+    try:
+        # Check if picklist exists
+        picklist = Picklist.objects.get(picklist_id=picklist_id)
+        
+        # Return barcode data - could be generated server-side if needed
+        # For now we're just confirming the picklist exists
+        return JsonResponse({
+            'status': 'success',
+            'picklist_id': picklist_id,
+            'message': 'Picklist exists and barcode data is available'
+        })
+    except Picklist.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Picklist not found'
+        }, status=404)
+
 @require_http_methods(["GET"])
 def search_awb(request):
     """
@@ -2079,8 +2377,9 @@ def search_awb(request):
     amazon_order = AmazonOrders.objects.filter(AWB=awb).first()
     flipkart_order = FlipkarOrders.objects.filter(AWB=awb).first()
     firstcry_order = FirstcryOrders.objects.filter(AWB=awb).first()
+    meesho_order = MeeshoOrders.objects.filter(AWB=awb).first()
     
-    order = amazon_order or flipkart_order or firstcry_order
+    order = amazon_order or flipkart_order or firstcry_order or meesho_order
     
     if not order:
         return JsonResponse({
@@ -2093,8 +2392,10 @@ def search_awb(request):
         platform = 'AMAZON'
     elif flipkart_order:
         platform = 'FLIPKART'
-    else:
+    elif firstcry_order:
         platform = 'FIRSTCRY'
+    else:
+        platform = 'MEESHO'
     
     return JsonResponse({
         'status': 'success',
