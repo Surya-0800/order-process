@@ -1090,38 +1090,70 @@ function printOrderLabel(platform, orderNumber) {
             }
         }
 
-        showMessage("Downloading and extracting first page...", "info");
+        showMessage("Downloading and processing label...", "info");
 
         fetch(pdfUrl)
             .then(response => response.arrayBuffer())
             .then(async arrayBuffer => {
                 const { PDFDocument } = PDFLib;
                 const fullPdf = await PDFDocument.load(arrayBuffer);
-                const firstPagePdf = await PDFDocument.create();
+                
+                // Create a new PDF with 4x6 dimensions (4 inches x 6 inches)
+                const newPdf = await PDFDocument.create();
+                
+                // Determine which page to use based on platform
+                let pageIndex = 0; // Default to first page
+                
+                if ((data.platform || '').toUpperCase() === 'FIRSTCRY') {
+                    // For FIRSTCRY, use the last page
+                    pageIndex = fullPdf.getPageCount() - 1;
+                }
+                
+                // Copy the selected page
+                const [selectedPage] = await newPdf.copyPages(fullPdf, [pageIndex]);
+                
+                // Add the page to the new document
+                const page = newPdf.addPage(selectedPage);
 
-                const [firstPage] = await firstPagePdf.copyPages(fullPdf, [0]);
-                firstPagePdf.addPage(firstPage);
+                const { width, height } = page.getSize();
 
-                const firstPageBytes = await firstPagePdf.save();
+                console.log(data);
 
-                // Convert PDF bytes to base64
-                const base64Data = arrayBufferToBase64(firstPageBytes);
+                if ((data.platform || '').toUpperCase() === 'FLIPKART') {
+                    var cropLeft = 180; // Shift right by 30 points
+                    var cropTop = 0; // Shift down by 20 points
+                    var cropWidth = width - 360; // Remove 30 points from each horizontal side
+                    var cropHeight = height - 25;
 
-                // Get dimensions from the first page (in points)
-                const { width, height } = firstPage.getSize();
+                    page.setCropBox(cropLeft, cropTop, cropWidth, cropHeight);
+                }
+                
+                console.log(page.getSize());
+                
+                // Save the new PDF
+                const newPdfBytes = await newPdf.save();
+                const blob = new Blob([newPdfBytes], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `label_${orderNumber}.pdf`;
+                a.click();
+                URL.revokeObjectURL(url);
 
-                // Convert from PDF points (1 point = 1/72 inch) to inches
-                const widthInInches = width / 72;
-                const heightInInches = height / 72;
+                showMessage(`Label for order ${orderNumber} downloaded successfully!`, "success");
+                     
+                // Convert to base64 for printing
+                const base64Data = arrayBufferToBase64(newPdfBytes);
 
-                // Create QZ print config using original PDF size
+                // Create QZ print config with 4x6 dimensions
                 const config = qz.configs.create(labelPrinter, {
-                    size: { width: widthInInches, height: heightInInches, units: 'in' },
+                    size: { width: 4, height: 6, units: 'in' },
                     margins: { top: 0, right: 0, bottom: 0, left: 0 },
                     orientation: 'portrait',
                     copies: 1,
                     colorType: 'grayscale',
-                    density: 300
+                    density: 300,
+                    scale: 'fit' // Important: scale to fit the printer dimensions
                 });
 
                 const printData = [{
@@ -1139,7 +1171,22 @@ function printOrderLabel(platform, orderNumber) {
                     .catch(err => {
                         console.error("Printing error:", err);
                         showMessage(`Printing failed: ${err.message}`, "error");
+                        
+                        // Add fallback browser print option if QZ print fails
+                        const retryBtn = document.createElement('button');
+                        retryBtn.className = 'btn btn-warning';
+                        retryBtn.textContent = 'Retry Print';
+                        retryBtn.onclick = function() { 
+                            printOrderLabel(platform, orderNumber);
+                        };
+                        
+                        const messageDiv = document.querySelector('.message-error');
+                        if (messageDiv) {
+                            messageDiv.appendChild(document.createElement('br'));
+                            messageDiv.appendChild(retryBtn);
+                        }
                     });
+
             })
             .catch(error => {
                 console.error("PDF processing error:", error);

@@ -102,7 +102,7 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
                 if "E-Kart Logistics" in text or "flipkart" in text.lower():
                   df = flipkart_csv_to_dt(data_path)
                   final_output_dict = flipkar_grab_fields(df.to_dict(orient="records"))
-                  firstcry_data = split_pdf_custom(pdf_path, r"C:\Users\teja0\Downloads\Order Process Cycle-20250403T030855Z-001\Order Process Cycle\orderCycleProject\media\flipkartPdfs", final_output_dict) 
+                  firstcry_data = split_pdf_custom(pdf_path, r"C:\Users\teja0\Downloads\Order Process Cycle-20250403T030855Z-001\Order Process Cycle\orderCycleProject\media\firstcryPdfs", final_output_dict) 
                   for order_number, order_data in firstcry_data.items():
                       order_type = "Single"
                       # The second element (index 1) contains the list of items
@@ -131,7 +131,7 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
                 elif "FirstCry" in text:
                   df = excel_to_dataframe(data_path)
                   final_output_dict = firstcry_grab_fields(df.to_dict(orient="records"))
-                  firstcry_data = firstcry_split_pdf_by_order_id(pdf_path, "/home/surya/code/mycode/Order Process Cycle/orderCycleProject/firstcryPdfs", final_output_dict) 
+                  firstcry_data = firstcry_split_pdf_by_order_id(pdf_path, r"C:\Users\teja0\Downloads\Order Process Cycle-20250403T030855Z-001\Order Process Cycle\orderCycleProject\media\firstcryPdfs", final_output_dict) 
                   for order_number, order_data in firstcry_data.items():
                       order_type = "Single"
                       # The second element (index 1) contains the list of items
