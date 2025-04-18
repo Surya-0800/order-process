@@ -26,7 +26,8 @@ from .read_pdf_helper import extract_text_from_first_page
 from process.flipkart_process import csv_to_dataframe as flipkart_csv_to_dt,grab_required_fields as flipkar_grab_fields,split_pdf_custom
 from process.firstcry_process import excel_to_dataframe,grab_required_fields as firstcry_grab_fields,split_pdf_by_orderid as firstcry_split_pdf_by_order_id
 from process.amazon_process import txt_to_dataframe,grab_required_fields,split_pdf_by_orderid
-from .models import Picklist, PicklistItem, MasterTable, Picker, PicklistItemLocation,UserProfile
+from process.meesho_process import excel_to_dataframe as meesho_excel_to_df,grab_required_fields as meesho_grab_fields,split_pdf_custom as meesho_split_pdf_custom
+from .models import Picklist, PicklistItem, MasterTable, Picker, PicklistItemLocation,UserProfile,MeeshoOrders
 import tempfile
 import shutil
 from django.shortcuts import render
@@ -78,6 +79,7 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
             'flipkart_processed': 0,
             'amazon_processed': 0,
             'firstcry_processed': 0,
+            'meesho_processed':0,
             'errors': []
         }
         
@@ -188,6 +190,37 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
                           )
                       
                       results['amazon_processed'] += 1
+
+                elif "CustomerAddress" in text:
+                    df = meesho_excel_to_df(data_path)
+                    final_output_dict = meesho_grab_fields(df.to_dict(orient="records"))
+                    meesho_data = meesho_split_pdf_custom(pdf_path, r"C:\Users\teja0\Downloads\Order Process Cycle-20250403T030855Z-001\Order Process Cycle\orderCycleProject\media\meeshoPdfs", final_output_dict,top_ratio=0.345)
+                    for order_number, order_data in meesho_data.items():
+                      order_type = "Single"
+                      # The second element (index 1) contains the list of items
+                      items = order_data[1]
+                      if len(items) >1:
+                          order_type = "Multiple"
+                      
+                      # The fourth element (index 3) contains output_pdf_location
+                      pdf_info = order_data[-1]
+                      
+                      pdf_url = pdf_info.get('output_pdf_location', '')
+                      print(items)
+                      for item in items:
+                          qty = int(item["Qty"])
+                          if qty >1:
+                              order_type = "Multiple"
+                          MeeshoOrders.objects.create(
+                              order_number=order_number,
+                              order_type = order_type,
+                              sku=item['sku'].replace("\n", ""),
+                              quantity=qty,
+                              pdf_url=pdf_url,
+                              AWB=item["AWB"]
+                          )
+                      
+                      results['meesho_processed'] += 1
                 
                 else:
                     results['errors'].append(f"Unknown platform for {pdf_file.name}")

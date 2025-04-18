@@ -143,21 +143,15 @@ def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio=0.4)
               else:
                 order_pages[prev_awb][0].append(order_details[orderid][0])
                 order_details = {} 
-              with open("logs/logfile_meesho.txt", "a+", encoding="utf-8") as log_file:
-                log_file.write(f"Order ID: {orderid}, SKU: {order_pages[prev_awb][0][0]["sku"]}, Qty: {order_pages[prev_awb][0][0]["Qty"]}\n")
             output_pdf_path = os.path.join(output_folder, f"Order_{prev_awb}.pdf")
             order_pages[prev_awb].append({"output_pdf_location" : output_pdf_path})
             # order_pages[orderid].append({"output_pdf_location" : output_pdf_path})
             new_doc.save(output_pdf_path)
-            with open("logs/logfile_meesho.txt", "a+", encoding="utf-8") as log_file:
-              log_file.write(f"✅ Split PDF saved as: {output_pdf_path}\n")
-              log_file.write("-" * 50 + "\n")
+
         else:
             new_doc = fitz.open(output_pdf_path)
             new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
             new_doc.insert_page(-1) 
-            with open("logs/logfile_meesho.txt", "a+", encoding="utf-8") as log_file:
-              log_file.write(f"❌ Order ID not found in the page {page_num}. Hence concatenating it with previous pdf.\n")
             output_pdf_path_temp = os.path.join(output_folder, f"Order_{orderid_name}_temp.pdf")
             new_doc.save(output_pdf_path_temp)
             os.remove(output_pdf_path)
@@ -180,13 +174,3 @@ def grab_required_fields(data):
     filtered_data = [{col: row[col] for col in required_columns if col in row} for row in data]
     updated_data_list = data = [{**item, "Sub Order No.": item["Sub Order No."].replace("\n", "")} for item in filtered_data]
     return updated_data_list
-
-# Example Usage (30% top, 70% bottom)
-if __name__ == "__main__":
-    file_path = "meesho_final_integrate/meesho.xlsx"  # Replace with the actual file path
-    df = excel_to_dataframe(file_path)
-    final_output_dict = grab_required_fields(df.to_dict(orient="records"))
-    output_folder = "outputs/meesho_output_pdfs"  # Folder to save separated PDFs
-    with open("logs/logfile_meesho.txt", "w+", encoding="utf-8") as log_file:
-      log_file.write(f"Starting the log for mentioned time:{datetime.today().strftime("%Y-%m-%d %H:%M:%S")}\n")
-    op = split_pdf_custom("meesho_final_integrate/meesho.pdf", output_folder, final_output_dict, top_ratio=0.345)

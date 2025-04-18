@@ -53,6 +53,18 @@ class FirstcryOrders(models.Model):
     def __str__(self):
         return f"Order {self.order_number}"
     
+class MeeshoOrders(models.Model):
+    order_number = models.CharField(max_length=200)
+    sku = models.CharField(max_length=200)
+    quantity = models.IntegerField()
+    order_type = models.CharField(max_length=200,default="Single")
+    status = models.CharField(max_length=200,default="Ready to Process")
+    pdf_url = models.CharField(max_length=300)
+    AWB = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"Order {self.order_number}"
+    
 class MasterTable(models.Model):
     sku = models.CharField(max_length=100, db_index=True)
     image_url = models.URLField(max_length=500, null=True, blank=True)
