@@ -1,68 +1,55 @@
+"""
+URL routing for the application.
+"""
 from django.urls import path, include
-from rest_framework.routers import DefaultRouter
 from django.conf import settings
 from django.conf.urls.static import static
-from .views import (
-    PDFUploadViewSet, OrderCountsViewSet,LocationOrdersViewSet,
-    PicklistViewSet, home, picklist_detail_view, 
-    get_picklist_barcode, pack_stage_view, search_picklist,
-    search_product, mark_product_packed, mark_picklist_completed,print_order_label,search_awb, get_printer_list, save_printer_preferences, 
-    get_printer_preferences, send_test_print,location_orders_view
+
+from .views.base import (
+    home, location_orders_view, picklist_detail_view, 
+    pack_stage_view, picker_management
+)
+from .views.packing_views import (
+    search_picklist, search_product, mark_picklist_completed,
+    mark_product_packed, get_picklist_barcode, get_product_image_by_sku
+)
+from .views.printing_views import (
+    get_printer_list, save_printer_preferences, get_printer_preferences,
+    send_test_print, print_label, mark_order_as_printed, save_awb_number,
+    print_invoice, search_awb
 )
 
-# API Router
-router = DefaultRouter()
-router.register(r'pdfs', PDFUploadViewSet, basename='pdfupload')
-
-# URL Configuration
 urlpatterns = [
+    # Base views
     path('', home, name='home'),
-    path('api/', include(router.urls)),
+    path('location-orders/', location_orders_view, name='location_orders'),
+    path('picklist/<str:picklist_id>/', picklist_detail_view, name='picklist_detail'),
+    path('pack-stage/', pack_stage_view, name='pack_stage'),
+    path('picker-management/', picker_management, name='picker_management'),
     
-    # Packing Stage endpoints - place these FIRST
-    path('pack/', pack_stage_view, name='pack-stage'),
-    # Note: URL patterns are processed in order, so put specific patterns before patterns with variables
-    path('api/picklists/search/', search_picklist, name='search-picklist'),
-    path('api/products/search/', search_product, name='search-product'),
-    path('api/products/mark-packed/', mark_product_packed, name='mark-product-packed'),
-    path('api/picklists/<str:picklist_id>/complete/', mark_picklist_completed, name='mark-picklist-completed'),
+    # Packing views
+    path('api/search-picklist/', search_picklist, name='search_picklist'),
+    path('api/search-product/', search_product, name='search_product'),
+    path('api/picklist/<str:picklist_id>/complete/', mark_picklist_completed, name='mark_picklist_completed'),
+    path('api/mark-product-packed/', mark_product_packed, name='mark_product_packed'),
+    path('api/picklist/<str:picklist_id>/barcode/', get_picklist_barcode, name='get_picklist_barcode'),
+    path('api/product-image-by-sku/', get_product_image_by_sku, name='get_product_image_by_sku'),
     
-    # New endpoint for direct file processing
-    path('api/process-files/', PDFUploadViewSet.as_view({'post': 'process_files'}), name='process-files'),
+    # Printing views
+    path('api/printer/list/', get_printer_list, name='get_printer_list'),
+    path('api/printer/save-preferences/', save_printer_preferences, name='save_printer_preferences'),
+    path('api/printer/get-preferences/', get_printer_preferences, name='get_printer_preferences'),
+    path('api/printer/test-print/', send_test_print, name='send_test_print'),
+    path('api/print-label/', print_label, name='print_label'),
+    path('api/mark-order-printed/', mark_order_as_printed, name='mark_order_as_printed'),
+    path('api/save-awb/', save_awb_number, name='save_awb_number'),
+    path('api/print-invoice/', print_invoice, name='print_invoice'),
+    path('api/search-awb/', search_awb, name='search_awb'),
     
-    # Legacy endpoint - keep it for backward compatibility
-    path('api/read-pdfs/', PDFUploadViewSet.as_view({'get': 'read_pdfs'}), name='read-pdfs'),
-    
-    # Order counts and processing endpoints
-    path('api/order-counts/', OrderCountsViewSet.as_view({'get': 'get_counts'}), name='order-counts'),
-    path('api/single-orders/', OrderCountsViewSet.as_view({'get': 'get_single_orders'}), name='single-orders'),
-    path('api/multi-orders/', OrderCountsViewSet.as_view({'get': 'get_multi_orders'}), name='multi-orders'),
-    path('api/process-orders/', OrderCountsViewSet.as_view({'post': 'process_orders'}), name='process-orders'),
-    
-    # Picklist endpoints - more specific patterns first, then patterns with variables
-    path('api/picklists/', PicklistViewSet.as_view({'get': 'get_picklists'}), name='picklists'),
-    path('api/picklists/<str:pk>/', PicklistViewSet.as_view({'get': 'get_picklist_items'}), name='picklist-detail'),
-    path('api/picklists/<str:pk>/status/', PicklistViewSet.as_view({'post': 'update_status'}), name='picklist-status-update'),
-    path('api/picklists/<str:pk>/update-status/', PicklistViewSet.as_view({'post': 'update_status'}), name='picklist-update-status'),
-    path('api/picklists/<str:pk>/detailed-items/', PicklistViewSet.as_view({'get': 'get_detailed_items'}), name='picklist-detailed-items'),
-    path('api/picklists/<str:pk>/undo-picked/', PicklistViewSet.as_view({'post': 'undo_picked'}), name='undo-picked'),
-    path('api/picklists/<str:pk>/assign-picker/', PicklistViewSet.as_view({'post': 'assign_picker'}), name='assign-picker'),
-    path('api/picklists/<str:pk>/mark-picked/', PicklistViewSet.as_view({'post': 'mark_picked'}), name='mark-picked'),
-    path('api/picklists/<str:pk>/mark-items-picked/', PicklistViewSet.as_view({'post': 'mark_items_picked'}), name='mark-items-picked'),
-    path('api/picklists/<str:picklist_id>/barcode/', get_picklist_barcode, name='picklist-barcode'),
-    path('api/print-label/', print_order_label, name='print-label'),
-    path('api/search-awb/', search_awb, name='search-awb'),
-    path('api/printers/', get_printer_list, name='get-printers'),
-    path('api/printers/preferences/', get_printer_preferences, name='get-printer-preferences'),
-    path('api/printers/preferences/save/', save_printer_preferences, name='save-printer-preferences'),
-    path('api/printers/test-print/', send_test_print, name='send-test-print'),
+    # API routes
+    path('api/', include('app.api.urls')),
+]
 
-
-    path('api/location-counts/', LocationOrdersViewSet.as_view({'get': 'location_counts'}), name='location-counts'),
-    path('api/orders-by-location/', LocationOrdersViewSet.as_view({'get': 'orders_by_location'}), name='orders-by-location'),
-    path('api/process-location-orders/', LocationOrdersViewSet.as_view({'post': 'process_location_orders'}), name='process-location-orders'),
-    path('location-orders/', location_orders_view, name='location-orders'),
-    
-    # Detail view - must be after all API endpoints
-    path('picklist-details/<str:picklist_id>/', picklist_detail_view, name='picklist-detail'),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Add media URL patterns for development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

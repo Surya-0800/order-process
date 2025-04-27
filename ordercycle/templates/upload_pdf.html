@@ -583,12 +583,12 @@
                   <h3>Upload Files</h3>
                   <form id="upload-form" enctype="multipart/form-data">
                       <div class="file-upload-group">
-                          <label for="pdf-file">PDF File:</label>
+                          <label for="pdf-file">PDF File (mandatory):</label>
                           <input type="file" id="pdf-file" name="pdf_file" accept="application/pdf" required>
                       </div>
                       <div class="file-upload-group">
-                          <label for="data-file">Data File (XLSX/CSV/TXT):</label>
-                          <input type="file" id="data-file" name="data_file" accept=".csv,.txt,.xlsx,.xls" required>
+                          <label for="data-file">Data File (XLSX/CSV/TXT) (optional):</label>
+                          <input type="file" id="data-file" name="data_file" accept=".csv,.txt,.xlsx,.xls">
                       </div>
                       <button type="submit" class="btn btn-success">Process Files</button>
                   </form>
@@ -601,6 +601,19 @@
                   <span id="loading-indicator" class="loading" style="display: none;">Processing...</span>
               </div>
           </div>
+        </div>
+
+        <!-- Confirmation Modal -->
+      <div id="confirmationModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <span class="close-modal">&times;</span>
+            <h3>Confirmation Required</h3>
+            <p id="confirmation-message">Do you want to proceed without a data file (XLSX/CSV/TXT)?</p>
+            <div style="display: flex; justify-content: flex-end; margin-top: 20px; gap: 10px;">
+                <button id="cancel-btn" class="btn" style="background-color: #6c757d; color: white;">No, Cancel</button>
+                <button id="proceed-btn" class="btn btn-success">Yes, Proceed</button>
+            </div>
+        </div>
       </div>
         
         <!-- Order Status Card -->
@@ -709,6 +722,36 @@
     const uploadForm = document.getElementById('upload-form');
     const loadingIndicator = document.getElementById('loading-indicator');
     const processingStatus = document.getElementById('processing-status');
+    const confirmationModal = document.getElementById('confirmationModal');
+    const cancelBtn = document.getElementById('cancel-btn');
+    const proceedBtn = document.getElementById('proceed-btn');
+    const closeModalBtn = confirmationModal.querySelector('.close-modal');
+    
+    // Store form data for later use
+    let formDataToSubmit = null;
+    
+    // Close modal listeners
+    closeModalBtn.onclick = function() {
+        confirmationModal.style.display = 'none';
+    };
+    
+    cancelBtn.onclick = function() {
+        confirmationModal.style.display = 'none';
+    };
+    
+    window.onclick = function(event) {
+        if (event.target === confirmationModal) {
+            confirmationModal.style.display = 'none';
+        }
+    };
+    
+    // Proceed button listener
+    proceedBtn.onclick = function() {
+        confirmationModal.style.display = 'none';
+        if (formDataToSubmit) {
+            submitFormData(formDataToSubmit);
+        }
+    };
     
     if (uploadForm) {
         uploadForm.addEventListener('submit', function(event) {
@@ -717,74 +760,89 @@
             const pdfFile = document.getElementById('pdf-file').files[0];
             const dataFile = document.getElementById('data-file').files[0];
             
-            if (!pdfFile || !dataFile) {
-                alert('Please select both a PDF file and a data file (CSV/TXT/XLSX).');
+            if (!pdfFile) {
+                alert('Please select a PDF file. This is mandatory.');
                 return;
             }
             
             // Create form data
             const formData = new FormData();
             formData.append('pdf_file', pdfFile);
-            formData.append('data_file', dataFile);
             
-            // Show loading indicator
-            loadingIndicator.style.display = 'inline-block';
-            processingStatus.innerHTML = '<p>Processing files...</p>';
+            // If data file is not selected, show confirmation modal
+            if (!dataFile) {
+                formDataToSubmit = formData;
+                confirmationModal.style.display = 'block';
+                return;
+            } else {
+                formData.append('data_file', dataFile);
+                submitFormData(formData);
+            }
+        });
+    }
+    
+    // Function to submit form data
+    function submitFormData(formData) {
+        // Show loading indicator
+        loadingIndicator.style.display = 'inline-block';
+        processingStatus.innerHTML = '<p>Processing files...</p>';
+        
+        // Send request to process files
+        fetch('http://127.0.0.1:8000/api/process-files/', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            loadingIndicator.style.display = 'none';
             
-            // Send request to process files
-            fetch('http://127.0.0.1:8000/api/process-files/', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
+            // Display processing results
+            let resultsHtml = '<h4>Processing Complete</h4>';
+            resultsHtml += `<p>${data.message}</p>`;
+            
+            if (data.results) {
+                resultsHtml += '<ul>';
+                if (data.results.flipkart_processed > 0) {
+                    resultsHtml += `<li>Flipkart orders: ${data.results.flipkart_processed}</li>`;
                 }
-                return response.json();
-            })
-            .then(data => {
-                loadingIndicator.style.display = 'none';
-                
-                // Display processing results
-                let resultsHtml = '<h4>Processing Complete</h4>';
-                resultsHtml += `<p>${data.message}</p>`;
-                
-                if (data.results) {
-                    resultsHtml += '<ul>';
-                    if (data.results.flipkart_processed > 0) {
-                        resultsHtml += `<li>Flipkart orders: ${data.results.flipkart_processed}</li>`;
-                    }
-                    if (data.results.amazon_processed > 0) {
-                        resultsHtml += `<li>Amazon orders: ${data.results.amazon_processed}</li>`;
-                    }
-                    if (data.results.firstcry_processed > 0) {
-                        resultsHtml += `<li>FirstCry orders: ${data.results.firstcry_processed}</li>`;
-                    }
-                    resultsHtml += '</ul>';
+                if (data.results.amazon_processed > 0) {
+                    resultsHtml += `<li>Amazon orders: ${data.results.amazon_processed}</li>`;
                 }
-                
-                // Show any errors
-                if (data.results && data.results.errors && data.results.errors.length > 0) {
-                    resultsHtml += '<p>Errors:</p><ul>';
-                    data.results.errors.forEach(error => {
-                        resultsHtml += `<li>${error}</li>`;
-                    });
-                    resultsHtml += '</ul>';
+                if (data.results.firstcry_processed > 0) {
+                    resultsHtml += `<li>FirstCry orders: ${data.results.firstcry_processed}</li>`;
                 }
-                
-                processingStatus.innerHTML = resultsHtml;
-                
-                // Reset the form
-                uploadForm.reset();
-                
-                // Update order status table
-                updateOrderStatusTable(currentStatus);
-            })
-            .catch(error => {
-                loadingIndicator.style.display = 'none';
-                processingStatus.innerHTML = `<p class="error">Error: ${error.message}</p>`;
-                console.error('Error processing files:', error);
-            });
+                if (data.results.meesho_processed > 0) {
+                    resultsHtml += `<li>Meesho orders: ${data.results.meesho_processed}</li>`;
+                }
+                resultsHtml += '</ul>';
+            }
+            
+            // Show any errors
+            if (data.results && data.results.errors && data.results.errors.length > 0) {
+                resultsHtml += '<p>Errors:</p><ul>';
+                data.results.errors.forEach(error => {
+                    resultsHtml += `<li class="error">${error}</li>`;
+                });
+                resultsHtml += '</ul>';
+            }
+            
+            processingStatus.innerHTML = resultsHtml;
+            
+            // Reset the form
+            uploadForm.reset();
+            
+            // Update order status table
+            updateOrderStatusTable(currentStatus);
+        })
+        .catch(error => {
+            loadingIndicator.style.display = 'none';
+            processingStatus.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            console.error('Error processing files:', error);
         });
     }
 });

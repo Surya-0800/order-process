@@ -2,68 +2,61 @@ from django.db import models
 import os
 from uuid import uuid4
 from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 class PDFUpload(models.Model):
-    title = models.CharField(max_length=255, blank=True)  # Allow blank, will be auto-set
+    title = models.CharField(max_length=255, blank=True)
     file = models.FileField(upload_to='uploads/pdfs/')
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        if not self.title:  # Only set title if it's not manually provided
-            self.title = os.path.basename(self.file.name)  # Extract file name
-        super().save(*args, **kwargs)  # Call the parent save method
+        if not self.title:
+            self.title = os.path.basename(self.file.name)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
     
-
-class AmazonOrders(models.Model):
-    order_number = models.CharField(max_length=200)
-    sku = models.CharField(max_length=200)
+# Base Order model to reduce code duplication
+class BaseOrder(models.Model):
+    order_number = models.CharField(max_length=200, db_index=True)
+    sku = models.CharField(max_length=200, db_index=True)
     quantity = models.IntegerField()
-    order_type = models.CharField(max_length=200,default="Single")
-    status = models.CharField(max_length=200,default="Ready to Process")
+    order_type = models.CharField(max_length=200, default="Single")
+    status = models.CharField(max_length=200, default="Ready to Process", db_index=True)
     pdf_url = models.CharField(max_length=300)
-    AWB = models.CharField(max_length=100)
-
-    def __str__(self):
-        return f"Order {self.order_number}"
-
-class FlipkarOrders(models.Model):
-    order_number = models.CharField(max_length=200)
-    sku = models.CharField(max_length=200)
-    quantity = models.IntegerField()
-    order_type = models.CharField(max_length=200,default="Single")
-    status = models.CharField(max_length=200,default="Ready to Process")
-    pdf_url = models.CharField(max_length=300)
-    AWB = models.CharField(max_length=100)
-
-    def __str__(self):
-        return f"Order {self.order_number}"
+    AWB = models.CharField(max_length=100, blank=True, null=True)
     
-class FirstcryOrders(models.Model):
-    order_number = models.CharField(max_length=200)
-    sku = models.CharField(max_length=200)
-    quantity = models.IntegerField()
-    order_type = models.CharField(max_length=200,default="Single")
-    status = models.CharField(max_length=200,default="Ready to Process")
-    pdf_url = models.CharField(max_length=300)
-    AWB = models.CharField(max_length=100)
+    class Meta:
+        abstract = True
+        indexes = [
+            models.Index(fields=['order_number', 'status']),
+            models.Index(fields=['order_type', 'status']),
+        ]
 
     def __str__(self):
         return f"Order {self.order_number}"
+
+class AmazonOrders(BaseOrder):
+    class Meta:
+        verbose_name = "Amazon Order"
+        verbose_name_plural = "Amazon Orders"
+
+class FlipkarOrders(BaseOrder):
+    class Meta:
+        verbose_name = "Flipkart Order"
+        verbose_name_plural = "Flipkart Orders"
     
-class MeeshoOrders(models.Model):
-    order_number = models.CharField(max_length=200)
-    sku = models.CharField(max_length=200)
-    quantity = models.IntegerField()
-    order_type = models.CharField(max_length=200,default="Single")
-    status = models.CharField(max_length=200,default="Ready to Process")
-    pdf_url = models.CharField(max_length=300)
-    AWB = models.CharField(max_length=100)
-
-    def __str__(self):
-        return f"Order {self.order_number}"
+class FirstcryOrders(BaseOrder):
+    class Meta:
+        verbose_name = "FirstCry Order"
+        verbose_name_plural = "FirstCry Orders"
+    
+class MeeshoOrders(BaseOrder):
+    class Meta:
+        verbose_name = "Meesho Order"
+        verbose_name_plural = "Meesho Orders"
     
 class MasterTable(models.Model):
     sku = models.CharField(max_length=100, db_index=True)
@@ -77,7 +70,6 @@ class MasterTable(models.Model):
     pack_remarks = models.TextField(null=True, blank=True)
     
     class Meta:
-        # Create a unique constraint for SKU and location combination
         unique_together = ('sku', 'location')
         indexes = [
             models.Index(fields=['sku']),
@@ -88,7 +80,6 @@ class MasterTable(models.Model):
     def __str__(self):
         return f"{self.sku} - {self.location}"
         
-# Add to models.py
 class Picklist(models.Model):
     PICKLIST_TYPE_CHOICES = [
         ('SINGLE', 'Single'),
@@ -115,15 +106,12 @@ class Picklist(models.Model):
     
     @classmethod
     def generate_picklist_id(cls):
-        # Get the latest picklist ID or start with 111001
         latest_picklist = cls.objects.order_by('-picklist_id').first()
         if latest_picklist:
             try:
-                # Try to convert the latest ID to an integer and increment it
                 latest_id = int(latest_picklist.picklist_id)
                 return str(latest_id + 1)
             except (ValueError, TypeError):
-                # If conversion fails, start with 111002
                 return "111002"
         return "111002"  # First picklist ID
 
@@ -154,8 +142,6 @@ class PicklistItemLocation(models.Model):
     
     def __str__(self):
         return f"Location {self.location} for {self.picklist_item}"
-    
-
 
 class UserProfile(models.Model):
     """
@@ -174,11 +160,6 @@ class UserProfile(models.Model):
     class Meta:
         verbose_name = "User Profile"
         verbose_name_plural = "User Profiles"
-
-# If you're using Django signals, you might want to create a profile automatically
-# when a new user is created
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):

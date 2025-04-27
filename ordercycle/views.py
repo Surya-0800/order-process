@@ -32,6 +32,7 @@ import tempfile
 import shutil
 from django.shortcuts import render
 from django.http import Http404
+import logging, traceback
 
 
 # Home Page View
@@ -67,9 +68,9 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
         pdf_file = request.FILES.get('pdf_file')
         data_file = request.FILES.get('data_file')
         
-        if not pdf_file or not data_file:
+        if not pdf_file:
             return Response(
-                {'error': 'Both PDF and data files are required'}, 
+                {'error': 'PDF file is required'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -86,153 +87,174 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
         try:
             # Save files to temp directory
             pdf_path = os.path.join(temp_dir, pdf_file.name)
-            data_path = os.path.join(temp_dir, data_file.name)
+            if data_file:
+              data_path = os.path.join(temp_dir, data_file.name)
+
+              with open(data_path, 'wb') as f:
+                for chunk in data_file.chunks():
+                    f.write(chunk)
             
             with open(pdf_path, 'wb') as f:
                 for chunk in pdf_file.chunks():
                     f.write(chunk)
             
-            with open(data_path, 'wb') as f:
-                for chunk in data_file.chunks():
-                    f.write(chunk)
+            
             
             # Process PDF based on platform
             try:
                 # Extract text from first page to identify platform
                 text = extract_text_from_first_page(pdf_path)
+                
+                # Get the media root path from settings
+                media_root = settings.MEDIA_ROOT
 
                 if "E-Kart Logistics" in text or "flipkart" in text.lower():
-                  df = flipkart_csv_to_dt(data_path)
-                  final_output_dict = flipkar_grab_fields(df.to_dict(orient="records"))
-                  firstcry_data = split_pdf_custom(pdf_path, r"C:\Users\teja0\Downloads\Order Process Cycle-20250403T030855Z-001\Order Process Cycle\orderCycleProject\media\firstcryPdfs", final_output_dict) 
-                  for order_number, order_data in firstcry_data.items():
-                      order_type = "Single"
-                      # The second element (index 1) contains the list of items
-                      items = order_data[0]
-                      if len(items) >1:
-                          order_type = "Multiple"
-                      
-                      # The fourth element (index 3) contains output_pdf_location
-                      pdf_info = order_data[-1]
-                      
-                      pdf_url = pdf_info.get('output_pdf_location', '')
-                      
-                      for item in items:
-                          qty = int(item["Qty"])
-                          if qty >1:
-                              order_type = "Multiple"
-                          FlipkarOrders.objects.create(
-                              order_number=order_number,
-                              order_type = order_type,
-                              sku=item['sku'].replace("\n", ""),
-                              quantity=qty,
-                              pdf_url=pdf_url
-                          )
-                      results['flipkart_processed'] += 1
+                    flipkart_output_dir = os.path.join(media_root, 'flipkartPdfs')
+                    os.makedirs(flipkart_output_dir, exist_ok=True)
+                    
+                    if data_file:
+                      df = flipkart_csv_to_dt(data_path)
+                      final_output_dict = flipkar_grab_fields(df.to_dict(orient="records"))
+                    else:
+                        final_output_dict = []
+                    flipkart_data = split_pdf_custom(pdf_path, flipkart_output_dir, final_output_dict) 
+                    
+                    for order_number, order_data in flipkart_data.items():
+                        order_type = "Single"
+                        # The first element (index 0) contains the list of items
+                        items = order_data[0]
+                        if len(items) > 1:
+                            order_type = "Multiple"
+                        
+                        # The last element contains output_pdf_location
+                        pdf_info = order_data[-1]
+                        pdf_url = pdf_info.get('output_pdf_location', '')
+                        
+                        for item in items:
+                            qty = int(item["Qty"])
+                            if qty > 1:
+                                order_type = "Multiple"
+                            FlipkarOrders.objects.create(
+                                order_number=order_number,
+                                order_type=order_type,
+                                sku=item['sku'].replace("\n", ""),
+                                quantity=qty,
+                                pdf_url=pdf_url
+                            )
+                        results['flipkart_processed'] += 1
                     
                 elif "FirstCry" in text:
-                  df = excel_to_dataframe(data_path)
-                  final_output_dict = firstcry_grab_fields(df.to_dict(orient="records"))
-                  firstcry_data = firstcry_split_pdf_by_order_id(pdf_path, r"C:\Users\teja0\Downloads\Order Process Cycle-20250403T030855Z-001\Order Process Cycle\orderCycleProject\media\firstcryPdfs", final_output_dict) 
-                  for order_number, order_data in firstcry_data.items():
-                      order_type = "Single"
-                      # The second element (index 1) contains the list of items
-                      items = order_data[1]
-                      if len(items) >1:
-                          order_type = "Multiple"
-                      
-                      # The fourth element (index 3) contains output_pdf_location
-                      pdf_info = order_data[-1]
-                      
-                      pdf_url = pdf_info.get('output_pdf_location', '')
-                      
-                      for item in items:
-                          qty = int(item["Qty"])
-                          if qty >1:
-                              order_type = "Multiple"
-                          FirstcryOrders.objects.create(
-                              order_number=order_number,
-                              order_type = order_type,
-                              sku=item['sku'].replace("\n", ""),
-                              quantity=qty,
-                              pdf_url=pdf_url
-                          )
-                      results['firstcry_processed'] += 1
+                    firstcry_output_dir = os.path.join(media_root, 'firstcryPdfs')
+                    os.makedirs(firstcry_output_dir, exist_ok=True)
+                    
+                    if data_file:
+                      df = excel_to_dataframe(data_path)
+                      final_output_dict = firstcry_grab_fields(df.to_dict(orient="records"))
+                    else:
+                        final_output_dict = []
+                    firstcry_data = firstcry_split_pdf_by_order_id(pdf_path, firstcry_output_dir, final_output_dict) 
+                    
+                    for order_number, order_data in firstcry_data.items():
+                        order_type = "Single"
+                        # The second element (index 1) contains the list of items
+                        items = order_data[1]
+                        if len(items) > 1:
+                            order_type = "Multiple"
+                        
+                        # The last element contains output_pdf_location
+                        pdf_info = order_data[-1]
+                        pdf_url = pdf_info.get('output_pdf_location', '')
+                        
+                        for item in items:
+                            qty = int(item["Qty"])
+                            if qty > 1:
+                                order_type = "Multiple"
+                            FirstcryOrders.objects.create(
+                                order_number=order_number,
+                                order_type=order_type,
+                                sku=item['sku'].replace("\n", ""),
+                                quantity=qty,
+                                pdf_url=pdf_url
+                            )
+                        results['firstcry_processed'] += 1
 
                 elif "amazon" in text.lower():
-                    # Process data file to get mapping info
-                    df = txt_to_dataframe(data_path)
-                    final_output_dict = grab_required_fields(df.to_dict(orient="records"))
-                    amazon_data = split_pdf_by_orderid(pdf_path, r"C:\Users\teja0\Downloads\Order Process Cycle-20250403T030855Z-001\Order Process Cycle\orderCycleProject\media\amazonPdfs", final_output_dict)
+                    amazon_output_dir = os.path.join(media_root, 'amazonPdfs')
+                    os.makedirs(amazon_output_dir, exist_ok=True)
+                    if data_file:
+                      df = txt_to_dataframe(data_path)
+                      final_output_dict = grab_required_fields(df.to_dict(orient="records"))
+                    else:
+                        final_output_dict = []
+                    amazon_data = split_pdf_by_orderid(pdf_path, amazon_output_dir, final_output_dict)
+                    
                     for order_number, order_data in amazon_data.items():
-                      order_type = "Single"
-                      # The second element (index 1) contains the list of items
-                      items = order_data[1]
-                      if len(items) >1:
-                          order_type = "Multiple"
-                      
-                      # The fourth element (index 3) contains output_pdf_location
-                      pdf_info = order_data[-1]
-                      
-                      pdf_url = pdf_info.get('output_pdf_location', '')
-                      print(items)
-                      for item in items:
-                          qty = int(item["Qty"])
-                          if qty >1:
-                              order_type = "Multiple"
-                          AmazonOrders.objects.create(
-                              order_number=order_number,
-                              order_type = order_type,
-                              sku=item['sku'].replace("\n", ""),
-                              quantity=qty,
-                              pdf_url=pdf_url,
-                              AWB=item["AWB"]
-                          )
-                      
-                      results['amazon_processed'] += 1
+                        order_type = "Single"
+                        # The second element (index 1) contains the list of items
+                        items = order_data[1]
+                        if len(items) > 1:
+                            order_type = "Multiple"
+                        
+                        # The last element contains output_pdf_location
+                        pdf_info = order_data[-1]
+                        pdf_url = pdf_info.get('output_pdf_location', '')
+                        
+                        for item in items:
+                            qty = int(item["Qty"])
+                            if qty > 1:
+                                order_type = "Multiple"
+                            AmazonOrders.objects.create(
+                                order_number=order_number,
+                                order_type=order_type,
+                                sku=item['sku'].replace("\n", ""),
+                                quantity=qty,
+                                pdf_url=pdf_url,
+                                AWB=item["AWB"]
+                            )
+                        results['amazon_processed'] += 1
 
                 elif "CustomerAddress" in text or "Customer Address" in text:
-                    df = meesho_excel_to_df(data_path)
-                    final_output_dict = meesho_grab_fields(df.to_dict(orient="records"))
-                    meesho_data = meesho_split_pdf_custom(pdf_path, r"C:\Users\teja0\Downloads\Order Process Cycle-20250403T030855Z-001\Order Process Cycle\orderCycleProject\media\meeshoPdfs", final_output_dict,top_ratio=0.413)
+                    meesho_output_dir = os.path.join(media_root, 'meeshoPdfs')
+                    os.makedirs(meesho_output_dir, exist_ok=True)
+                    if data_file:
+                      df = meesho_excel_to_df(data_path)
+                      final_output_dict = meesho_grab_fields(df.to_dict(orient="records"))
+                    else:
+                        final_output_dict = []
+                    meesho_data = meesho_split_pdf_custom(pdf_path, meesho_output_dir, final_output_dict, top_ratio=0.413)
+                    
                     for order_number, order_data in meesho_data.items():
-                      order_type = "Single"
-                      # The second element (index 1) contains the list of items
-                      items = order_data[0]
-                      if len(items) >1:
-                          order_type = "Multiple"
-                      
-                      # The fourth element (index 3) contains output_pdf_location
-                      pdf_info = order_data[-1]
-                      
-                      pdf_url = pdf_info.get('output_pdf_location', '')
-                      print(items)
-                      for item in items:
-                          qty = int(item["Qty"])
-                          if qty >1:
-                              order_type = "Multiple"
-                          MeeshoOrders.objects.create(
-                              order_number=order_number,
-                              order_type = order_type,
-                              sku=item['sku'].replace("\n", ""),
-                              quantity=qty,
-                              pdf_url=pdf_url,
-                              AWB=item["AWB"]
-                          )
-                      
-                      results['meesho_processed'] += 1
+                        order_type = "Single"
+                        # The first element (index 0) contains the list of items
+                        items = order_data[0]
+                        if len(items) > 1:
+                            order_type = "Multiple"
+                        
+                        # The last element contains output_pdf_location
+                        pdf_info = order_data[-1]
+                        pdf_url = pdf_info.get('output_pdf_location', '')
+                        
+                        for item in items:
+                            qty = int(item["Qty"])
+                            if qty > 1:
+                                order_type = "Multiple"
+                            MeeshoOrders.objects.create(
+                                order_number=order_number,
+                                order_type=order_type,
+                                sku=item['sku'].replace("\n", ""),
+                                quantity=qty,
+                                pdf_url=pdf_url,
+                                AWB=item["AWB"]
+                            )
+                        results['meesho_processed'] += 1
                 
                 else:
-                    import pdb
-                    pdb.set_trace()
+                    logging.error(f"Unknown platform for {pdf_file.name}")
                     results['errors'].append(f"Unknown platform for {pdf_file.name}")
                     
             except Exception as e:
-                print(results)
-                print("==============================================================")
-                import traceback
-                print(traceback.format_exc())
-                import pdb; pdb.set_trace()
+                logging.error(f"Error processing {pdf_file.name}: {str(e)}")
+                logging.error(traceback.format_exc())
                 results['errors'].append(f"Error processing {pdf_file.name}: {str(e)}")
                 
         finally:
@@ -243,8 +265,7 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
             'status': 'success',
             'message': 'Files processed successfully',
             'results': results
-        })
-    
+        })   
 
 class OrderCountsViewSet(ViewSet):
     @action(detail=False, methods=['get'])
@@ -457,6 +478,7 @@ class OrderCountsViewSet(ViewSet):
     def process_orders(self, request):
         """
         Process selected orders with strict batch limit and SKU limit enforcement
+        Orders are sorted by location (P1, P2, etc.) from MasterTable and then by SKU
         """
         try:
             # Get data from request
@@ -523,6 +545,39 @@ class OrderCountsViewSet(ViewSet):
                     'message': 'No orders found with the specified criteria',
                 }, status=404)
             
+            # Create a dictionary to cache location data for SKUs to avoid repeated database lookups
+            sku_location_map = {}
+            
+            # Extract all unique SKUs from orders
+            unique_skus = {order.sku for order in all_orders if order.sku}
+            
+            # Fetch location data from MasterTable for all SKUs in one query
+            master_items = MasterTable.objects.filter(sku__in=unique_skus)
+            
+            # Map SKUs to their locations (using the first location if multiple exist)
+            for item in master_items:
+                if item.sku not in sku_location_map:
+                    sku_location_map[item.sku] = item.location
+            
+            print(f"Retrieved locations for {len(sku_location_map)} unique SKUs from MasterTable")
+            
+            # Define a sort key function that uses the location from MasterTable
+            def get_sort_key(order):
+                location = sku_location_map.get(order.sku, 'ZZZ')  # Default to high value if location not found
+                return (location, order.sku)
+            
+            # Sort orders by location first, then by SKU
+            try:
+                all_orders.sort(key=get_sort_key)
+                print(f"Orders sorted by MasterTable location and SKU")
+                # Print first few orders with their locations for debugging
+                debug_orders = [f"{sku_location_map.get(o.sku, 'Unknown')}:{o.sku}" for o in all_orders[:5]]
+                print(f"First few orders (location:sku): {debug_orders}")
+            except Exception as e:
+                print(f"Error sorting by location: {e}. Sorting by SKU only.")
+                all_orders.sort(key=lambda order: order.sku)
+                print(f"Orders sorted by SKU only. First few SKUs: {[o.sku for o in all_orders[:5]]}")
+            
             # Process orders in batches, creating new picklists as needed
             remaining_orders = all_orders[:]
             
@@ -564,12 +619,17 @@ class OrderCountsViewSet(ViewSet):
                     order.status = next_status
                     order.save()
                     
+                    # Get location from our cache map
+                    location = sku_location_map.get(order.sku, 'Unknown')
+                    
                     # Create picklist item
                     PicklistItem.objects.create(
                         picklist=picklist,
                         order_number=order.order_number,
                         sku=order.sku,
-                        quantity=order.quantity
+                        quantity=order.quantity,
+                        # # Include location from MasterTable in picklist item for reference
+                        # location=location
                     )
                     
                     processed_orders.append(order.order_number)
@@ -610,6 +670,8 @@ class OrderCountsViewSet(ViewSet):
                 'status': 'error',
                 'message': f'Error processing orders: {str(e)}',
             }, status=500)
+
+
 class PicklistViewSet(ViewSet):
     @action(detail=False, methods=['get'])
     def get_picklists(self, request):
@@ -2407,3 +2469,710 @@ def search_awb(request):
             'awb': order.AWB
         }
     })
+
+
+def get_product_image_by_sku(request):
+    """API endpoint to get product image URL and other details by SKU"""
+    sku = request.GET.get('sku')
+    
+    if not sku:
+        return JsonResponse({'error': 'SKU parameter is required'}, status=400)
+    
+    try:
+        # Query the database for a product with this SKU
+        product = MasterTable.objects.filter(sku=sku).first()
+        
+        if not product:
+            # If no product is found, return default values
+            return JsonResponse({
+                'sku': sku,
+                'image_url': f"ASINWISEIMAGES/{sku}.jpg",
+                'product_name': f"Product (SKU: {sku})",
+                'product_id': '',
+                'location': 'Unknown',
+                'box_no': '',
+                'mrp': None,
+                'generic_name': f"Product (SKU: {sku})",
+                'pack_check': '',
+                'pack_remarks': ''
+            })
+        
+        # Return all the requested fields
+        return JsonResponse({
+            'sku': product.sku,
+            'image_url': product.image_url,
+            'product_id': product.product_id or '',
+            'location': product.location or 'Unknown',
+            'box_no': product.box_no or '',
+            'mrp': float(product.mrp) if product.mrp is not None else None,
+            'generic_name': product.generic_name or f"Product (SKU: {sku})",
+            'pack_check': product.pack_check or '',
+            'pack_remarks': product.pack_remarks or ''
+        })
+        
+    except Exception as e:
+        print(f"Error retrieving product data: {str(e)}")
+        return JsonResponse({'error': f'Error retrieving product data: {str(e)}'}, status=500)
+    
+from rest_framework import viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from .models import Picker
+from .serializers import PickerSerializer
+
+class PickerViewSet(viewsets.ModelViewSet):
+    """
+    A viewset that provides CRUD operations for Picker model.
+    """
+    queryset = Picker.objects.all()
+    serializer_class = PickerSerializer
+    
+    @action(detail=True, methods=['patch'])
+    def toggle_active(self, request, pk=None):
+        picker = self.get_object()
+        picker.is_active = not picker.is_active
+        picker.save()
+        serializer = self.get_serializer(picker)
+        return Response(serializer.data)
+
+# Add this simple view to render the management page
+from django.shortcuts import render
+
+def picker_management(request):
+    return render(request, 'picker_management.html')
+
+
+@require_http_methods(["POST"])
+def print_label(request):
+    """
+    Find and return the PDF URL for a specific order, properly handling file paths
+    and converting them to accessible URLs for frontend printing
+    """
+    try:
+        data = json.loads(request.body)
+        platform = data.get('platform')
+        order_number = data.get('order_number')
+        
+        if not platform or not order_number:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Platform and order number are required'
+            }, status=400)
+        
+        # Get the appropriate model based on platform
+        if platform.upper() == 'AMAZON':
+            order = AmazonOrders.objects.filter(order_number=order_number).first()
+        elif platform.upper() == 'FLIPKART':
+            order = FlipkarOrders.objects.filter(order_number=order_number).first()
+        elif platform.upper() == 'FIRSTCRY':
+            order = FirstcryOrders.objects.filter(order_number=order_number).first()
+        elif platform.upper() == 'MEESHO':
+            order = MeeshoOrders.objects.filter(order_number=order_number).first()
+        else:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Unknown platform: {platform}'
+            }, status=400)
+        
+        if not order:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Order {order_number} not found'
+            }, status=404)
+        
+        # Get the PDF path from the order
+        pdf_path = order.pdf_url
+        
+        if not pdf_path:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'No PDF file found for order {order_number}'
+            }, status=404)
+        
+        # Print debug info
+        print(f"DEBUG: Original PDF path from database: {pdf_path}")
+            
+        # Handle file system paths vs URL paths
+        import os
+        from django.conf import settings
+        
+        # Variable to store the actual file path for later
+        actual_file_path = None
+        
+        # Case 1: If it's a full file system path (Windows or Unix)
+        if pdf_path.startswith('C:') or pdf_path.startswith('/'):
+            # Get just the filename from the path
+            filename = os.path.basename(pdf_path)
+            print(f"DEBUG: Extracted filename: {filename}")
+            
+            # Determine which directory it belongs to based on platform
+            if platform.upper() == 'AMAZON':
+                pdf_url = f'amazonPdfs/{filename}'
+            elif platform.upper() == 'FLIPKART':
+                pdf_url = f'flipkartPdfs/{filename}'
+            elif platform.upper() == 'FIRSTCRY':
+                pdf_url = f'firstcryPdfs/{filename}'
+            elif platform.upper() == 'MEESHO':
+                pdf_url = f'meeshoPdfs/{filename}'
+            else:
+                pdf_url = f'orderPdfs/{filename}'
+            
+            print(f"DEBUG: Target media URL path: {pdf_url}")
+                
+            # Check if the file exists in the target media location
+            media_path = os.path.join(settings.MEDIA_ROOT, pdf_url.replace('/', os.path.sep).lstrip('/'))
+            print(f"DEBUG: Full media path: {media_path}")
+            
+            # Save this for the response
+            actual_file_path = media_path
+
+            if actual_file_path and 'media/media' in actual_file_path:
+                actual_file_path = actual_file_path.replace('media/media', 'media')
+                print(f"DEBUG: Fixed duplicate media in path: {actual_file_path}")
+            
+            # If the file doesn't exist in media directory, we need to copy it there
+            if not os.path.exists(media_path):
+                print(f"DEBUG: Media path doesn't exist, attempting to copy")
+                
+                # Ensure the directory exists
+                target_dir = os.path.dirname(media_path)
+                os.makedirs(target_dir, exist_ok=True)
+                print(f"DEBUG: Created directory: {target_dir}")
+                
+                # Only copy if source file exists
+                if os.path.exists(pdf_path):
+                    print(f"DEBUG: Source file exists at {pdf_path}, copying to {media_path}")
+                    import shutil
+                    shutil.copy2(pdf_path, media_path)
+                    
+                    # Verify the copy
+                    if os.path.exists(media_path):
+                        print(f"DEBUG: File successfully copied, size: {os.path.getsize(media_path)} bytes")
+                    else:
+                        print(f"DEBUG: File copy failed, destination file doesn't exist")
+                else:
+                    print(f"DEBUG: Source file NOT found at {pdf_path}")
+                    
+                    # Check for alternate locations
+                    alternate_path = None
+                    
+                    # Try to find the file in the existing media directories
+                    for root_dir in [settings.MEDIA_ROOT]:
+                        for dirpath, dirnames, filenames in os.walk(root_dir):
+                            if filename in filenames:
+                                alternate_path = os.path.join(dirpath, filename)
+                                print(f"DEBUG: Found file in alternate location: {alternate_path}")
+                                break
+                        if alternate_path:
+                            break
+                    
+                    if alternate_path:
+                        print(f"DEBUG: Copying from alternate location: {alternate_path} to {media_path}")
+                        shutil.copy2(alternate_path, media_path)
+                        actual_file_path = media_path
+                    else:
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': f'PDF file not found at {pdf_path}'
+                        }, status=404)
+            else:
+                print(f"DEBUG: File already exists at {media_path}, size: {os.path.getsize(media_path)} bytes")
+        # Case 2: It's already a relative URL path
+        else:
+            pdf_url = pdf_path
+            print(f"DEBUG: Using existing relative URL: {pdf_url}")
+            
+            # Ensure it starts with a slash for URL formatting
+            if not pdf_url.startswith('/'):
+                pdf_url = '/' + pdf_url
+                print(f"DEBUG: Added leading slash: {pdf_url}")
+            
+            # Try to determine the file path based on the URL
+            if pdf_url.startswith('/media/'):
+                path_part = pdf_url.lstrip('/media/')
+                possible_path = os.path.join(settings.MEDIA_ROOT, path_part)
+                if os.path.exists(possible_path):
+                    actual_file_path = possible_path
+                    print(f"DEBUG: Found actual file at: {actual_file_path}")
+        
+        # Make sure pdf_url starts with /media/ for proper URL construction
+        if not pdf_url.startswith('/media/'):
+            pdf_url = '/media/' + pdf_url.lstrip('/')
+        
+        # Convert to absolute URL
+        from django.contrib.sites.shortcuts import get_current_site
+        current_site = get_current_site(request)
+        domain = current_site.domain
+        print(f"DEBUG: Domain from site: {domain}")
+        protocol = 'https' if request.is_secure() else 'http'
+        
+        absolute_url = f"{protocol}://{domain}{pdf_url}"
+        print(f"DEBUG: Final absolute URL: {absolute_url}")
+        
+        # Prepare the response
+        response_data = {
+            'status': 'success',
+            'pdf_url': absolute_url,
+            'order_number': order.order_number,
+            'awb': getattr(order, 'AWB', 'N/A'),
+            'platform': platform
+        }
+        
+        # Include the direct file path if it exists
+        if actual_file_path and os.path.exists(actual_file_path):
+            response_data['file_path'] = actual_file_path
+            print(f"DEBUG: Including file path in response: {actual_file_path}")
+        
+        return JsonResponse(response_data)
+    
+    except Exception as e:
+        import traceback
+        print(f"Error in print_label: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error processing print request: {str(e)}'
+        }, status=500)
+
+@require_http_methods(["POST"])
+def mark_order_as_printed(request):
+    """
+    Mark an order as printed/processed in the database.
+    This updates both the order status in the platform-specific table
+    and ensures the picklist item is marked as picked.
+    Note: The AWB number will be added in a separate API call after printing.
+    """
+    try:
+        data = json.loads(request.body)
+        picklist_id = data.get('picklist_id')
+        order_number = data.get('order_number')
+        
+        if not picklist_id or not order_number:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Picklist ID and order number are required'
+            }, status=400)
+        
+        # Logging for debugging
+        print(f"Marking order {order_number} in picklist {picklist_id} as printed")
+        
+        # Find the picklist
+        try:
+            picklist = Picklist.objects.get(picklist_id=picklist_id)
+        except Picklist.DoesNotExist:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Picklist {picklist_id} not found'
+            }, status=404)
+            
+        # Find all picklist items with this order number
+        items = PicklistItem.objects.filter(picklist=picklist, order_number=order_number)
+        
+        if not items.exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Order {order_number} not found in picklist {picklist_id}'
+            }, status=404)
+            
+        # Mark all matching items as picked/processed
+        updated_count = 0
+        for item in items:
+            if not item.picked:  # Only update if not already picked
+                item.picked = True
+                item.save()
+                updated_count += 1
+                
+                # Also update the PicklistItemLocation if it exists
+                location_info, created = PicklistItemLocation.objects.get_or_create(
+                    picklist_item=item,
+                    defaults={'location': 'Unknown', 'picked': False}
+                )
+                location_info.picked = True
+                location_info.picked_at = timezone.now()
+                location_info.save()
+        
+        # Also update the status in the appropriate platform order table
+        # First determine which platform this picklist belongs to
+        platform = picklist.platform.upper() if picklist.platform else "UNKNOWN"
+        
+        # Find and update the order in the appropriate table
+        platform_updated = False
+        if platform == 'AMAZON':
+            orders_updated = AmazonOrders.objects.filter(order_number=order_number).update(
+                status='Processed'
+            )
+            platform_updated = orders_updated > 0
+        elif platform == 'FLIPKART':
+            orders_updated = FlipkarOrders.objects.filter(order_number=order_number).update(
+                status='Processed'
+            )
+            platform_updated = orders_updated > 0
+        elif platform == 'FIRSTCRY':
+            orders_updated = FirstcryOrders.objects.filter(order_number=order_number).update(
+                status='Processed'
+            )
+            platform_updated = orders_updated > 0
+        elif platform == 'MEESHO':
+            orders_updated = MeeshoOrders.objects.filter(order_number=order_number).update(
+                status='Processed'
+            )
+            platform_updated = orders_updated > 0
+        
+        # Check if all items in the picklist are now picked
+        all_picked = not PicklistItem.objects.filter(picklist=picklist, picked=False).exists()
+        
+        # If all items are picked, update the picklist status if needed
+        if all_picked and picklist.status == 'PACKING':
+            picklist.status = 'PACKED'
+            picklist.save()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Order {order_number} marked as processed',
+            'updated_items': updated_count,
+            'platform_updated': platform_updated,
+            'all_picked': all_picked
+        })
+        
+    except Exception as e:
+        import traceback
+        print(f"Error in mark_order_as_printed: {str(e)}")
+        traceback.print_exc()
+        
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error processing request: {str(e)}'
+        }, status=500)
+
+@require_http_methods(["POST"])
+def save_awb_number(request):
+    """
+    Save the AWB number for an order across all applicable tables.
+    This is called immediately after printing a label in the packing stage.
+    """
+    try:
+        data = json.loads(request.body)
+        order_number = data.get('order_number')
+        awb = data.get('awb')
+        picklist_id = data.get('picklist_id')  # Optional but helpful for logging
+        
+        if not order_number or not awb:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Order number and AWB are required'
+            }, status=400)
+            
+        # Logging for debugging
+        print(f"Saving AWB {awb} for order {order_number} from picklist {picklist_id}")
+        
+        # First find the platform for this order
+        platform = None
+        
+        # Try each platform table to find the order
+        if AmazonOrders.objects.filter(order_number=order_number).exists():
+            platform = 'AMAZON'
+            # Update Amazon order
+            updated = AmazonOrders.objects.filter(order_number=order_number).update(AWB=awb)
+        elif FlipkarOrders.objects.filter(order_number=order_number).exists():
+            platform = 'FLIPKART'
+            # Update Flipkart order
+            updated = FlipkarOrders.objects.filter(order_number=order_number).update(AWB=awb)
+        elif FirstcryOrders.objects.filter(order_number=order_number).exists():
+            platform = 'FIRSTCRY'
+            # Update Firstcry order
+            updated = FirstcryOrders.objects.filter(order_number=order_number).update(AWB=awb)
+        elif MeeshoOrders.objects.filter(order_number=order_number).exists():
+            platform = 'MEESHO'
+            # Update Meesho order
+            updated = MeeshoOrders.objects.filter(order_number=order_number).update(AWB=awb)
+        else:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Order {order_number} not found in any platform'
+            }, status=404)
+            
+        # If picklist_id is provided, also update the AWB in picklist items
+        picklist_items_updated = 0
+        if picklist_id:
+            try:
+                # Get the picklist
+                picklist = Picklist.objects.get(picklist_id=picklist_id)
+                
+                # Find all matching picklist items and update an AWB field if it exists
+                # Note: If your PicklistItem model doesn't have an AWB field, you might need to add it
+                items = PicklistItem.objects.filter(picklist=picklist, order_number=order_number)
+                
+                # Check if PicklistItem has an AWB field before attempting to update
+                if hasattr(PicklistItem, 'awb'):
+                    for item in items:
+                        item.awb = awb
+                        item.save()
+                        picklist_items_updated += 1
+                        
+            except Picklist.DoesNotExist:
+                # If picklist doesn't exist, just log it, don't fail the process
+                print(f"Warning: Picklist {picklist_id} not found when saving AWB")
+                pass
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'AWB number {awb} saved for order {order_number}',
+            'platform': platform,
+            'platform_updated': updated > 0,
+            'picklist_items_updated': picklist_items_updated
+        })
+    
+    except Exception as e:
+        import traceback
+        print(f"Error in save_awb_number: {str(e)}")
+        traceback.print_exc()
+        
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error saving AWB number: {str(e)}'
+        }, status=500)
+
+@require_http_methods(["POST"])
+def print_invoice(request):
+    """
+    Get the invoice PDF for a given order and AWB, excluding the label page.
+    """
+    try:
+        data = json.loads(request.body)
+        platform = data.get('platform')
+        order_number = data.get('order_number')
+        awb = data.get('awb')
+        exclude_label_page = data.get('exclude_label_page', True)
+        
+        if not platform or not (order_number or awb):
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Platform and either order number or AWB are required'
+            }, status=400)
+        
+        # Find the order record from the appropriate model
+        order = None
+        
+        if platform.upper() == 'AMAZON':
+            if order_number:
+                order = AmazonOrders.objects.filter(order_number=order_number).first()
+            elif awb:
+                order = AmazonOrders.objects.filter(AWB=awb).first()
+        
+        elif platform.upper() == 'FLIPKART':
+            if order_number:
+                order = FlipkarOrders.objects.filter(order_number=order_number).first()
+            elif awb:
+                order = FlipkarOrders.objects.filter(AWB=awb).first()
+        
+        elif platform.upper() == 'FIRSTCRY':
+            if order_number:
+                order = FirstcryOrders.objects.filter(order_number=order_number).first()
+            elif awb:
+                order = FirstcryOrders.objects.filter(AWB=awb).first()
+        
+        elif platform.upper() == 'MEESHO':
+            if order_number:
+                order = MeeshoOrders.objects.filter(order_number=order_number).first()
+            elif awb:
+                order = MeeshoOrders.objects.filter(AWB=awb).first()
+        
+        else:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Unknown platform: {platform}'
+            }, status=400)
+        
+        if not order:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Order not found for given parameters'
+            }, status=404)
+        
+        # Get the PDF path from the order
+        pdf_path = order.pdf_url
+        
+        if not pdf_path:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'No PDF file found for this order'
+            }, status=404)
+        
+        # Determine which page is the label page based on platform
+        label_page_index = 0  # Default - first page is label
+        
+        if platform.upper() == 'FIRSTCRY':
+            # For FirstCry, the label is typically the last page
+            import fitz  # PyMuPDF
+            try:
+                # Normalize the PDF path
+                if pdf_path.startswith('/media/'):
+                    pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_path.lstrip('/media/'))
+                elif not pdf_path.startswith('/'):
+                    pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_path)
+                
+                # Open the PDF and get page count
+                pdf_document = fitz.open(pdf_path)
+                page_count = len(pdf_document)
+                
+                # For FirstCry, the label is the last page
+                label_page_index = page_count - 1
+                pdf_document.close()
+            except Exception as e:
+                # If we can't determine, default to first page
+                print(f"Error determining label page: {e}")
+                label_page_index = 0
+        
+        elif platform.upper() == 'FLIPKART':
+            # For Flipkart, we use a specific logic to identify the label page
+            # May involve looking at page content
+            label_page_index = 0  # Default to first page
+        
+        elif platform.upper() == 'MEESHO':
+            # For Meesho, determine the label page
+            label_page_index = 0  # Default to first page
+        
+        # Convert file system path to URL if needed
+        pdf_url = pdf_path
+        if pdf_path.startswith('/') or pdf_path.startswith('C:'):
+            # It's a file system path, extract filename
+            filename = os.path.basename(pdf_path)
+            
+            # Determine which directory it belongs to based on platform
+            if platform.upper() == 'AMAZON':
+                pdf_url = f'/media/amazonPdfs/{filename}'
+            elif platform.upper() == 'FLIPKART':
+                pdf_url = f'/media/flipkartPdfs/{filename}'
+            elif platform.upper() == 'FIRSTCRY':
+                pdf_url = f'/media/firstcryPdfs/{filename}'
+            elif platform.upper() == 'MEESHO':
+                pdf_url = f'/media/meeshoPdfs/{filename}'
+            else:
+                pdf_url = f'/media/orderPdfs/{filename}'
+        
+        # Prepare the response
+        response_data = {
+            'status': 'success',
+            'pdf_url': pdf_url,
+            'order_number': order.order_number,
+            'awb': order.AWB,
+            'platform': platform,
+            'label_page_index': label_page_index
+        }
+        
+        return JsonResponse(response_data)
+    
+    except Exception as e:
+        import traceback
+        print(f"Error in print_invoice: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error processing print request: {str(e)}'
+        }, status=500)
+    """
+    Mark an order as printed/processed in the database.
+    This updates both the order status in the platform-specific table
+    and ensures the picklist item is marked as picked.
+    """
+    try:
+        data = json.loads(request.body)
+        picklist_id = data.get('picklist_id')
+        order_number = data.get('order_number')
+        
+        if not picklist_id or not order_number:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Picklist ID and order number are required'
+            }, status=400)
+        
+        # Logging for debugging
+        print(f"Marking order {order_number} in picklist {picklist_id} as printed")
+        
+        # Find the picklist
+        try:
+            picklist = Picklist.objects.get(picklist_id=picklist_id)
+        except Picklist.DoesNotExist:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Picklist {picklist_id} not found'
+            }, status=404)
+            
+        # Find all picklist items with this order number
+        items = PicklistItem.objects.filter(picklist=picklist, order_number=order_number)
+        
+        if not items.exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Order {order_number} not found in picklist {picklist_id}'
+            }, status=404)
+            
+        # Mark all matching items as picked/processed
+        updated_count = 0
+        for item in items:
+            if not item.picked:  # Only update if not already picked
+                item.picked = True
+                item.save()
+                updated_count += 1
+                
+                # Also update the PicklistItemLocation if it exists
+                location_info, created = PicklistItemLocation.objects.get_or_create(
+                    picklist_item=item,
+                    defaults={'location': 'Unknown', 'picked': False}
+                )
+                location_info.picked = True
+                location_info.picked_at = timezone.now()
+                location_info.save()
+        
+        # Also update the status in the appropriate platform order table
+        # First determine which platform this picklist belongs to
+        platform = picklist.platform.upper() if picklist.platform else "UNKNOWN"
+        
+        # Find and update the order in the appropriate table
+        platform_updated = False
+        if platform == 'AMAZON':
+            orders_updated = AmazonOrders.objects.filter(order_number=order_number).update(
+                status='Processed'
+            )
+            platform_updated = orders_updated > 0
+        elif platform == 'FLIPKART':
+            orders_updated = FlipkarOrders.objects.filter(order_number=order_number).update(
+                status='Processed'
+            )
+            platform_updated = orders_updated > 0
+        elif platform == 'FIRSTCRY':
+            orders_updated = FirstcryOrders.objects.filter(order_number=order_number).update(
+                status='Processed'
+            )
+            platform_updated = orders_updated > 0
+        elif platform == 'MEESHO':
+            orders_updated = MeeshoOrders.objects.filter(order_number=order_number).update(
+                status='Processed'
+            )
+            platform_updated = orders_updated > 0
+        
+        # Check if all items in the picklist are now picked
+        all_picked = not PicklistItem.objects.filter(picklist=picklist, picked=False).exists()
+        
+        # If all items are picked, update the picklist status if needed
+        if all_picked and picklist.status == 'PACKING':
+            picklist.status = 'PACKED'
+            picklist.save()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Order {order_number} marked as processed',
+            'updated_items': updated_count,
+            'platform_updated': platform_updated,
+            'all_picked': all_picked
+        })
+        
+    except Exception as e:
+        import traceback
+        print(f"Error in mark_order_as_printed: {str(e)}")
+        traceback.print_exc()
+        
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error processing request: {str(e)}'
+        }, status=500)
