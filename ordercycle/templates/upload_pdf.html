@@ -717,6 +717,8 @@
         let currentStatus = 'Ready to Process';
         const platformNames = ['AMAZON', 'FLIPKART', 'FIRSTCRY', 'MEESHO'];
         const defaultBatchSize = 50;
+
+        const baseApiUrl = '/api';
         
         document.addEventListener('DOMContentLoaded', function() {
     const uploadForm = document.getElementById('upload-form');
@@ -788,7 +790,7 @@
         processingStatus.innerHTML = '<p>Processing files...</p>';
         
         // Send request to process files
-        fetch('http://127.0.0.1:8000/api/process-files/', {
+        fetch(`${baseApiUrl}/pdf-uploads/process-files/`, {
             method: 'POST',
             body: formData
         })
@@ -1006,7 +1008,16 @@
         
         // Function to update order status table
         function updateOrderStatusTable(status) {
-            fetch(`http://127.0.0.1:8000/api/order-counts/?status=${status}`)
+
+          function logApiUrl(endpoint) {
+    console.log(`Accessing API endpoint: ${baseApiUrl}/${endpoint}`);
+}
+
+// Then use it before each fetch:
+logApiUrl(`order-counts/get_counts/?status=${status}`);
+
+
+          fetch(`${baseApiUrl}/order-counts/get_counts/?status=${status}`)
             .then(response => response.json())
             .then(data => {
                 const tableBody = document.getElementById('platform-list');
@@ -1142,7 +1153,7 @@ function processOrders(platform, status, orderType) {
     if (orderType === 'all') {
         console.log('Processing all orders');
         // First, fetch single orders
-        fetch(`http://127.0.0.1:8000/api/single-orders/?platform=${platform}&status=${status}`)
+        fetch(`${baseApiUrl}/order-counts/get_single_orders/?platform=${platform}&status=${status}`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`Error fetching single orders: ${response.status} ${response.statusText}`);
@@ -1153,8 +1164,7 @@ function processOrders(platform, status, orderType) {
                 console.log(`Fetched ${singleData.length} single orders`);
                 
                 // Then fetch multi orders
-                fetch(`http://127.0.0.1:8000/api/multi-orders/?platform=${platform}&status=${status}`)
-                    .then(response => {
+                fetch(`${baseApiUrl}/order-counts/get_multi_orders/?platform=${platform}&status=${status}`)                    .then(response => {
                         if (!response.ok) {
                             throw new Error(`Error fetching multi orders: ${response.status} ${response.statusText}`);
                         }
@@ -1286,7 +1296,7 @@ function processSelectedOrders(selectedOrders, batchLimit, nextStatus, platform,
     console.log(`Sending request with batch limit: ${batchLimit} and SKU limit: ${skuLimit}`);
     
     // Send all order IDs to backend, backend will apply the limits
-    fetch('http://127.0.0.1:8000/api/process-orders/', {
+    fetch(`${baseApiUrl}/order-counts/process_orders/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -1387,8 +1397,8 @@ function updateSkuLimit(platformId) {
             const currentSkuLimitDisplay = document.getElementById('currentSkuLimit');
             currentSkuLimitDisplay.textContent = skuLimit === '0' ? 'No Limit' : skuLimit;
             
-            fetch(`http://127.0.0.1:8000/api/${orderType}-orders/?platform=${platform}&batch_limit=${batchLimit}&status=${currentStatus}`)
-                .then(response => response.json())
+            const endpoint = orderType === 'single' ? 'get_single_orders' : 'get_multi_orders';
+            fetch(`${baseApiUrl}/order-counts/${endpoint}/?platform=${platform}&batch_limit=${batchLimit}&status=${currentStatus}`)                .then(response => response.json())
                 .then(data => {
                     displayOrders(data, orderType);
                     
@@ -1421,7 +1431,7 @@ function updateSkuLimit(platformId) {
             form.submit();
         }
         function displayPicklists() {
-    fetch('http://127.0.0.1:8000/api/picklists/')
+    fetch(`${baseApiUrl}/picklists/`)
         .then(response => response.json())
         .then(data => {
             const contentDiv = document.getElementById('status-content');
@@ -1533,7 +1543,7 @@ function displayOrders(data, orderType) {
     });
 }
       function viewPicklistDetails(picklistId) {
-              fetch(`http://127.0.0.1:8000/api/picklists/${picklistId}/`)
+              fetch(`${baseApiUrl}/picklists/${picklistId}/`)
                   .then(response => response.json())
                   .then(data => {
                       // Create and display a modal with picklist details
@@ -1582,7 +1592,7 @@ function displayOrders(data, orderType) {
                   return;
               }
               
-              fetch(`http://127.0.0.1:8000/api/picklists/${picklistId}/mark-picked/`, {
+              fetch(`${baseApiUrl}/picklists/${picklistId}/mark-picked/`, {
                   method: 'POST',
                   headers: {
                       'Content-Type': 'application/json',
@@ -1605,7 +1615,7 @@ function displayOrders(data, orderType) {
 
           // Function to update picklist status
           function updatePicklistStatus(picklistId, status) {
-              fetch(`http://127.0.0.1:8000/api/picklists/${picklistId}/status/`, {
+              fetch(`${baseApiUrl}/picklists/${picklistId}/status/`, {
                   method: 'POST',
                   headers: {
                       'Content-Type': 'application/json',
@@ -1642,7 +1652,7 @@ function displayOrders(data, orderType) {
 
         // Function to display orders in modal
         function displayCompletedPicklists() {
-    fetch('http://127.0.0.1:8000/api/picklists/')
+    fetch(`${baseApiUrl}/picklists/`)
         .then(response => response.json())
         .then(data => {
             const contentDiv = document.getElementById('status-content');
@@ -1702,7 +1712,7 @@ function displayOrders(data, orderType) {
 }
         // Function to display picklists in the Dispatch tab
         function displayCompletedPicklists() {
-            fetch('http://127.0.0.1:8000/api/picklists/')
+            fetch(`${baseApiUrl}/picklists/`)
                 .then(response => response.json())
                 .then(data => {
                     const contentDiv = document.getElementById('status-content');
@@ -1736,7 +1746,7 @@ function displayOrders(data, orderType) {
                         html += `
                             <tr>
                                 <td>
-                                    <a href="/picklist-details/${picklist.picklist_id}/" class="picklist-link">
+                                    <a href="/picklist/${picklistId}/" class="picklist-link">
                                         ${picklist.picklist_id}
                                     </a>
                                 </td>
@@ -1763,7 +1773,7 @@ function displayOrders(data, orderType) {
 
         // Function to view picklist details
         function viewPicklistDetails(picklistId) {
-            fetch(`http://127.0.0.1:8000/api/picklists/${picklistId}/`)
+            fetch(`${baseApiUrl}/picklists/${picklistId}/`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok');
@@ -1858,7 +1868,7 @@ function displayOrders(data, orderType) {
         }
 
         function markItemsAsPicked(picklistId, selectedItems) {
-            fetch(`http://127.0.0.1:8000/api/picklists/${picklistId}/mark-picked/`, {
+            fetch(`${baseApiUrl}/picklists/${picklistId}/mark-picked/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1888,7 +1898,7 @@ function displayOrders(data, orderType) {
 
         // Function to update picklist status
         function updatePicklistStatus(picklistId, status) {
-            fetch(`http://127.0.0.1:8000/api/picklists/${picklistId}/status/`, {
+            fetch(`${baseApiUrl}/picklists/${picklistId}/status/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1943,7 +1953,7 @@ function displayOrders(data, orderType) {
                 return;
             }
             
-            fetch(`http://127.0.0.1:8000/api/order-counts/?status=${status}`)
+            fetch(`${baseApiUrl}/order-counts/get_counts/?status=${status}`)
             .then(response => response.json())
             .then(data => {
                 const contentDiv = document.getElementById('status-content');
@@ -2066,7 +2076,7 @@ function displayOrders(data, orderType) {
         
         // Function to display picklists in the PACKING status
 function displayPackingPicklists() {
-    fetch('http://127.0.0.1:8000/api/picklists/')
+    fetch(`${baseApiUrl}/picklists/`)
         .then(response => response.json())
         .then(data => {
             const contentDiv = document.getElementById('status-content');
@@ -2078,7 +2088,7 @@ function displayPackingPicklists() {
                 contentDiv.innerHTML = `
                     <div class="card">
                         <p class="text-center">No picklists available for packing</p>
-                        <p class="text-center"><a href="/pack/" class="btn btn-primary">Go to Packing Interface</a></p>
+                        <p class="text-center"><a href="/pack-stage/" class="btn btn-primary">Go to Packing Interface</a></p>
                     </div>
                 `;
                 return;
@@ -2087,7 +2097,7 @@ function displayPackingPicklists() {
             let html = `
                 <div class="picklist-header">
                     <h3>Picklists Ready for Packing</h3>
-                    <a href="/pack/" class="btn btn-primary">Go to Packing Interface</a>
+                    <a href="/pack-stage/" class="btn btn-primary">Go to Packing Interface</a>
                 </div>
                 <table class="status-table">
                     <thead>
@@ -2147,8 +2157,7 @@ function displayPackingPicklists() {
 
 // Function to start packing a specific picklist
 function startPacking(picklistId) {
-    // Redirect to the packing interface with the picklist ID as a parameter
-    window.location.href = `/pack/?picklist_id=${picklistId}`;
+    window.location.href = `/pack-stage/?picklist_id=${picklistId}`;
 }
 // Event listener for tab navigation
 document.addEventListener('DOMContentLoaded', function() {

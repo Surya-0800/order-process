@@ -14,6 +14,18 @@ from ..models import (
 class PicklistViewSet(ViewSet):
     """ViewSet for picklist management."""
     
+    def list(self, request):
+        """
+        List all picklists - this is the method that handles GET /api/picklists/
+        """
+        return self.get_picklists(request)
+        
+    def retrieve(self, request, pk=None):
+        """
+        Retrieve a specific picklist - this is the method that handles GET /api/picklists/{id}/
+        """
+        return self.get_picklist_items(request, pk)
+    
     @action(detail=False, methods=['get'])
     def get_picklists(self, request):
         """

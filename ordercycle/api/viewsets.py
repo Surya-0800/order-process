@@ -2,7 +2,7 @@
 API ViewSets for REST endpoints.
 """
 # Import ViewSets from view modules
-from ordercycle.views.pdf_upload import PDFUploadViewSet
+from ..views.pdf_upload import PDFUploadViewSet
 from ..views.order_views import OrderCountsViewSet
 from ..views.picklist_views import PicklistViewSet
 from ..views.location_views import LocationOrdersViewSet

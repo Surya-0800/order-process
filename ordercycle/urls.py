@@ -23,12 +23,19 @@ urlpatterns = [
     # Base views
     path('', home, name='home'),
     path('location-orders/', location_orders_view, name='location_orders'),
+    
+    # Picklist detail views - both URL patterns point to the same view function
     path('picklist/<str:picklist_id>/', picklist_detail_view, name='picklist_detail'),
+    path('picklist-details/<str:picklist_id>/', picklist_detail_view, name='picklist_details'),
+    
     path('pack-stage/', pack_stage_view, name='pack_stage'),
     path('picker-management/', picker_management, name='picker_management'),
     
     # Packing views
     path('api/search-picklist/', search_picklist, name='search_picklist'),
+    # Add this line to fix the 404 error
+    path('api/picklists/search/', search_picklist, name='picklists_search'),
+    
     path('api/search-product/', search_product, name='search_product'),
     path('api/picklist/<str:picklist_id>/complete/', mark_picklist_completed, name='mark_picklist_completed'),
     path('api/mark-product-packed/', mark_product_packed, name='mark_product_packed'),
@@ -46,8 +53,8 @@ urlpatterns = [
     path('api/print-invoice/', print_invoice, name='print_invoice'),
     path('api/search-awb/', search_awb, name='search_awb'),
     
-    # API routes
-    path('api/', include('app.api.urls')),
+    # Include API routes - make sure this comes after individual API routes
+    path('api/', include('ordercycle.api.urls')),
 ]
 
 # Add media URL patterns for development

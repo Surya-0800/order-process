@@ -13,6 +13,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 
 from ..models import PDFUpload, AmazonOrders, FlipkarOrders, FirstcryOrders, MeeshoOrders
+# Import the serializer directly from api module to avoid circular imports
 from ..api.serializers import PDFUploadSerializer
 from ..utils.pdf_helpers import extract_text_from_first_page
 
@@ -41,7 +42,7 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
             }, status=201)
         return Response(file_serializer.errors, status=400)
     
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'],url_path='process-files')
     def process_files(self, request):
         """
         Process PDF and data files without permanent storage.
