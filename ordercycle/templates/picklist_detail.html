@@ -1,585 +1,633 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Picklist Details - {{ picklist_id }}</title>
-    <!-- Include JsBarcode library for barcode generation -->
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <style>
-        /* Base styles */
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f4f4f4;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        .card {
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
-        h1, h2, h3 {
-            color: #333;
-        }
-        .btn {
-            border: none;
-            padding: 10px 15px;
-            cursor: pointer;
-            border-radius: 5px;
-            font-weight: bold;
-            transition: background-color 0.3s;
-            margin-right: 5px;
-        }
-        .btn-primary {
-            background-color: #007bff;
-            color: white;
-        }
-        .btn-success {
-            background-color: #28a745;
-            color: white;
-        }
-        .btn-warning {
-            background-color: #ffc107;
-            color: #212529;
-        }
-        .btn-secondary {
-            background-color: #6c757d;
-            color: white;
-        }
-        
-        /* Barcode container styling */
-        .picklist-header-container {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .barcode-container {
-            margin-top: 5px;
-            margin-bottom: 15px;
-        }
-        
-        /* Make barcode responsive */
-        .barcode-container svg {
-            max-width: 100%;
-            height: auto;
-        }
-        
-        /* For print - ensure barcode is clear */
-        @media print {
-            .barcode-container svg {
-                max-width: 300px;
-            }
-        }
-        
-        /* Status table styles */
-        .status-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        .status-table th {
-            background-color: #f2f2f2;
-            padding: 12px;
-            text-align: left;
-            border-bottom: 2px solid #ddd;
-        }
-        .status-table td {
-            padding: 12px;
-            border-bottom: 1px solid #ddd;
-        }
-        
-        /* Picklist detail styles */
-        .picklist-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .picker-selector {
-            display: flex;
-            align-items: center;
-        }
-        .picker-selector label {
-            margin-right: 10px;
-        }
-        .picker-selector select {
-            padding: 8px;
-            border-radius: 4px;
-            border: 1px solid #ddd;
-            margin-right: 10px;
-        }
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed; /* Add fixed layout for consistent column widths */
-        }
-        .table th, .table td {
-            padding: 12px;
-            text-align: left;
-            border: 1px solid #ddd;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .table th {
-            background-color: #f2f2f2;
-            font-weight: bold;
-            color: #333;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Picklist Details - {{ picklist_id }}</title>
+  <!-- Include JsBarcode library for barcode generation -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <style>
+    /* Base styles */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f4f4f4;
+    }
 
-        /* Set specific column widths - updated for 4 columns */
-        .table th:nth-child(1), .table td:nth-child(1) { width: 40%; } /* SKU */
-        .table th:nth-child(2), .table td:nth-child(2) { width: 15%; text-align: center; } /* QTY */
-        .table th:nth-child(3), .table td:nth-child(3) { width: 30%; } /* LOCATION */
-        .table th:nth-child(4), .table td:nth-child(4) { width: 15%; text-align: center; } /* PICKED STATUS */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
 
-        .action-buttons {
-            display: flex;
-            justify-content: space-between;
-            margin: 15px 0;
-        }
-        
-        .left-buttons, .right-buttons {
-            display: flex;
-            gap: 10px;
-        }
-        
-        /* Sorting styles */
-        .sort-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            cursor: pointer;
-        }
+    .card {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
 
-        .sort-icon {
-            display: inline-block;
-            margin-left: 5px;
-            color: #666;
-            font-weight: bold;
-        }
+    h1,
+    h2,
+    h3 {
+      color: #333;
+    }
 
-        .sorting-controls {
-            background-color: #f9f9f9;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-            border: 1px solid #eee;
-        }
+    .btn {
+      border: none;
+      padding: 10px 15px;
+      cursor: pointer;
+      border-radius: 5px;
+      font-weight: bold;
+      transition: background-color 0.3s;
+      margin-right: 5px;
+    }
 
-        .sorting-controls select {
-            background-color: white;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: 6px 10px;
-            font-size: 14px;
-        }
+    .btn-primary {
+      background-color: #007bff;
+      color: white;
+    }
 
-        /* Status indicator improvements */
-        .status-indicator {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 5px;
-        }
+    .btn-success {
+      background-color: #28a745;
+      color: white;
+    }
 
-        .status-picked {
-            background-color: #28a745;
-        }
+    .btn-warning {
+      background-color: #ffc107;
+      color: #212529;
+    }
 
-        .status-pending {
-            background-color: #dc3545;
-        }
-        
-        /* Picker info box */
-        .picker-info {
-            background-color: #e9f7fe;
-            padding: 10px 15px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-            border-left: 5px solid #007bff;
-        }
-        
-        /* Status badge styling */
-        .status-badge {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 4px;
-            font-weight: bold;
-            text-align: center;
-            min-width: 80px;
-        }
+    .btn-secondary {
+      background-color: #6c757d;
+      color: white;
+    }
 
-        .status-created {
-            background-color: #e8f5e9;
-            color: #2e7d32;
-            border: 1px solid #81c784;
-        }
+    /* Barcode container styling */
+    .picklist-header-container {
+      display: flex;
+      flex-direction: column;
+    }
 
-        .status-printed {
-            background-color: #e3f2fd;
-            color: #1565c0;
-            border: 1px solid #64b5f6;
-        }
+    .barcode-container {
+      margin-top: 5px;
+      margin-bottom: 15px;
+    }
 
-        .status-packing {
-            background-color: #fff3e0;
-            color: #e65100;
-            border: 1px solid #ffb74d;
-        }
+    /* Make barcode responsive */
+    .barcode-container svg {
+      max-width: 100%;
+      height: auto;
+    }
 
-        /* Add a subtle background color for PRINTED rows */
-        .printed-row {
-            background-color: #f9f9f9;
-        }
+    /* For print - ensure barcode is clear */
+    @media print {
+      .barcode-container svg {
+        max-width: 300px;
+      }
+    }
 
-        /* Add hover effect on table rows */
-        #picklist-table tbody tr:hover,
-        .table tbody tr:hover {
-            background-color: #f5f5f5;
-            transition: background-color 0.2s ease;
-        }
+    /* Status table styles */
+    .status-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
 
-        /* Make the picklist links stand out */
-        .picklist-link {
-            color: #2196f3;
-            font-weight: bold;
-            text-decoration: none;
-        }
+    .status-table th {
+      background-color: #f2f2f2;
+      padding: 12px;
+      text-align: left;
+      border-bottom: 2px solid #ddd;
+    }
 
-        .picklist-link:hover {
-            text-decoration: underline;
-        }
+    .status-table td {
+      padding: 12px;
+      border-bottom: 1px solid #ddd;
+    }
 
-        /* Make table more responsive */
-        @media (max-width: 768px) {
-            .picklist-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            
-            .picker-selector {
-                margin-top: 10px;
-            }
-        }
+    /* Picklist detail styles */
+    .picklist-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
 
-        /* Success message styling */
-        .alert {
-            padding: 10px 15px;
-            border-radius: 4px;
-            margin-bottom: 15px;
-        }
-        
-        .alert-success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        /* Picklist status display */
-        .picklist-status {
-            font-weight: bold;
-            margin-left: 20px;
-        }
-        
-        /* Print-specific styles */
-        @media print {
-            .sorting-controls,
-            .sort-icon,
-            .no-print,
-            .action-buttons {
-                display: none !important;
-            }
-            
-            .card {
-                border: none !important;
-                box-shadow: none !important;
-            }
-            
-            body {
-                background-color: white !important;
-            }
-            
-            .picker-info {
-                border: 1px solid #007bff !important;
-                padding: 8px !important;
-                margin-bottom: 10px !important;
-            }
-            
-            /* Ensure table prints well */
-            .table th, .table td {
-                border: 1px solid #ddd !important;
-            }
-            .btn-danger {
-                background-color: #dc3545;
-                color: white;
-            }
+    .picker-selector {
+      display: flex;
+      align-items: center;
+    }
 
-            .btn-danger:hover {
-                background-color: #c82333;
-            }
-        }
-    </style>
+    .picker-selector label {
+      margin-right: 10px;
+    }
+
+    .picker-selector select {
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      margin-right: 10px;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      /* Add fixed layout for consistent column widths */
+    }
+
+    .table th,
+    .table td {
+      padding: 12px;
+      text-align: left;
+      border: 1px solid #ddd;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .table th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+      color: #333;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    /* Set specific column widths - updated for 4 columns */
+    .table th:nth-child(1),
+    .table td:nth-child(1) {
+      width: 40%;
+    }
+
+    /* SKU */
+    .table th:nth-child(2),
+    .table td:nth-child(2) {
+      width: 15%;
+      text-align: center;
+    }
+
+    /* QTY */
+    .table th:nth-child(3),
+    .table td:nth-child(3) {
+      width: 30%;
+    }
+
+    /* LOCATION */
+    .table th:nth-child(4),
+    .table td:nth-child(4) {
+      width: 15%;
+      text-align: center;
+    }
+
+    /* PICKED STATUS */
+
+    .action-buttons {
+      display: flex;
+      justify-content: space-between;
+      margin: 15px 0;
+    }
+
+    .left-buttons,
+    .right-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    /* Sorting styles */
+    .sort-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .sort-icon {
+      display: inline-block;
+      margin-left: 5px;
+      color: #666;
+      font-weight: bold;
+    }
+
+    .sorting-controls {
+      background-color: #f9f9f9;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      border: 1px solid #eee;
+    }
+
+    .sorting-controls select {
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 6px 10px;
+      font-size: 14px;
+    }
+
+    /* Status indicator improvements */
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+
+    .status-picked {
+      background-color: #28a745;
+    }
+
+    .status-pending {
+      background-color: #dc3545;
+    }
+
+    /* Picker info box */
+    .picker-info {
+      background-color: #e9f7fe;
+      padding: 10px 15px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      border-left: 5px solid #007bff;
+    }
+
+    /* Status badge styling */
+    .status-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-weight: bold;
+      text-align: center;
+      min-width: 80px;
+    }
+
+    .status-created {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+      border: 1px solid #81c784;
+    }
+
+    .status-printed {
+      background-color: #e3f2fd;
+      color: #1565c0;
+      border: 1px solid #64b5f6;
+    }
+
+    .status-packing {
+      background-color: #fff3e0;
+      color: #e65100;
+      border: 1px solid #ffb74d;
+    }
+
+    /* Add a subtle background color for PRINTED rows */
+    .printed-row {
+      background-color: #f9f9f9;
+    }
+
+    /* Add hover effect on table rows */
+    #picklist-table tbody tr:hover,
+    .table tbody tr:hover {
+      background-color: #f5f5f5;
+      transition: background-color 0.2s ease;
+    }
+
+    /* Make the picklist links stand out */
+    .picklist-link {
+      color: #2196f3;
+      font-weight: bold;
+      text-decoration: none;
+    }
+
+    .picklist-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Make table more responsive */
+    @media (max-width: 768px) {
+      .picklist-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .picker-selector {
+        margin-top: 10px;
+      }
+    }
+
+    /* Success message styling */
+    .alert {
+      padding: 10px 15px;
+      border-radius: 4px;
+      margin-bottom: 15px;
+    }
+
+    .alert-success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    /* Picklist status display */
+    .picklist-status {
+      font-weight: bold;
+      margin-left: 20px;
+    }
+
+    /* Print-specific styles */
+    @media print {
+
+      .sorting-controls,
+      .sort-icon,
+      .no-print,
+      .action-buttons {
+        display: none !important;
+      }
+
+      .card {
+        border: none !important;
+        box-shadow: none !important;
+      }
+
+      body {
+        background-color: white !important;
+      }
+
+      .picker-info {
+        border: 1px solid #007bff !important;
+        padding: 8px !important;
+        margin-bottom: 10px !important;
+      }
+
+      /* Ensure table prints well */
+      .table th,
+      .table td {
+        border: 1px solid #ddd !important;
+      }
+
+      .btn-danger {
+        background-color: #dc3545;
+        color: white;
+      }
+
+      .btn-danger:hover {
+        background-color: #c82333;
+      }
+    }
+  </style>
 </head>
+
 <body>
-    <div class="container">
-        <div class="card">
-            <div class="picklist-header">
-                <div class="picklist-header-container">
-                    <h2>PICKLIST ID: <span id="picklist-id">{{ picklist_id }}</span></h2>
-                    <div class="picklist-status">
-                        Status: <span id="picklist-status"></span>
-                    </div>
-                    <!-- Add barcode container -->
-                    <div class="barcode-container">
-                        <svg id="picklist-barcode"></svg>
-                    </div>
-                </div>
-                <div class="picker-selector no-print">
-                    <label for="picker-select">PICKER ID:</label>
-                    <select id="picker-select">
-                        <option value="">-- Select Picker --</option>
-                        {% for picker in pickers %}
-                        <option value="{{ picker.picker_id }}">{{ picker.picker_id }}</option>
-                        {% endfor %}
-                    </select>
-                    <button id="print-btn" class="btn btn-primary">PRINT</button>
-                </div>
-            </div>
-            
-            <!-- Success message container - initially hidden -->
-            <div id="status-message" class="alert alert-success" style="display: none;"></div>
-            
-            <!-- Picker info box - initially hidden -->
-            <div id="picker-info" class="picker-info" style="display: none;">
-                <strong>Picker ID:</strong> <span id="picker-id-display"></span>
-                <div id="picker-details"></div>
-            </div>
-            
-            <!-- Top action buttons -->
-            <div class="action-buttons no-print">
-                <div class="left-buttons">
-                    <button id="back-btn" class="btn btn-secondary">Back to Picklists</button>
-                </div>
-                <div class="right-buttons">
-                    <button id="undo-all-btn" class="btn btn-warning">Undo All Picked</button>
-                    <button id="mark-all-btn" class="btn btn-success">Mark All as Picked</button>
-                    <button id="delete-btn" class="btn btn-danger">Delete Picklist</button>
-                </div>
-            </div>
-            
-            <!-- Sorting controls - will be added by JavaScript -->
-            
-            <table class="table" id="picklist-items-table">
-                <thead>
-                    <tr>
-                        <th>SKU</th>
-                        <th>QTY</th>
-                        <th>LOCATION</th>
-                        <th>PICKED STATUS</th>
-                    </tr>
-                </thead>
-                <tbody id="picklist-items">
-                    <tr>
-                        <td colspan="4" class="text-center">Loading picklist items...</td>
-                    </tr>
-                </tbody>
-            </table>
-            
-            <!-- Bottom action buttons - same as top for convenience -->
-            <div class="action-buttons no-print">
-                <div class="left-buttons">
-                    <button id="back-btn-bottom" class="btn btn-secondary">Back to Picklists</button>
-                    <button id="delete-btn-bottom" class="btn btn-danger">Delete Picklist</button>
-                </div>
-                <div class="right-buttons">
-                    <button id="undo-all-btn-bottom" class="btn btn-warning">Undo All Picked</button>
-                    <button id="mark-all-btn-bottom" class="btn btn-success">Mark All as Picked</button>
-                </div>
-            </div>
+  <div class="container">
+    <div class="card">
+      <div class="picklist-header">
+        <div class="picklist-header-container">
+          <h2>PICKLIST ID: <span id="picklist-id">{{ picklist_id }}</span></h2>
+          <div class="picklist-status">
+            Status: <span id="picklist-status"></span>
+          </div>
+          <!-- Add barcode container -->
+          <div class="barcode-container">
+            <svg id="picklist-barcode"></svg>
+          </div>
         </div>
+        <div class="picker-selector no-print">
+          <label for="picker-select">PICKER ID:</label>
+          <select id="picker-select">
+            <option value="">-- Select Picker --</option>
+            {% for picker in pickers %}
+            <option value="{{ picker.picker_id }}">{{ picker.picker_id }}</option>
+            {% endfor %}
+          </select>
+          <button id="print-btn" class="btn btn-primary">PRINT</button>
+        </div>
+      </div>
+
+      <!-- Success message container - initially hidden -->
+      <div id="status-message" class="alert alert-success" style="display: none;"></div>
+
+      <!-- Picker info box - initially hidden -->
+      <div id="picker-info" class="picker-info" style="display: none;">
+        <strong>Picker ID:</strong> <span id="picker-id-display"></span>
+        <div id="picker-details"></div>
+      </div>
+
+      <!-- Top action buttons -->
+      <div class="action-buttons no-print">
+        <div class="left-buttons">
+          <button id="back-btn" class="btn btn-secondary">Back to Picklists</button>
+        </div>
+        <div class="right-buttons">
+          <button id="undo-all-btn" class="btn btn-warning">Undo All Picked</button>
+          <button id="mark-all-btn" class="btn btn-success">Mark All as Picked</button>
+          <button id="delete-btn" class="btn btn-danger">Delete Picklist</button>
+        </div>
+      </div>
+
+      <!-- Sorting controls - will be added by JavaScript -->
+
+      <table class="table" id="picklist-items-table">
+        <thead>
+          <tr>
+            <th>SKU</th>
+            <th>QTY</th>
+            <th>LOCATION</th>
+            <th>PICKED STATUS</th>
+          </tr>
+        </thead>
+        <tbody id="picklist-items">
+          <tr>
+            <td colspan="4" class="text-center">Loading picklist items...</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Bottom action buttons - same as top for convenience -->
+      <div class="action-buttons no-print">
+        <div class="left-buttons">
+          <button id="back-btn-bottom" class="btn btn-secondary">Back to Picklists</button>
+          <button id="delete-btn-bottom" class="btn btn-danger">Delete Picklist</button>
+        </div>
+        <div class="right-buttons">
+          <button id="undo-all-btn-bottom" class="btn btn-warning">Undo All Picked</button>
+          <button id="mark-all-btn-bottom" class="btn btn-success">Mark All as Picked</button>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const picklistId = document.getElementById('picklist-id').textContent;
-            const pickerSelect = document.getElementById('picker-select');
-            const printBtn = document.getElementById('print-btn');
-            const backBtn = document.getElementById('back-btn');
-            const backBtnBottom = document.getElementById('back-btn-bottom');
-            const markAllBtn = document.getElementById('mark-all-btn');
-            const markAllBtnBottom = document.getElementById('mark-all-btn-bottom');
-            const undoAllBtn = document.getElementById('undo-all-btn');
-            const undoAllBtnBottom = document.getElementById('undo-all-btn-bottom');
-            const picklistItems = document.getElementById('picklist-items');
-            const pickerInfo = document.getElementById('picker-info');
-            const pickerIdDisplay = document.getElementById('picker-id-display');
-            const pickerDetails = document.getElementById('picker-details');
-            const statusMessage = document.getElementById('status-message');
-            const picklistStatus = document.getElementById('picklist-status');
-            
-            // Generate barcode for picklist ID
-            JsBarcode("#picklist-barcode", picklistId, {
-                format: "CODE128",
-                lineColor: "#000",
-                width: 2,
-                height: 50,
-                displayValue: true,
-                fontSize: 14,
-                margin: 10
-            });
-            
-            // Add sorting variables
-            let allItems = []; // Store all items for sorting
-            let currentSortField = 'sku'; // Default sort field
-            let currentSortDirection = 'desc'; // Default sort direction (descending)
-            let selectedPickerId = null; // Track selected picker ID
-            let currentStatus = ''; // Track current picklist status
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const picklistId = document.getElementById('picklist-id').textContent;
+      const pickerSelect = document.getElementById('picker-select');
+      const printBtn = document.getElementById('print-btn');
+      const backBtn = document.getElementById('back-btn');
+      const backBtnBottom = document.getElementById('back-btn-bottom');
+      const markAllBtn = document.getElementById('mark-all-btn');
+      const markAllBtnBottom = document.getElementById('mark-all-btn-bottom');
+      const undoAllBtn = document.getElementById('undo-all-btn');
+      const undoAllBtnBottom = document.getElementById('undo-all-btn-bottom');
+      const picklistItems = document.getElementById('picklist-items');
+      const pickerInfo = document.getElementById('picker-info');
+      const pickerIdDisplay = document.getElementById('picker-id-display');
+      const pickerDetails = document.getElementById('picker-details');
+      const statusMessage = document.getElementById('status-message');
+      const picklistStatus = document.getElementById('picklist-status');
 
-            const deleteBtn = document.getElementById('delete-btn');
-            const deleteBtnBottom = document.getElementById('delete-btn-bottom');
+      // Generate barcode for picklist ID
+      JsBarcode("#picklist-barcode", picklistId, {
+        format: "CODE128",
+        lineColor: "#000",
+        width: 2,
+        height: 50,
+        displayValue: true,
+        fontSize: 14,
+        margin: 10
+      });
 
-            deleteBtn.addEventListener('click', confirmDeletePicklist);
-            deleteBtnBottom.addEventListener('click', confirmDeletePicklist);
+      // Add sorting variables
+      let allItems = []; // Store all items for sorting
+      let currentSortField = 'sku'; // Default sort field
+      let currentSortDirection = 'desc'; // Default sort direction (descending)
+      let selectedPickerId = null; // Track selected picker ID
+      let currentStatus = ''; // Track current picklist status
 
-            // Function to confirm and delete picklist
-            function confirmDeletePicklist() {
-                if (confirm(`Are you sure you want to delete this picklist (${picklistId})?`)) {
-                    deletePicklist();
-                }
+      const deleteBtn = document.getElementById('delete-btn');
+      const deleteBtnBottom = document.getElementById('delete-btn-bottom');
+
+      deleteBtn.addEventListener('click', confirmDeletePicklist);
+      deleteBtnBottom.addEventListener('click', confirmDeletePicklist);
+
+      // Function to confirm and delete picklist
+      function confirmDeletePicklist() {
+        if (confirm(`Are you sure you want to delete this picklist (${picklistId})?`)) {
+          deletePicklist();
+        }
+      }
+
+      // Function to delete picklist
+      function deletePicklist() {
+        // Disable delete buttons during operation
+        deleteBtn.disabled = true;
+        deleteBtnBottom.disabled = true;
+        deleteBtn.textContent = 'Deleting...';
+        deleteBtnBottom.textContent = 'Deleting...';
+
+        fetch(`/api/picklists/${picklistId}/delete-picklist/`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+          }
+        })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Failed to delete picklist');
             }
+            return response.json();
+          })
+          .then(data => {
+            alert(data.message);
+            // Redirect to home page after successful deletion
+            window.location.href = '/';
+          })
+          .catch(error => {
+            console.error('Error deleting picklist:', error);
+            alert('Error: ' + error.message);
 
-            // Function to delete picklist
-            function deletePicklist() {
-                // Disable delete buttons during operation
-                deleteBtn.disabled = true;
-                deleteBtnBottom.disabled = true;
-                deleteBtn.textContent = 'Deleting...';
-                deleteBtnBottom.textContent = 'Deleting...';
-                
-                fetch(`/api/picklists/${picklistId}/delete-picklist/`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    }
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to delete picklist');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    alert(data.message);
-                    // Redirect to home page after successful deletion
-                    window.location.href = '/';
-                })
-                .catch(error => {
-                    console.error('Error deleting picklist:', error);
-                    alert('Error: ' + error.message);
-                    
-                    // Re-enable buttons
-                    deleteBtn.disabled = false;
-                    deleteBtnBottom.disabled = false;
-                    deleteBtn.textContent = 'Delete Picklist';
-                    deleteBtnBottom.textContent = 'Delete Picklist';
-                });
-            }
-            
-            // Function to show status message
-            function showStatusMessage(message, type = 'success') {
-                statusMessage.className = type === 'success' ? 'alert alert-success' : 'alert alert-danger';
-                statusMessage.textContent = message;
-                statusMessage.style.display = 'block';
-                
-                // Auto-hide after 3 seconds
-                setTimeout(() => {
-                    statusMessage.style.display = 'none';
-                }, 3000);
-            }
-            
-            // Add sort control buttons to the header
-            const tableHeader = document.querySelector('#picklist-items-table thead tr');
-            
-            // Update the header row to include sort controls
-            if (tableHeader) {
-                // Make each column header clickable for sorting
-                const headers = tableHeader.querySelectorAll('th');
-                headers.forEach(header => {
-                    const originalText = header.textContent;
-                    header.innerHTML = `
+            // Re-enable buttons
+            deleteBtn.disabled = false;
+            deleteBtnBottom.disabled = false;
+            deleteBtn.textContent = 'Delete Picklist';
+            deleteBtnBottom.textContent = 'Delete Picklist';
+          });
+      }
+
+      // Function to show status message
+      function showStatusMessage(message, type = 'success') {
+        statusMessage.className = type === 'success' ? 'alert alert-success' : 'alert alert-danger';
+        statusMessage.textContent = message;
+        statusMessage.style.display = 'block';
+
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+          statusMessage.style.display = 'none';
+        }, 3000);
+      }
+
+      // Add sort control buttons to the header
+      const tableHeader = document.querySelector('#picklist-items-table thead tr');
+
+      // Update the header row to include sort controls
+      if (tableHeader) {
+        // Make each column header clickable for sorting
+        const headers = tableHeader.querySelectorAll('th');
+        headers.forEach(header => {
+          const originalText = header.textContent;
+          header.innerHTML = `
                         <div class="sort-header">
                             ${originalText} 
                             <span class="sort-icon" data-sort-field="${originalText.toLowerCase().replace(/\s+/g, '_')}">↕</span>
                         </div>
                     `;
-                });
-                
-                // Add sort functionality to column headers
-                document.querySelectorAll('.sort-icon').forEach(icon => {
-                    icon.style.cursor = 'pointer';
-                    icon.addEventListener('click', function() {
-                        const field = this.getAttribute('data-sort-field');
-                        
-                        // Map the header field to the actual data field
-                        let sortField;
-                        switch(field) {
-                            case 'sku':
-                                sortField = 'sku';
-                                break;
-                            case 'qty':
-                                sortField = 'quantity';
-                                break;
-                            case 'location':
-                                sortField = 'location';
-                                break;
-                            case 'picked_status':
-                                sortField = 'picked';
-                                break;
-                            default:
-                                sortField = 'sku';
-                        }
-                        
-                        // Toggle direction if clicking the same field
-                        if (sortField === currentSortField) {
-                            currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
-                        } else {
-                            currentSortField = sortField;
-                            // When changing sort field, use:
-                            // - descending for SKU (highest first)
-                            // - ascending for location and other fields
-                            currentSortDirection = sortField === 'sku' ? 'desc' : 'asc';
-                        }
-                        
-                        // Update all sort icons
-                        document.querySelectorAll('.sort-icon').forEach(i => {
-                            i.textContent = '↕'; // Reset all
-                        });
-                        
-                        // Update the clicked sort icon
-                        this.textContent = currentSortDirection === 'asc' ? '↑' : '↓';
-                        
-                        // Sort and render the items
-                        sortAndRenderItems();
-                    });
-                });
+        });
+
+        // Add sort functionality to column headers
+        document.querySelectorAll('.sort-icon').forEach(icon => {
+          icon.style.cursor = 'pointer';
+          icon.addEventListener('click', function () {
+            const field = this.getAttribute('data-sort-field');
+
+            // Map the header field to the actual data field
+            let sortField;
+            switch (field) {
+              case 'sku':
+                sortField = 'sku';
+                break;
+              case 'qty':
+                sortField = 'quantity';
+                break;
+              case 'location':
+                sortField = 'location';
+                break;
+              case 'picked_status':
+                sortField = 'picked';
+                break;
+              default:
+                sortField = 'sku';
             }
-            
-            // Add sorting select dropdown
-            const sortingControls = document.createElement('div');
-            sortingControls.className = 'sorting-controls no-print';
-            sortingControls.innerHTML = `
+
+            // Toggle direction if clicking the same field
+            if (sortField === currentSortField) {
+              currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+              currentSortField = sortField;
+              // When changing sort field, use:
+              // - descending for SKU (highest first)
+              // - ascending for location and other fields
+              currentSortDirection = sortField === 'sku' ? 'desc' : 'asc';
+            }
+
+            // Update all sort icons
+            document.querySelectorAll('.sort-icon').forEach(i => {
+              i.textContent = '↕'; // Reset all
+            });
+
+            // Update the clicked sort icon
+            this.textContent = currentSortDirection === 'asc' ? '↑' : '↓';
+
+            // Sort and render the items
+            sortAndRenderItems();
+          });
+        });
+      }
+
+      // Add sorting select dropdown
+      const sortingControls = document.createElement('div');
+      sortingControls.className = 'sorting-controls no-print';
+      sortingControls.innerHTML = `
                 <div style="margin-bottom: 10px; display: flex; align-items: center;">
                     <label for="sort-by" style="margin-right: 10px;">Sort by:</label>
                     <select id="sort-by" style="padding: 5px; margin-right: 10px;">
@@ -592,414 +640,414 @@
                     </select>
                 </div>
             `;
-            
-            // Insert sorting controls after the header
-            const tableContainer = document.querySelector('#picklist-items-table').parentNode;
-            tableContainer.insertBefore(sortingControls, document.querySelector('#picklist-items-table'));
-            
-            // Add event listener to sort dropdown
-            document.getElementById('sort-by').addEventListener('change', function() {
-                const [field, direction] = this.value.split('_');
-                currentSortField = field;
-                currentSortDirection = direction;
-                
-                // Update sort icons to match selection
-                document.querySelectorAll('.sort-icon').forEach(icon => {
-                    if (icon.getAttribute('data-sort-field') === field) {
-                        icon.textContent = direction === 'asc' ? '↑' : '↓';
-                    } else {
-                        icon.textContent = '↕';
-                    }
-                });
-                
-                sortAndRenderItems();
-            });
-            
-            // Load picklist items
+
+      // Insert sorting controls after the header
+      const tableContainer = document.querySelector('#picklist-items-table').parentNode;
+      tableContainer.insertBefore(sortingControls, document.querySelector('#picklist-items-table'));
+
+      // Add event listener to sort dropdown
+      document.getElementById('sort-by').addEventListener('change', function () {
+        const [field, direction] = this.value.split('_');
+        currentSortField = field;
+        currentSortDirection = direction;
+
+        // Update sort icons to match selection
+        document.querySelectorAll('.sort-icon').forEach(icon => {
+          if (icon.getAttribute('data-sort-field') === field) {
+            icon.textContent = direction === 'asc' ? '↑' : '↓';
+          } else {
+            icon.textContent = '↕';
+          }
+        });
+
+        sortAndRenderItems();
+      });
+
+      // Load picklist items
+      loadPicklistItems();
+
+      // Assign picker when selected
+      pickerSelect.addEventListener('change', function () {
+        const pickerId = this.value;
+        if (pickerId) {
+          assignPicker(pickerId);
+        } else {
+          // Hide picker info if no picker selected
+          pickerInfo.style.display = 'none';
+        }
+      });
+
+      // Print button click handler - UPDATED: Changes status to PRINTED
+      printBtn.addEventListener('click', function () {
+        // Disable button and show loading state
+        printBtn.disabled = true;
+        printBtn.textContent = 'Updating...';
+
+        // First update the status to PRINTED in the database
+        updatePicklistStatus('PRINTED')
+          .then(response => {
+            if (response.status === 'success') {
+              console.log('Picklist status updated to PRINTED');
+
+              // Reset button state
+              printBtn.disabled = false;
+              printBtn.textContent = 'PRINT';
+
+              // Update current status and display
+              currentStatus = 'PRINTED';
+              updateStatusDisplay();
+
+              // Hide any existing status messages before printing
+              statusMessage.style.display = 'none';
+
+              // After successfully updating status, initiate printing
+              window.print();
+
+              // Show success message AFTER print dialog closes
+              setTimeout(() => {
+                showStatusMessage('Status updated to PRINTED');
+              }, 500);
+            } else {
+              // Reset button state
+              printBtn.disabled = false;
+              printBtn.textContent = 'PRINT';
+
+              alert('Failed to update picklist status: ' + response.message);
+            }
+          })
+          .catch(error => {
+            console.error('Error updating picklist status:', error);
+
+            // Reset button state
+            printBtn.disabled = false;
+            printBtn.textContent = 'PRINT';
+
+            alert('Error updating picklist status: ' + error.message);
+          });
+      });
+
+      // Mark All as Picked button click handler - UPDATED: Changes status to PACKING
+      markAllBtn.addEventListener('click', markAllItemsAsPicked);
+      markAllBtnBottom.addEventListener('click', markAllItemsAsPicked);
+
+      // Undo All Picked button click handler
+      undoAllBtn.addEventListener('click', undoAllItemsPicked);
+      undoAllBtnBottom.addEventListener('click', undoAllItemsPicked);
+
+      // Back button click handlers
+      backBtn.addEventListener('click', function () {
+        window.location.href = '/';
+      });
+
+      backBtnBottom.addEventListener('click', function () {
+        window.location.href = '/';
+      });
+
+      // Update status display
+      function updateStatusDisplay() {
+        // Set the status text
+        picklistStatus.textContent = currentStatus;
+
+        // Add styling based on status
+        picklistStatus.className = 'picklist-status';
+        if (currentStatus === 'CREATED') {
+          picklistStatus.classList.add('status-created');
+        } else if (currentStatus === 'PRINTED') {
+          picklistStatus.classList.add('status-printed');
+        } else if (currentStatus === 'PACKING') {
+          picklistStatus.classList.add('status-packing');
+        }
+      }
+
+      // Function to update picklist status
+      function updatePicklistStatus(newStatus) {
+        return fetch(`/api/picklists/${picklistId}/update-status/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+          },
+          body: JSON.stringify({
+            status: newStatus
+          })
+        })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Failed to update picklist status');
+            }
+            return response.json();
+          });
+      }
+
+      // Function to mark all items as picked and update status to PACKING
+      function markAllItemsAsPicked() {
+        // Get all the individual item IDs from our merged items that aren't picked yet
+        const unpickedItemIds = [];
+
+        allItems.forEach(item => {
+          if (!item.picked) {
+            if (item.itemIds && item.itemIds.length) {
+              // Add all individual item IDs from this merged group
+              unpickedItemIds.push(...item.itemIds);
+            } else {
+              // Legacy support for non-merged items
+              unpickedItemIds.push(item.id);
+            }
+          }
+        });
+
+        if (unpickedItemIds.length === 0) {
+          showStatusMessage('All items are already picked');
+
+          // Still update status to PACKING if not already
+          if (currentStatus !== 'PACKING') {
+            updatePicklistStatus('PACKING')
+              .then(response => {
+                if (response.status === 'success') {
+                  currentStatus = 'PACKING';
+                  updateStatusDisplay();
+                  showStatusMessage('Status updated to PACKING');
+                }
+              })
+              .catch(error => {
+                console.error('Error updating status:', error);
+                showStatusMessage('Error updating status: ' + error.message, 'error');
+              });
+          }
+          return;
+        }
+
+        // Disable buttons during operation
+        markAllBtn.disabled = true;
+        markAllBtnBottom.disabled = true;
+
+        fetch(`/api/picklists/${picklistId}/mark-items-picked/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+          },
+          body: JSON.stringify({
+            item_ids: unpickedItemIds
+          })
+        })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Failed to mark items as picked');
+            }
+            return response.json();
+          })
+          .then(data => {
+            // After items are marked as picked, update status to PACKING
+            return updatePicklistStatus('PACKING');
+          })
+          .then(response => {
+            if (response.status === 'success') {
+              currentStatus = 'PACKING';
+              updateStatusDisplay();
+              showStatusMessage('All items marked as picked and status updated to PACKING');
+              loadPicklistItems();
+            }
+          })
+          .catch(error => {
+            console.error('Error in marking picked or updating status:', error);
+            showStatusMessage('Error: ' + error.message, 'error');
+          })
+          .finally(() => {
+            // Re-enable buttons
+            markAllBtn.disabled = false;
+            markAllBtnBottom.disabled = false;
+          });
+      }
+
+      // Function to undo all picked items
+      function undoAllItemsPicked() {
+        // Get all the individual item IDs from our merged items that are picked
+        const pickedItemIds = [];
+
+        allItems.forEach(item => {
+          if (item.picked) {
+            if (item.itemIds && item.itemIds.length) {
+              // Add all individual item IDs from this merged group
+              pickedItemIds.push(...item.itemIds);
+            } else {
+              // Legacy support for non-merged items
+              pickedItemIds.push(item.id);
+            }
+          }
+        });
+
+        if (pickedItemIds.length === 0) {
+          showStatusMessage('No picked items to undo');
+          return;
+        }
+
+        // Disable buttons during operation
+        undoAllBtn.disabled = true;
+        undoAllBtnBottom.disabled = true;
+
+        fetch(`/api/picklists/${picklistId}/undo-picked/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+          },
+          body: JSON.stringify({
+            item_ids: pickedItemIds
+          })
+        })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Failed to undo picked status');
+            }
+            return response.json();
+          })
+          .then(data => {
+            showStatusMessage(data.message);
+            // Status will be changed to CREATED automatically by the API
+            currentStatus = 'CREATED';
+            updateStatusDisplay();
             loadPicklistItems();
-            
-            // Assign picker when selected
-            pickerSelect.addEventListener('change', function() {
-                const pickerId = this.value;
-                if (pickerId) {
-                    assignPicker(pickerId);
-                } else {
-                    // Hide picker info if no picker selected
-                    pickerInfo.style.display = 'none';
-                }
-            });
-            
-            // Print button click handler - UPDATED: Changes status to PRINTED
-            printBtn.addEventListener('click', function() {
-                // Disable button and show loading state
-                printBtn.disabled = true;
-                printBtn.textContent = 'Updating...';
-                
-                // First update the status to PRINTED in the database
-                updatePicklistStatus('PRINTED')
-                    .then(response => {
-                        if (response.status === 'success') {
-                            console.log('Picklist status updated to PRINTED');
-                            
-                            // Reset button state
-                            printBtn.disabled = false;
-                            printBtn.textContent = 'PRINT';
-                            
-                            // Update current status and display
-                            currentStatus = 'PRINTED';
-                            updateStatusDisplay();
-                            
-                            // Hide any existing status messages before printing
-                            statusMessage.style.display = 'none';
-                            
-                            // After successfully updating status, initiate printing
-                            window.print();
-                            
-                            // Show success message AFTER print dialog closes
-                            setTimeout(() => {
-                                showStatusMessage('Status updated to PRINTED');
-                            }, 500);
-                        } else {
-                            // Reset button state
-                            printBtn.disabled = false;
-                            printBtn.textContent = 'PRINT';
-                            
-                            alert('Failed to update picklist status: ' + response.message);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error updating picklist status:', error);
-                        
-                        // Reset button state
-                        printBtn.disabled = false;
-                        printBtn.textContent = 'PRINT';
-                        
-                        alert('Error updating picklist status: ' + error.message);
-                    });
-            });
-            
-            // Mark All as Picked button click handler - UPDATED: Changes status to PACKING
-            markAllBtn.addEventListener('click', markAllItemsAsPicked);
-            markAllBtnBottom.addEventListener('click', markAllItemsAsPicked);
-            
-            // Undo All Picked button click handler
-            undoAllBtn.addEventListener('click', undoAllItemsPicked);
-            undoAllBtnBottom.addEventListener('click', undoAllItemsPicked);
-            
-            // Back button click handlers
-            backBtn.addEventListener('click', function() {
-                window.location.href = '/';
-            });
-            
-            backBtnBottom.addEventListener('click', function() {
-                window.location.href = '/';
-            });
-            
-            // Update status display
-            function updateStatusDisplay() {
-                // Set the status text
-                picklistStatus.textContent = currentStatus;
-                
-                // Add styling based on status
-                picklistStatus.className = 'picklist-status';
-                if (currentStatus === 'CREATED') {
-                    picklistStatus.classList.add('status-created');
-                } else if (currentStatus === 'PRINTED') {
-                    picklistStatus.classList.add('status-printed');
-                } else if (currentStatus === 'PACKING') {
-                    picklistStatus.classList.add('status-packing');
-                }
+          })
+          .catch(error => {
+            console.error('Error undoing picked status:', error);
+            showStatusMessage('Error: ' + error.message, 'error');
+          })
+          .finally(() => {
+            // Re-enable buttons
+            undoAllBtn.disabled = false;
+            undoAllBtnBottom.disabled = false;
+          });
+      }
+
+      // Function to merge items with the same SKU
+      function mergeItemsBySku(items) {
+        // Create a map to store merged items
+        const skuMap = new Map();
+
+        // Process each item to group by SKU
+        items.forEach(item => {
+          const sku = item.sku;
+          const id = parseInt(item.id);
+          const orderNumber = item.order_number;
+
+          if (skuMap.has(sku)) {
+            // If we already have this SKU, update the existing entry
+            const existingItem = skuMap.get(sku);
+            existingItem.quantity += item.quantity;
+            existingItem.picked = existingItem.picked || item.picked;
+            existingItem.itemIds.push(id);
+            existingItem.orderNumbers.push(orderNumber);
+          } else {
+            // Create a new entry for this SKU
+            const newItem = {
+              ...item,
+              itemIds: [id],
+              orderNumbers: [orderNumber]
+            };
+            skuMap.set(sku, newItem);
+          }
+        });
+
+        // Convert map values to array
+        return Array.from(skuMap.values());
+      }
+
+      // Function to load picklist items
+      function loadPicklistItems() {
+        const endpoint = `/api/picklists/${picklistId}/`;
+
+        fetch(endpoint)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Failed to load picklist items');
             }
-            
-            // Function to update picklist status
-            function updatePicklistStatus(newStatus) {
-                return fetch(`/api/picklists/${picklistId}/update-status/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify({
-                        status: newStatus
-                    })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to update picklist status');
-                    }
-                    return response.json();
-                });
+            return response.json();
+          })
+          .then(data => {
+            // Store the original items
+            const originalItems = data.items;
+
+            // Store and display current status
+            currentStatus = data.status;
+            updateStatusDisplay();
+
+            // Apply the merging function to combine items with the same SKU
+            allItems = mergeItemsBySku(originalItems);
+            console.log("Original items:", originalItems.length);
+            console.log("Merged items:", allItems.length);
+
+            // Sort and render the items
+            sortAndRenderItems();
+
+            // If we have a selected picker, show their info
+            if (selectedPickerId) {
+              updatePickerInfoDisplay(selectedPickerId);
             }
-            
-            // Function to mark all items as picked and update status to PACKING
-            function markAllItemsAsPicked() {
-                // Get all the individual item IDs from our merged items that aren't picked yet
-                const unpickedItemIds = [];
-                
-                allItems.forEach(item => {
-                    if (!item.picked) {
-                        if (item.itemIds && item.itemIds.length) {
-                            // Add all individual item IDs from this merged group
-                            unpickedItemIds.push(...item.itemIds);
-                        } else {
-                            // Legacy support for non-merged items
-                            unpickedItemIds.push(item.id);
-                        }
-                    }
-                });
-                
-                if (unpickedItemIds.length === 0) {
-                    showStatusMessage('All items are already picked');
-                    
-                    // Still update status to PACKING if not already
-                    if (currentStatus !== 'PACKING') {
-                        updatePicklistStatus('PACKING')
-                            .then(response => {
-                                if (response.status === 'success') {
-                                    currentStatus = 'PACKING';
-                                    updateStatusDisplay();
-                                    showStatusMessage('Status updated to PACKING');
-                                }
-                            })
-                            .catch(error => {
-                                console.error('Error updating status:', error);
-                                showStatusMessage('Error updating status: ' + error.message, 'error');
-                            });
-                    }
-                    return;
-                }
-                
-                // Disable buttons during operation
-                markAllBtn.disabled = true;
-                markAllBtnBottom.disabled = true;
-                
-                fetch(`/api/picklists/${picklistId}/mark-items-picked/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify({
-                        item_ids: unpickedItemIds
-                    })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to mark items as picked');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    // After items are marked as picked, update status to PACKING
-                    return updatePicklistStatus('PACKING');
-                })
-                .then(response => {
-                    if (response.status === 'success') {
-                        currentStatus = 'PACKING';
-                        updateStatusDisplay();
-                        showStatusMessage('All items marked as picked and status updated to PACKING');
-                        loadPicklistItems();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error in marking picked or updating status:', error);
-                    showStatusMessage('Error: ' + error.message, 'error');
-                })
-                .finally(() => {
-                    // Re-enable buttons
-                    markAllBtn.disabled = false;
-                    markAllBtnBottom.disabled = false;
-                });
-            }
-            
-            // Function to undo all picked items
-            function undoAllItemsPicked() {
-                // Get all the individual item IDs from our merged items that are picked
-                const pickedItemIds = [];
-                
-                allItems.forEach(item => {
-                    if (item.picked) {
-                        if (item.itemIds && item.itemIds.length) {
-                            // Add all individual item IDs from this merged group
-                            pickedItemIds.push(...item.itemIds);
-                        } else {
-                            // Legacy support for non-merged items
-                            pickedItemIds.push(item.id);
-                        }
-                    }
-                });
-                
-                if (pickedItemIds.length === 0) {
-                    showStatusMessage('No picked items to undo');
-                    return;
-                }
-                
-                // Disable buttons during operation
-                undoAllBtn.disabled = true;
-                undoAllBtnBottom.disabled = true;
-                
-                fetch(`/api/picklists/${picklistId}/undo-picked/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify({
-                        item_ids: pickedItemIds
-                    })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to undo picked status');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    showStatusMessage(data.message);
-                    // Status will be changed to CREATED automatically by the API
-                    currentStatus = 'CREATED';
-                    updateStatusDisplay();
-                    loadPicklistItems();
-                })
-                .catch(error => {
-                    console.error('Error undoing picked status:', error);
-                    showStatusMessage('Error: ' + error.message, 'error');
-                })
-                .finally(() => {
-                    // Re-enable buttons
-                    undoAllBtn.disabled = false;
-                    undoAllBtnBottom.disabled = false;
-                });
-            }
-            
-            // Function to merge items with the same SKU
-            function mergeItemsBySku(items) {
-                // Create a map to store merged items
-                const skuMap = new Map();
-                
-                // Process each item to group by SKU
-                items.forEach(item => {
-                    const sku = item.sku;
-                    const id = parseInt(item.id);
-                    const orderNumber = item.order_number;
-                    
-                    if (skuMap.has(sku)) {
-                        // If we already have this SKU, update the existing entry
-                        const existingItem = skuMap.get(sku);
-                        existingItem.quantity += item.quantity;
-                        existingItem.picked = existingItem.picked || item.picked;
-                        existingItem.itemIds.push(id);
-                        existingItem.orderNumbers.push(orderNumber);
-                    } else {
-                        // Create a new entry for this SKU
-                        const newItem = {
-                            ...item,
-                            itemIds: [id],
-                            orderNumbers: [orderNumber]
-                        };
-                        skuMap.set(sku, newItem);
-                    }
-                });
-                
-                // Convert map values to array
-                return Array.from(skuMap.values());
-            }
-            
-            // Function to load picklist items
-            function loadPicklistItems() {
-                const endpoint = `/api/picklists/${picklistId}/`;
-                
-                fetch(endpoint)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Failed to load picklist items');
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        // Store the original items
-                        const originalItems = data.items;
-                        
-                        // Store and display current status
-                        currentStatus = data.status;
-                        updateStatusDisplay();
-                        
-                        // Apply the merging function to combine items with the same SKU
-                        allItems = mergeItemsBySku(originalItems);
-                        console.log("Original items:", originalItems.length);
-                        console.log("Merged items:", allItems.length);
-                        
-                        // Sort and render the items
-                        sortAndRenderItems();
-                        
-                        // If we have a selected picker, show their info
-                        if (selectedPickerId) {
-                            updatePickerInfoDisplay(selectedPickerId);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error loading picklist items:', error);
-                        picklistItems.innerHTML = `
+          })
+          .catch(error => {
+            console.error('Error loading picklist items:', error);
+            picklistItems.innerHTML = `
                             <tr>
                                 <td colspan="4" class="text-center text-danger">
                                     Failed to load picklist items. ${error.message}
                                 </td>
                             </tr>
                         `;
-                    });
-            }
-            
-            // Function to sort and render items
-            function sortAndRenderItems() {
-                // Clone the items array to avoid modifying the original
-                const sortedItems = [...allItems];
-                
-                // Sort by the current field and direction
-                sortedItems.sort((a, b) => {
-                    let aValue = a[currentSortField];
-                    let bValue = b[currentSortField];
-                    
-                    // Handle undefined or null values
-                    if (aValue === undefined || aValue === null) aValue = '';
-                    if (bValue === undefined || bValue === null) bValue = '';
-                    
-                    // Compare based on data type
-                    let comparison;
-                    if (typeof aValue === 'string') {
-                        comparison = aValue.localeCompare(bValue);
-                    } else if (typeof aValue === 'number') {
-                        comparison = aValue - bValue;
-                    } else if (typeof aValue === 'boolean') {
-                        comparison = aValue === bValue ? 0 : aValue ? 1 : -1;
-                    } else {
-                        comparison = 0;
-                    }
-                    
-                    // Apply sort direction
-                    return currentSortDirection === 'asc' ? comparison : -comparison;
-                });
-                
-                // Render the sorted items
-                renderPicklistItems(sortedItems);
-            }
-            
-            // Function to render picklist items - UPDATED without individual actions
-            function renderPicklistItems(items) {
-                if (items.length === 0) {
-                    picklistItems.innerHTML = `
+          });
+      }
+
+      // Function to sort and render items
+      function sortAndRenderItems() {
+        // Clone the items array to avoid modifying the original
+        const sortedItems = [...allItems];
+
+        // Sort by the current field and direction
+        sortedItems.sort((a, b) => {
+          let aValue = a[currentSortField];
+          let bValue = b[currentSortField];
+
+          // Handle undefined or null values
+          if (aValue === undefined || aValue === null) aValue = '';
+          if (bValue === undefined || bValue === null) bValue = '';
+
+          // Compare based on data type
+          let comparison;
+          if (typeof aValue === 'string') {
+            comparison = aValue.localeCompare(bValue);
+          } else if (typeof aValue === 'number') {
+            comparison = aValue - bValue;
+          } else if (typeof aValue === 'boolean') {
+            comparison = aValue === bValue ? 0 : aValue ? 1 : -1;
+          } else {
+            comparison = 0;
+          }
+
+          // Apply sort direction
+          return currentSortDirection === 'asc' ? comparison : -comparison;
+        });
+
+        // Render the sorted items
+        renderPicklistItems(sortedItems);
+      }
+
+      // Function to render picklist items - UPDATED without individual actions
+      function renderPicklistItems(items) {
+        if (items.length === 0) {
+          picklistItems.innerHTML = `
                         <tr>
                             <td colspan="4" class="text-center">No items in this picklist</td>
                         </tr>
                     `;
-                    return;
-                }
-                
-                let html = '';
-                items.forEach(item => {
-                    const orderCount = item.orderNumbers ? item.orderNumbers.length : 1;
-                    const orderTitle = orderCount > 1 ? `title="Contains ${orderCount} orders"` : '';
-                    
-                    html += `
+          return;
+        }
+
+        let html = '';
+        items.forEach(item => {
+          const orderCount = item.orderNumbers ? item.orderNumbers.length : 1;
+          const orderTitle = orderCount > 1 ? `title="Contains ${orderCount} orders"` : '';
+
+          html += `
                         <tr ${orderTitle}>
                             <td>${item.sku}</td>
                             <td>${item.quantity}</td>
@@ -1010,74 +1058,75 @@
                             </td>
                         </tr>
                     `;
-                });
-                
-                picklistItems.innerHTML = html;
-            }
-            
-            // Function to update picker info display
-            function updatePickerInfoDisplay(pickerId) {
-                if (!pickerId) {
-                    pickerInfo.style.display = 'none';
-                    return;
-                }
-                
-                // Display the picker ID
-                pickerIdDisplay.textContent = pickerId;
-                
-                // You can add more picker details here if available
-                pickerDetails.innerHTML = `<div>Selected on: ${new Date().toLocaleString()}</div>`;
-                
-                // Show the picker info box
-                pickerInfo.style.display = 'block';
-            }
-            
-            // Function to assign picker
-            function assignPicker(pickerId) {
-                fetch(`/api/picklists/${picklistId}/assign-picker/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify({
-                        picker_id: pickerId
-                    })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to assign picker');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    showStatusMessage(data.message);
-                    
-                    // Store the selected picker ID
-                    selectedPickerId = pickerId;
-                    
-                    // Update the picker info display
-                    updatePickerInfoDisplay(pickerId);
-                    
-                    // Reload picklist items
-                    loadPicklistItems();
-                })
-                .catch(error => {
-                    console.error('Error assigning picker:', error);
-                    alert(`Error: ${error.message}`);
-                });
-            }
-            
-            // Function to get CSRF token
-            function getCsrfToken() {
-                const cookieValue = document.cookie
-                    .split('; ')
-                    .find(row => row.startsWith('csrftoken='))
-                    ?.split('=')[1];
-                
-                return cookieValue || '';
-            }
         });
-    </script>
+
+        picklistItems.innerHTML = html;
+      }
+
+      // Function to update picker info display
+      function updatePickerInfoDisplay(pickerId) {
+        if (!pickerId) {
+          pickerInfo.style.display = 'none';
+          return;
+        }
+
+        // Display the picker ID
+        pickerIdDisplay.textContent = pickerId;
+
+        // You can add more picker details here if available
+        pickerDetails.innerHTML = `<div>Selected on: ${new Date().toLocaleString()}</div>`;
+
+        // Show the picker info box
+        pickerInfo.style.display = 'block';
+      }
+
+      // Function to assign picker
+      function assignPicker(pickerId) {
+        fetch(`/api/picklists/${picklistId}/assign-picker/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+          },
+          body: JSON.stringify({
+            picker_id: pickerId
+          })
+        })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Failed to assign picker');
+            }
+            return response.json();
+          })
+          .then(data => {
+            showStatusMessage(data.message);
+
+            // Store the selected picker ID
+            selectedPickerId = pickerId;
+
+            // Update the picker info display
+            updatePickerInfoDisplay(pickerId);
+
+            // Reload picklist items
+            loadPicklistItems();
+          })
+          .catch(error => {
+            console.error('Error assigning picker:', error);
+            alert(`Error: ${error.message}`);
+          });
+      }
+
+      // Function to get CSRF token
+      function getCsrfToken() {
+        const cookieValue = document.cookie
+          .split('; ')
+          .find(row => row.startsWith('csrftoken='))
+          ?.split('=')[1];
+
+        return cookieValue || '';
+      }
+    });
+  </script>
 </body>
+
 </html>
