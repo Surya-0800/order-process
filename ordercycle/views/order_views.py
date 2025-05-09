@@ -197,28 +197,31 @@ class OrderCountsViewSet(ViewSet):
             processed_orders = []
             created_picklists = []
             
-            # Fetch all ready-to-process orders from the provided list
-            all_orders = []
-            for order_id in orders:
-                order = order_model.objects.filter(
-                    order_number=order_id,
-                    status='Ready to Process'
-                ).first()
-                
-                if order:
-                    all_orders.append(order)
+            # Fetch ALL ready-to-process order records for the provided order numbers
+            all_order_records = order_model.objects.filter(
+                order_number__in=orders,
+                status='Ready to Process',
+                order_type=db_order_type
+            ).all()
             
-            if not all_orders:
+            if not all_order_records:
                 return Response({
                     'status': 'error',
                     'message': 'No orders found with the specified criteria',
                 }, status=404)
             
+            # Group records by order number for proper processing
+            order_groups = {}
+            for record in all_order_records:
+                if record.order_number not in order_groups:
+                    order_groups[record.order_number] = []
+                order_groups[record.order_number].append(record)
+            
             # Create a dictionary to cache location data for SKUs to avoid repeated database lookups
             sku_location_map = {}
             
             # Extract all unique SKUs from orders
-            unique_skus = {order.sku for order in all_orders if order.sku}
+            unique_skus = {record.sku for record in all_order_records if record.sku}
             
             # Fetch location data from MasterTable for all SKUs in one query
             master_items = MasterTable.objects.filter(sku__in=unique_skus)
@@ -230,27 +233,41 @@ class OrderCountsViewSet(ViewSet):
             
             print(f"Retrieved locations for {len(sku_location_map)} unique SKUs from MasterTable")
             
-            # Define a sort key function that uses the location from MasterTable
-            def get_sort_key(order):
-                location = sku_location_map.get(order.sku, 'ZZZ')  # Default to high value if location not found
-                return (location, order.sku)
+            # For consistent sorting, we'll use the same logic for both single and multiple orders
+            # Choose a representative SKU from each order for sorting purposes
+            order_representatives = []
             
-            # Sort orders by location first, then by SKU
+            for order_num, records in order_groups.items():
+                # Sort the records within this order by location first
+                try:
+                    sorted_records = sorted(
+                        records,
+                        key=lambda record: (sku_location_map.get(record.sku, 'ZZZ'), record.sku)
+                    )
+                    # Use the first record (best location) as representative for this order
+                    order_representatives.append((order_num, sorted_records[0]))
+                except Exception as e:
+                    print(f"Error sorting records for order {order_num}: {e}")
+                    # If sorting fails, just use the first record
+                    order_representatives.append((order_num, records[0]))
+            
+            # Sort orders by their representative record's location and SKU
             try:
-                all_orders.sort(key=get_sort_key)
+                order_representatives.sort(
+                    key=lambda pair: (sku_location_map.get(pair[1].sku, 'ZZZ'), pair[1].sku)
+                )
                 print(f"Orders sorted by MasterTable location and SKU")
-                # Print first few orders with their locations for debugging
-                debug_orders = [f"{sku_location_map.get(o.sku, 'Unknown')}:{o.sku}" for o in all_orders[:5]]
-                print(f"First few orders (location:sku): {debug_orders}")
             except Exception as e:
-                print(f"Error sorting by location: {e}. Sorting by SKU only.")
-                all_orders.sort(key=lambda order: order.sku)
-                print(f"Orders sorted by SKU only. First few SKUs: {[o.sku for o in all_orders[:5]]}")
+                print(f"Error in final sort: {e}. Sorting by SKU only.")
+                order_representatives.sort(key=lambda pair: pair[1].sku)
+            
+            # Create a sorted list of order numbers
+            sorted_order_numbers = [pair[0] for pair in order_representatives]
             
             # Process orders in batches, creating new picklists as needed
-            remaining_orders = all_orders[:]
+            remaining_order_numbers = sorted_order_numbers[:]
             
-            while remaining_orders:
+            while remaining_order_numbers:
                 # Create a new picklist for this batch
                 picklist_id = Picklist.generate_picklist_id()
                 picklist = Picklist.objects.create(
@@ -262,49 +279,59 @@ class OrderCountsViewSet(ViewSet):
                 )
                 created_picklists.append(picklist_id)
                 
-                current_batch = []
-                unique_skus = set()
+                current_batch_orders = []
+                unique_skus_in_batch = set()
                 
                 # Fill the current batch respecting both limits
-                for order in remaining_orders[:]:
+                for order_num in remaining_order_numbers[:]:
+                    order_records = order_groups[order_num]
+                    
+                    # Count unique SKUs in this order
+                    order_skus = {record.sku for record in order_records}
+                    
                     # Check if adding this order would exceed the SKU limit
-                    if sku_limit > 0 and order.sku not in unique_skus and len(unique_skus) >= sku_limit:
+                    new_skus = order_skus - unique_skus_in_batch
+                    if sku_limit > 0 and (len(unique_skus_in_batch) + len(new_skus)) > sku_limit:
                         # SKU limit would be exceeded, don't add this order to current batch
                         continue
                     
                     # Check if adding this order would exceed the batch limit
-                    if len(current_batch) >= batch_limit:
+                    if len(current_batch_orders) + 1 > batch_limit:
                         # Batch limit reached, don't add more orders
                         break
                     
                     # Add this order to the current batch
-                    current_batch.append(order)
-                    unique_skus.add(order.sku)
-                    remaining_orders.remove(order)
+                    current_batch_orders.append(order_num)
+                    unique_skus_in_batch.update(order_skus)
+                    remaining_order_numbers.remove(order_num)
                 
-                # Process the current batch
-                for order in current_batch:
-                    # Update order status
-                    order.status = next_status
-                    order.save()
+                # Process all records for the current batch orders
+                items_created = 0
+                for order_num in current_batch_orders:
+                    order_records = order_groups[order_num]
                     
-                    # Get location from our cache map
-                    location = sku_location_map.get(order.sku, 'Unknown')
+                    # Update status for ALL records of this order
+                    for record in order_records:
+                        record.status = next_status
+                        record.save()
+                        
+                        # Create picklist item for each SKU record
+                        PicklistItem.objects.create(
+                            picklist=picklist,
+                            order_number=record.order_number,
+                            sku=record.sku,
+                            quantity=record.quantity
+                        )
+                        items_created += 1
                     
-                    # Create picklist item
-                    PicklistItem.objects.create(
-                        picklist=picklist,
-                        order_number=order.order_number,
-                        sku=order.sku,
-                        quantity=order.quantity
-                    )
-                    
-                    processed_orders.append(order.order_number)
+                    processed_orders.append(order_num)
                 
-                # Update picklist quantity
-                if current_batch:
-                    picklist.quantity = len(current_batch)
+                # Update picklist quantity with number of orders (not SKUs)
+                if current_batch_orders:
+                    picklist.quantity = len(current_batch_orders)
                     picklist.save()
+                    
+                    print(f"Created picklist {picklist_id} with {len(current_batch_orders)} orders and {items_created} total items")
                 else:
                     # No orders were processed in this batch, delete the picklist
                     picklist.delete()

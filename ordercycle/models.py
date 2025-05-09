@@ -171,3 +171,63 @@ def save_user_profile(sender, instance, **kwargs):
     if not hasattr(instance, 'profile'):
         UserProfile.objects.create(user=instance)
     instance.profile.save()
+
+# Add this to your models.py file
+
+class PicklistDispatchStatus(models.Model):
+    """
+    Model to track which picklists have orders in Dispatch status
+    """
+    picklist = models.OneToOneField(Picklist, on_delete=models.CASCADE, related_name='dispatch_status')
+    total_orders = models.IntegerField(default=0)
+    dispatched_orders = models.IntegerField(default=0)
+    is_fully_dispatched = models.BooleanField(default=False)
+    last_updated = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Picklist Dispatch Status"
+        verbose_name_plural = "Picklist Dispatch Statuses"
+    
+    def __str__(self):
+        percentage = 0
+        if self.total_orders > 0:
+            percentage = (self.dispatched_orders / self.total_orders) * 100
+        
+        return f"{self.picklist.picklist_id}: {self.dispatched_orders}/{self.total_orders} ({percentage:.1f}% dispatched)"
+    
+    def update_status(self):
+        """
+        Update the dispatch counts and status by checking all orders in the picklist
+        """
+        platform = self.picklist.platform
+        picklist_items = PicklistItem.objects.filter(picklist=self.picklist)
+        order_numbers = picklist_items.values_list('order_number', flat=True).distinct()
+        
+        self.total_orders = len(order_numbers)
+        self.dispatched_orders = 0
+        
+        # Count dispatched orders based on platform
+        for order_num in order_numbers:
+            is_dispatched = False
+            
+            if platform == 'AMAZON':
+                is_dispatched = AmazonOrders.objects.filter(order_number=order_num, status='Dispatch').exists()
+            elif platform == 'FLIPKART':
+                is_dispatched = FlipkarOrders.objects.filter(order_number=order_num, status='Dispatch').exists()
+            elif platform == 'FIRSTCRY':
+                is_dispatched = FirstcryOrders.objects.filter(order_number=order_num, status='Dispatch').exists()
+            elif platform == 'MEESHO':
+                is_dispatched = MeeshoOrders.objects.filter(order_number=order_num, status='Dispatch').exists()
+            
+            if is_dispatched:
+                self.dispatched_orders += 1
+        
+        self.is_fully_dispatched = (self.dispatched_orders == self.total_orders) and (self.total_orders > 0)
+        
+        # If all orders are dispatched, update the picklist status to "DISPATCH"
+        if self.is_fully_dispatched and self.picklist.status != 'DISPATCH':
+            self.picklist.status = 'DISPATCH'
+            self.picklist.save()
+        
+        self.save()
+        return self.is_fully_dispatched

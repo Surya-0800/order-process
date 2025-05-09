@@ -158,7 +158,8 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
                     order_type=order_type,
                     sku=item['sku'].replace("\n", ""),
                     quantity=qty,
-                    pdf_url=pdf_url
+                    pdf_url=pdf_url,
+                    AWB = item["AWB"]
                 )
             results['flipkart_processed'] += 1
     
@@ -190,14 +191,17 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
                 qty = int(item["Qty"])
                 if qty > 1:
                     order_type = "Multiple"
-                FirstcryOrders.objects.create(
-                    order_number=order_number,
-                    order_type=order_type,
-                    sku=item['sku'].replace("\n", ""),
-                    quantity=qty,
-                    pdf_url=pdf_url
-                )
-            results['firstcry_processed'] += 1
+                if not FirstcryOrders.objects.filter(order_number=order_number, sku=item['sku'].replace("\n", "")).exists():
+                  FirstcryOrders.objects.create(
+                      order_number=order_number,
+                      order_type=order_type,
+                      sku=item['sku'].replace("\n", ""),
+                      quantity=qty,
+                      pdf_url=pdf_url,
+                      AWB = item["AWB"]
+
+                  )
+                  results['firstcry_processed'] += 1
     
     def _process_amazon_pdf(self, pdf_path, data_path, media_root, results):
         """Process Amazon PDFs and create order records."""

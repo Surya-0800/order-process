@@ -14,7 +14,7 @@ from django.views.decorators.http import require_http_methods
 from ..models import (
     Picklist, PicklistItem, PicklistItemLocation, MasterTable,
     AmazonOrders, FlipkarOrders, FirstcryOrders, MeeshoOrders,
-    UserProfile
+    UserProfile,PicklistDispatchStatus
 )
 
 
@@ -31,7 +31,7 @@ def search_picklist(request):
         }, status=400)
     
     try:
-        # Get picklist with PACKING status (this is correct)
+        # Get picklist with PACKING status
         picklist = Picklist.objects.get(picklist_id=picklist_id, status='PACKING')
         
         # Get picklist items with their details
@@ -42,29 +42,41 @@ def search_picklist(request):
             # Get location info if available
             location = "Unknown"
             
-            # FIX: Default picked status to False instead of using the location_info.picked value
-            # This ensures items start as "not packed" in the packing stage
-            picked = False
+            # Use the actual picked status from the database
+            picked = item.picked
             
             picker_id = None
             
             if hasattr(item, 'location_info'):
                 location = item.location_info.location
-                # We're intentionally NOT using item.location_info.picked here
-                # Because in the packing stage, we want to start fresh
-                
-                # Only use the picker ID from location_info
                 picker_id = item.location_info.picker.picker_id if item.location_info.picker else None
             
-            items_data.append({
-                'id': item.id,
-                'order_number': item.order_number,
-                'sku': item.sku,
-                'quantity': item.quantity,
-                'location': location,
-                'picked': picked,  # Always False for packing stage
-                'picker_id': picker_id
-            })
+            # Check order status across platforms to exclude Dispatch orders
+            order_number = item.order_number
+            order_status = None
+            awb = None
+            
+            # Find the order and its status across all platforms
+            for model in [AmazonOrders, FlipkarOrders, FirstcryOrders, MeeshoOrders]:
+                order = model.objects.filter(order_number=order_number).first()
+                if order:
+                    order_status = order.status
+                    awb = order.AWB
+                    break
+            
+            # CRITICAL: Only include orders that are NOT in Dispatch status
+            if order_status != 'Dispatch':
+                items_data.append({
+                    'id': item.id,
+                    'order_number': item.order_number,
+                    'sku': item.sku,
+                    'quantity': item.quantity,
+                    'location': location,
+                    'picked': picked,
+                    'picker_id': picker_id,
+                    'awb': awb,
+                    'order_status': order_status  # Include status for debugging
+                })
         
         return JsonResponse({
             'status': 'success',
@@ -84,7 +96,7 @@ def search_picklist(request):
             'status': 'error',
             'message': f'Picklist with ID {picklist_id} not found or not in PACKING status'
         }, status=404)
-
+    
 
 @require_http_methods(["GET"])
 def search_product(request):
@@ -309,3 +321,124 @@ def get_product_image_by_sku(request):
     except Exception as e:
         print(f"Error retrieving product data: {str(e)}")
         return JsonResponse({'error': f'Error retrieving product data: {str(e)}'}, status=500)
+   
+@require_http_methods(["POST"])
+def save_awb_and_dispatch(request):
+    """
+    Save the AWB number for an order and move it to Dispatch status.
+    Also updates the PicklistDispatchStatus for tracking dispatch progress.
+    """
+    try:
+        data = json.loads(request.body)
+        order_number = data.get('order_number')
+        awb = data.get('awb')
+        picklist_id = data.get('picklist_id')  # Get picklist_id from request
+        
+        if not order_number or not awb:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Order number and AWB are required'
+            }, status=400)
+        
+        # Find the platform for this order
+        platform = None
+        updated = 0
+        
+        # Try each platform table to find the order
+        model_mapping = {
+            'AMAZON': AmazonOrders,
+            'FLIPKART': FlipkarOrders,
+            'FIRSTCRY': FirstcryOrders,
+            'MEESHO': MeeshoOrders
+        }
+        
+        for plat, model in model_mapping.items():
+            if model.objects.filter(order_number=order_number).exists():
+                platform = plat
+                # Update order with AWB and new status
+                result = model.objects.filter(order_number=order_number).update(
+                    AWB=awb,
+                    status='Dispatch'  # Ensure this status is exactly 'Dispatch'
+                )
+                updated = result
+                
+                # Verify the update was successful by retrieving the order
+                updated_order = model.objects.filter(order_number=order_number).first()
+                if updated_order:
+                    print(f"Order {order_number} updated. Status: {updated_order.status}")
+                
+                break
+                
+        if not platform:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Order {order_number} not found in any platform'
+            }, status=404)
+        
+        # Update dispatch status if picklist_id is provided
+        dispatch_status = None
+        if picklist_id:
+            try:
+                # Find the picklist
+                picklist = Picklist.objects.get(picklist_id=picklist_id)
+                
+                # Get or create dispatch status record
+                dispatch_status, created = PicklistDispatchStatus.objects.get_or_create(
+                    picklist=picklist,
+                    defaults={
+                        'total_orders': 0,
+                        'dispatched_orders': 0,
+                        'is_fully_dispatched': False
+                    }
+                )
+                
+                # Update the status
+                is_fully_dispatched = dispatch_status.update_status()
+                
+                if is_fully_dispatched:
+                    print(f"All orders in picklist {picklist_id} are now dispatched. Picklist status updated to DISPATCH.")
+                else:
+                    print(f"Updated dispatch status for picklist {picklist_id}. {dispatch_status.dispatched_orders}/{dispatch_status.total_orders} orders dispatched.")
+                
+            except Picklist.DoesNotExist:
+                print(f"Picklist {picklist_id} not found, skipping dispatch status update")
+            except Exception as e:
+                print(f"Error updating dispatch status: {str(e)}")
+                traceback.print_exc()
+                # Continue anyway - the order status is already updated
+        
+        # Prepare response
+        response_data = {
+            'status': 'success',
+            'message': f'AWB number {awb} saved and order moved to Dispatch',
+            'platform': platform,
+            'updated': updated > 0,
+            'order_number': order_number,
+            'awb': awb,
+            'order_status': 'Dispatch'  # Include the new status in response
+        }
+        
+        # Include dispatch status info if available
+        if dispatch_status:
+            percentage = 0
+            if dispatch_status.total_orders > 0:
+                percentage = (dispatch_status.dispatched_orders / dispatch_status.total_orders) * 100
+                
+            response_data['dispatch_info'] = {
+                'picklist_id': picklist_id,
+                'total_orders': dispatch_status.total_orders,
+                'dispatched_orders': dispatch_status.dispatched_orders,
+                'percentage': round(percentage, 1),
+                'is_fully_dispatched': dispatch_status.is_fully_dispatched
+            }
+        
+        return JsonResponse(response_data)
+    
+    except Exception as e:
+        print(f"Error in save_awb_and_dispatch: {str(e)}")
+        traceback.print_exc()
+        
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error saving AWB number: {str(e)}'
+        }, status=500)

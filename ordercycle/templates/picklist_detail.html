@@ -320,6 +320,14 @@
             .table th, .table td {
                 border: 1px solid #ddd !important;
             }
+            .btn-danger {
+                background-color: #dc3545;
+                color: white;
+            }
+
+            .btn-danger:hover {
+                background-color: #c82333;
+            }
         }
     </style>
 </head>
@@ -366,6 +374,7 @@
                 <div class="right-buttons">
                     <button id="undo-all-btn" class="btn btn-warning">Undo All Picked</button>
                     <button id="mark-all-btn" class="btn btn-success">Mark All as Picked</button>
+                    <button id="delete-btn" class="btn btn-danger">Delete Picklist</button>
                 </div>
             </div>
             
@@ -391,6 +400,7 @@
             <div class="action-buttons no-print">
                 <div class="left-buttons">
                     <button id="back-btn-bottom" class="btn btn-secondary">Back to Picklists</button>
+                    <button id="delete-btn-bottom" class="btn btn-danger">Delete Picklist</button>
                 </div>
                 <div class="right-buttons">
                     <button id="undo-all-btn-bottom" class="btn btn-warning">Undo All Picked</button>
@@ -435,6 +445,57 @@
             let currentSortDirection = 'desc'; // Default sort direction (descending)
             let selectedPickerId = null; // Track selected picker ID
             let currentStatus = ''; // Track current picklist status
+
+            const deleteBtn = document.getElementById('delete-btn');
+            const deleteBtnBottom = document.getElementById('delete-btn-bottom');
+
+            deleteBtn.addEventListener('click', confirmDeletePicklist);
+            deleteBtnBottom.addEventListener('click', confirmDeletePicklist);
+
+            // Function to confirm and delete picklist
+            function confirmDeletePicklist() {
+                if (confirm(`Are you sure you want to delete this picklist (${picklistId})?`)) {
+                    deletePicklist();
+                }
+            }
+
+            // Function to delete picklist
+            function deletePicklist() {
+                // Disable delete buttons during operation
+                deleteBtn.disabled = true;
+                deleteBtnBottom.disabled = true;
+                deleteBtn.textContent = 'Deleting...';
+                deleteBtnBottom.textContent = 'Deleting...';
+                
+                fetch(`/api/picklists/${picklistId}/delete-picklist/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to delete picklist');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    alert(data.message);
+                    // Redirect to home page after successful deletion
+                    window.location.href = '/';
+                })
+                .catch(error => {
+                    console.error('Error deleting picklist:', error);
+                    alert('Error: ' + error.message);
+                    
+                    // Re-enable buttons
+                    deleteBtn.disabled = false;
+                    deleteBtnBottom.disabled = false;
+                    deleteBtn.textContent = 'Delete Picklist';
+                    deleteBtnBottom.textContent = 'Delete Picklist';
+                });
+            }
             
             // Function to show status message
             function showStatusMessage(message, type = 'success') {

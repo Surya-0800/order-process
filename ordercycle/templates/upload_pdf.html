@@ -569,6 +569,162 @@
         align-items: center;
         justify-content: center;
     }
+
+    .btn-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+}
+
+.packing-row {
+    background-color: #fff8e1;
+}
+
+.printed-row {
+    background-color: #e3f2fd;
+}
+
+.created-row {
+    background-color: #e8f5e9;
+}
+
+/* Improve checkbox styling */
+.picklist-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+#select-all-picklists {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+/* Better spacing for picklist header */
+.picklist-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.picklist-header h3 {
+    margin: 0;
+}
+/* Dispatch-specific styles to add to your stylesheet */
+
+/* Status badges for dispatch */
+.status-badge.status-dispatched {
+    background-color: #d1e7dd;
+    color: #0f5132;
+    border: 1px solid #badbcc;
+}
+
+/* Row highlighting for dispatch status */
+.dispatch-row {
+    background-color: #f8f9fa;
+    border-left: 4px solid #20c997;
+}
+
+.dispatch-row:hover {
+    background-color: #e9f7ef;
+}
+
+/* Progress indicator for dispatch percentage */
+.dispatch-progress {
+    height: 8px;
+    border-radius: 4px;
+    background-color: #e9ecef;
+    overflow: hidden;
+    margin-top: 5px;
+}
+
+.dispatch-progress-bar {
+    height: 100%;
+    background-color: #20c997;
+    transition: width 0.3s ease;
+}
+
+/* Better styling for the dispatch status badge */
+.dispatch-status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.dispatch-percentage {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #0f5132;
+    margin-bottom: 5px;
+}
+
+/* AWB field styling */
+.awb-cell {
+    font-family: monospace;
+    letter-spacing: 0.5px;
+    color: #495057;
+}
+
+/* Action buttons in the dispatch view */
+.dispatch-action-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+    border-radius: 4px;
+    margin-right: 4px;
+}
+
+.btn-dispatch {
+    background-color: #20c997;
+    color: white;
+}
+
+.btn-dispatch:hover {
+    background-color: #1ba385;
+}
+
+/* Completion indicator for fully dispatched picklists */
+.fully-dispatched {
+    position: relative;
+}
+
+.fully-dispatched::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    color: #20c997;
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+/* Add a subtle animation to draw attention to newly dispatched orders */
+@keyframes dispatchHighlight {
+    0% { background-color: #d1e7dd; }
+    50% { background-color: #86cfb9; }
+    100% { background-color: #d1e7dd; }
+}
+
+.just-dispatched {
+    animation: dispatchHighlight 1.5s ease;
+}
+
+/* Optional: add a badge for picklists with partial dispatch status */
+.partial-dispatch-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+    border-radius: 4px;
+    font-size: 0.8em;
+    margin-left: 10px;
+}
     
     </style>
 </head>
@@ -632,7 +788,6 @@
                     <thead>
                         <tr>
                             <th>Platform</th>
-                            <th>Order Types</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -1430,7 +1585,228 @@ function updateSkuLimit(platformId) {
             document.body.appendChild(form);
             form.submit();
         }
-        function displayPicklists() {
+        function bulkDeletePicklists(status) {
+    // Get selected picklists
+    const selectedPicklists = Array.from(document.querySelectorAll('.picklist-checkbox:checked'))
+        .map(checkbox => checkbox.value);
+    
+    if (selectedPicklists.length === 0) {
+        alert('Please select at least one picklist to delete');
+        return;
+    }
+    
+    // Confirm with user
+    if (!confirm(`WARNING: Are you sure you want to delete ${selectedPicklists.length} picklist(s)?\n\nThis will PERMANENTLY DELETE the picklists and all associated orders from the database.\n\nThis action cannot be undone.`)) {
+        return;
+    }
+    
+    // Show loading
+    const deleteBtn = document.getElementById('bulk-delete-btn');
+    if (deleteBtn) {
+        deleteBtn.disabled = true;
+        deleteBtn.textContent = 'Deleting...';
+    }
+    
+    // Make API request
+    fetch(`${baseApiUrl}/picklists/delete-bulk/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            picklist_ids: selectedPicklists
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to delete picklists');
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert(data.message);
+        
+        // Refresh the current view based on active tab
+        if (status === 'Pick') {
+            displayPicklists();
+        } else if (status === 'Pack') {
+            displayPackingPicklists();
+        } else if (status === 'Dispatch') {
+            displayCompletedPicklists();
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting picklists:', error);
+        alert('Error: ' + error.message);
+    })
+    .finally(() => {
+        // Reset button
+        if (deleteBtn) {
+            deleteBtn.disabled = false;
+            deleteBtn.textContent = 'Delete Selected';
+        }
+    });
+}
+
+// Function to get CSRF token from cookies
+function getCsrfToken() {
+    const name = 'csrftoken';
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return '';
+}
+
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+}
+
+// Function to confirm deletion of a single picklist
+function confirmDeletePicklist(picklistId) {
+    if (confirm(`WARNING: Are you sure you want to delete picklist ${picklistId}?\n\nThis will PERMANENTLY DELETE the picklist and all associated orders from the database.\n\nThis action cannot be undone.`)) {
+        deletePicklist(picklistId);
+    }
+}
+
+function deletePicklist(picklistId) {
+    fetch(`${baseApiUrl}/picklists/${picklistId}/delete-picklist/`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to delete picklist');
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert(data.message);
+        
+        // Refresh the picklists
+        const activeTab = document.querySelector('.tab.active');
+        if (activeTab) {
+            const status = activeTab.dataset.status;
+            if (status === 'Pick') {
+                displayPicklists();
+            } else if (status === 'Pack') {
+                displayPackingPicklists();
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting picklist:', error);
+        alert('Error: ' + error.message);
+    });
+}
+
+// Update displayPackingPicklists to also include bulk delete functionality
+function displayPackingPicklists() {
+    fetch(`${baseApiUrl}/picklists/`)
+        .then(response => response.json())
+        .then(data => {
+            const contentDiv = document.getElementById('status-content');
+            
+            // Filter picklists to show only those with PACKING status
+            const packingPicklists = data.filter(p => p.status === 'PACKING');
+            
+            if (packingPicklists.length === 0) {
+                contentDiv.innerHTML = `
+                    <div class="card">
+                        <p class="text-center">No picklists available for packing</p>
+                        <p class="text-center"><a href="/pack-stage/" class="btn btn-primary">Go to Packing Interface</a></p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = `
+                <div class="picklist-header">
+                    <h3>Picklists Ready for Packing</h3>
+                    <div>
+                        <a href="/pack-stage/" class="btn btn-primary">Go to Packing Interface</a>
+                        <button id="bulk-delete-btn" class="btn btn-danger" onclick="bulkDeletePicklists('Pack')">Delete Selected</button>
+                    </div>
+                </div>
+                <table class="status-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;"><input type="checkbox" id="select-all-picklists"></th>
+                            <th>Picklist ID</th>
+                            <th>Type</th>
+                            <th>Qty</th>
+                            <th>Platform</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="packing-picklist-table-body">
+            `;
+            
+            packingPicklists.forEach(picklist => {
+                html += `
+                    <tr>
+                        <td><input type="checkbox" class="picklist-checkbox" value="${picklist.picklist_id}"></td>
+                        <td>
+                            <a href="/picklist-details/${picklist.picklist_id}/" class="picklist-link">
+                                ${picklist.picklist_id}
+                            </a>
+                        </td>
+                        <td>${picklist.picklist_type}</td>
+                        <td>${picklist.quantity}</td>
+                        <td>${picklist.platform}</td>
+                        <td>
+                            <span class="status-badge status-packing">
+                                ${picklist.status}
+                            </span>
+                        </td>
+                        <td>${formatDate(picklist.created_at)}</td>
+                        <td>
+                            <button class="btn btn-primary" onclick="startPacking('${picklist.picklist_id}')">
+                                Pack Now
+                            </button>
+                            <button class="btn btn-danger" onclick="confirmDeletePicklist('${picklist.picklist_id}')">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            
+            contentDiv.innerHTML = html;
+            
+            // Add select all functionality
+            const selectAllCheckbox = document.getElementById('select-all-picklists');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.addEventListener('change', function() {
+                    const checkboxes = document.querySelectorAll('.picklist-checkbox');
+                    checkboxes.forEach(checkbox => {
+                        checkbox.checked = this.checked;
+                    });
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching packing picklists:', error);
+            document.getElementById('status-content').innerHTML = `
+                <div class="card">
+                    <p class="text-center">Error loading picklists. Please refresh.</p>
+                </div>
+            `;
+        });
+}
+
+// Update the displayPicklists function to show all types of picklists and add bulk delete functionality
+function displayPicklists() {
     fetch(`${baseApiUrl}/picklists/`)
         .then(response => response.json())
         .then(data => {
@@ -1450,52 +1826,60 @@ function updateSkuLimit(platformId) {
                 return new Date(b.created_at) - new Date(a.created_at);
             });
             
-            // Filter picklists
-            const filteredPicklists = data.filter(p => 
-                p.status === 'CREATED' || p.status === 'PRINTED'
+            // Filter picklists that are not COMPLETED
+            const activePicklists = data.filter(p => 
+                p.status === 'CREATED' || p.status === 'PRINTED' || p.status === 'PACKING'
             );
             
-            if (filteredPicklists.length === 0) {
-                contentDiv.innerHTML = '<div class="card"><p class="text-center">No picklists available for picking</p></div>';
+            if (activePicklists.length === 0) {
+                contentDiv.innerHTML = '<div class="card"><p class="text-center">No picklists available</p></div>';
                 return;
             }
             
-            // Create a basic table structure without custom styles
+            // Create HTML with bulk delete functionality
             let html = `
                 <div class="picklist-header">
                     <h3>Picklists</h3>
+                    <button id="bulk-delete-btn" class="btn btn-danger" onclick="bulkDeletePicklists('Pick')">Delete Selected</button>
                 </div>
-                <table class="status-table" style="width: 100%; border-collapse: collapse;">
+                <table class="status-table">
                     <thead>
                         <tr>
-                            <th style="width: 20%; text-align: left; padding: 12px; border-bottom: 2px solid #ddd;">Picklist ID</th>
-                            <th style="width: 20%; text-align: left; padding: 12px; border-bottom: 2px solid #ddd;">Type of Picklist</th>
-                            <th style="width: 20%; text-align: center; padding: 12px; border-bottom: 2px solid #ddd;">Qty of Picklist</th>
-                            <th style="width: 20%; text-align: left; padding: 12px; border-bottom: 2px solid #ddd;">Platform</th>
-                            <th style="width: 20%; text-align: center; padding: 12px; border-bottom: 2px solid #ddd;">Status</th>
+                            <th style="width: 40px;"><input type="checkbox" id="select-all-picklists"></th>
+                            <th>Picklist ID</th>
+                            <th>Type</th>
+                            <th>Qty</th>
+                            <th>Platform</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="picklist-table-body">
             `;
             
-            filteredPicklists.forEach(picklist => {
+            activePicklists.forEach(picklist => {
                 const statusClass = `status-${picklist.status.toLowerCase()}`;
-                const rowStyle = picklist.status === 'PRINTED' ? 'background-color: #f9f9f9;' : '';
                 
                 html += `
-                    <tr style="${rowStyle}">
-                        <td style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">
-                            <a href="javascript:void(0)" onclick="redirectToPicklistDetails('${picklist.picklist_id}')" class="picklist-link">
+                    <tr class="${picklist.status.toLowerCase()}-row">
+                        <td><input type="checkbox" class="picklist-checkbox" value="${picklist.picklist_id}"></td>
+                        <td>
+                            <a href="/picklist-details/${picklist.picklist_id}/" class="picklist-link">
                                 ${picklist.picklist_id}
                             </a>
                         </td>
-                        <td style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">${picklist.picklist_type}</td>
-                        <td style="padding: 12px; text-align: center; border-bottom: 1px solid #ddd;">${picklist.quantity}</td>
-                        <td style="padding: 12px; text-align: left; border-bottom: 1px solid #ddd;">${picklist.platform}</td>
-                        <td style="padding: 12px; text-align: center; border-bottom: 1px solid #ddd;">
-                            <span class="status-badge ${statusClass}" style="display: inline-block; padding: 6px 12px; border-radius: 4px; font-weight: bold; min-width: 80px;">
+                        <td>${picklist.picklist_type}</td>
+                        <td>${picklist.quantity}</td>
+                        <td>${picklist.platform}</td>
+                        <td>
+                            <span class="status-badge ${statusClass}">
                                 ${picklist.status}
                             </span>
+                        </td>
+                        <td>${formatDate(picklist.created_at)}</td>
+                        <td>
+                            <button class="btn btn-danger" onclick="confirmDeletePicklist('${picklist.picklist_id}')">Delete</button>
                         </td>
                     </tr>
                 `;
@@ -1507,12 +1891,24 @@ function updateSkuLimit(platformId) {
             `;
             
             contentDiv.innerHTML = html;
+            
+            // Add select all functionality
+            const selectAllCheckbox = document.getElementById('select-all-picklists');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.addEventListener('change', function() {
+                    const checkboxes = document.querySelectorAll('.picklist-checkbox');
+                    checkboxes.forEach(checkbox => {
+                        checkbox.checked = this.checked;
+                    });
+                });
+            }
         })
         .catch(error => {
             console.error('Error fetching picklists:', error);
             document.getElementById('status-content').innerHTML = '<div class="card"><p class="text-center">Error loading picklists. Please refresh.</p></div>';
         });
 }
+
 function displayOrders(data, orderType) {
     console.log("Displaying orders:", data);  // Add this debug log
     
@@ -1649,6 +2045,343 @@ function displayOrders(data, orderType) {
                   }
               });
           });
+
+  function displayDispatchPicklists() {
+    // Show loading indicator
+    const contentDiv = document.getElementById('status-content');
+    contentDiv.innerHTML = '<div class="card"><p class="text-center">Loading dispatch picklists...</p></div>';
+    
+    console.log("Fetching dispatch picklists...");
+    
+    fetch(`${baseApiUrl}/picklists/dispatch/`)
+        .then(response => {
+            console.log("Dispatch API response status:", response.status);
+            if (!response.ok) {
+                return response.text().then(text => {
+                    console.error("Error response:", text);
+                    throw new Error(`Error fetching dispatch picklists: ${response.status} ${response.statusText}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Dispatch picklists data:", data);
+            
+            if (!data.picklists || data.picklists.length === 0) {
+                contentDiv.innerHTML = '<div class="card"><p class="text-center">No picklists with dispatch orders available</p></div>';
+                return;
+            }
+            
+            let html = `
+                <div class="picklist-header">
+                    <h3>Picklists with Orders in Dispatch (${data.picklists.length})</h3>
+                </div>
+                <table class="status-table">
+                    <thead>
+                        <tr>
+                            <th>Picklist ID</th>
+                            <th>Type</th>
+                            <th>Platform</th>
+                            <th>Total Orders</th>
+                            <th>Dispatch Orders</th>
+                            <th>Progress</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dispatch-picklist-table-body">
+            `;
+            
+            data.picklists.forEach(picklist => {
+                const dispatchPercentage = Math.round((picklist.dispatch_orders / picklist.total_orders) * 100) || 0;
+                let statusBadgeClass = '';
+                
+                if (dispatchPercentage === 100) {
+                    statusBadgeClass = 'status-completed';
+                } else if (dispatchPercentage > 50) {
+                    statusBadgeClass = 'status-packing';
+                } else {
+                    statusBadgeClass = 'status-printed';
+                }
+                
+                html += `
+                    <tr>
+                        <td>
+                            <a href="javascript:void(0)" onclick="viewDispatchPicklistDetails('${picklist.picklist_id}')" class="picklist-link">
+                                ${picklist.picklist_id}
+                            </a>
+                        </td>
+                        <td>${picklist.picklist_type || 'N/A'}</td>
+                        <td>${picklist.platform || 'N/A'}</td>
+                        <td>${picklist.total_orders || 0}</td>
+                        <td>${picklist.dispatch_orders || 0}</td>
+                        <td>
+                            <div class="dispatch-progress">
+                                <div class="dispatch-progress-bar" style="width: ${dispatchPercentage}%"></div>
+                            </div>
+                            <span class="status-badge ${statusBadgeClass}">
+                                ${dispatchPercentage}% Dispatched
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-primary" onclick="viewDispatchPicklistDetails('${picklist.picklist_id}')">
+                                View Details
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            
+            contentDiv.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error fetching dispatch picklists:', error);
+            contentDiv.innerHTML = `
+                <div class="card">
+                    <p class="text-center">Error loading picklists: ${error.message}</p>
+                    <p class="text-center">
+                        <button onclick="displayDispatchPicklists()" class="btn btn-primary">Try Again</button>
+                    </p>
+                </div>
+            `;
+        });
+}
+function viewDispatchPicklistDetails(picklistId) {
+    console.log(`Fetching dispatch details for picklist: ${picklistId}`);
+    
+    fetch(`${baseApiUrl}/picklists/${picklistId}/dispatch-orders/`)
+        .then(response => {
+            console.log("Dispatch details response status:", response.status);
+            if (!response.ok) {
+                return response.text().then(text => {
+                    console.error("Error response:", text);
+                    throw new Error(`Error fetching dispatch details: ${response.status} ${response.statusText}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Dispatch details data:", data);
+            
+            // Populate the picklist modal
+            document.getElementById('picklistModalTitle').textContent = `Dispatch Orders - Picklist ${picklistId}`;
+            document.getElementById('picklistPlatform').textContent = data.platform || 'Unknown';
+            
+            const dispatchPercentage = data.dispatch_percentage || 
+                (data.total_orders > 0 ? Math.round((data.dispatch_orders / data.total_orders) * 100) : 0);
+            
+            document.getElementById('picklistStatus').textContent = `${dispatchPercentage}% in Dispatch`;
+            document.getElementById('picklistTotalItems').textContent = `${data.dispatch_orders || 0} of ${data.total_orders || 0}`;
+            document.getElementById('picklistCreatedAt').textContent = data.created_at || 'Unknown';
+            
+            // Update the table header - remove the Actions column as per requirement
+            const tableContainer = document.getElementById('picklistTableContainer');
+            tableContainer.innerHTML = `
+                <table class="order-table">
+                    <thead>
+                        <tr>
+                            <th>Order Number</th>
+                            <th>SKU</th>
+                            <th>Quantity</th>
+                            <th>AWB</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="picklistTableBody">
+                    </tbody>
+                </table>
+            `;
+            
+            const tableBody = document.getElementById('picklistTableBody');
+            tableBody.innerHTML = '';
+            
+            // Check if orders array exists and has items
+            if (!data.orders || data.orders.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center">No orders found for this picklist</td></tr>';
+            } else {
+                // Sort orders: Dispatch status first, then others
+                const sortedOrders = [...data.orders].sort((a, b) => {
+                    if (a.status === 'Dispatch' && b.status !== 'Dispatch') return -1;
+                    if (a.status !== 'Dispatch' && b.status === 'Dispatch') return 1;
+                    return 0;
+                });
+                
+                // Create rows for each order
+                sortedOrders.forEach(order => {
+                    const row = document.createElement('tr');
+                    
+                    // Highlight dispatch orders
+                    if (order.status === 'Dispatch') {
+                        row.classList.add('dispatch-row');
+                    }
+                    
+                    let statusBadgeClass = '';
+                    if (order.status === 'Dispatch') {
+                        statusBadgeClass = 'status-completed';
+                    } else if (order.status === 'Pack') {
+                        statusBadgeClass = 'status-packing';
+                    } else {
+                        statusBadgeClass = 'status-printed';
+                    }
+                    
+                    row.innerHTML = `
+                        <td>${order.order_number || 'N/A'}</td>
+                        <td>${order.sku || 'N/A'}</td>
+                        <td>${order.quantity || 0}</td>
+                        <td>${order.awb || 'N/A'}</td>
+                        <td><span class="status-badge ${statusBadgeClass}">${order.status || 'Unknown'}</span></td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+            
+            // Configure buttons based on dispatch status
+            const actionBtn = document.getElementById('picklistActionBtn');
+            const printBtn = document.getElementById('printPicklistBtn');
+            const packingBtn = document.getElementById('moveToPackingBtn');
+            
+            // Hide all buttons as we don't need actions in this view
+            actionBtn.style.display = 'none';
+            printBtn.style.display = 'none';
+            packingBtn.style.display = 'none';
+            
+            // Show the modal
+            document.getElementById('picklistModal').style.display = 'block';
+        })
+        .catch(error => {
+            console.error('Error fetching picklist dispatch details:', error);
+            alert('Error loading picklist dispatch details: ' + error.message);
+        });
+}
+// Function to mark individual order as dispatched
+function markAsDispatched(picklistId, orderNumber) {
+    markOrdersAsDispatched(picklistId, [orderNumber]);
+}
+
+// Function to mark multiple orders as dispatched
+function markOrdersAsDispatched(picklistId, orderNumbers) {
+    fetch(`${baseApiUrl}/picklists/${picklistId}/mark-dispatched/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            order_numbers: orderNumbers
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert(data.message);
+        // Refresh the picklist details
+        viewDispatchPicklistDetails(picklistId);
+        // Refresh the picklists list
+        displayDispatchPicklists();
+    })
+    .catch(error => {
+        console.error('Error marking orders as dispatched:', error);
+        alert('Error updating dispatch status. Please try again.');
+    });
+}
+
+// Add CSS for dispatch status
+document.addEventListener('DOMContentLoaded', function() {
+    // Create a style element
+    const style = document.createElement('style');
+    
+    // Add our enhanced styles for dispatch display
+    style.textContent = `
+        /* Enhanced dispatch row styling */
+        .dispatch-row {
+            background-color: #d1e7dd;
+            border-left: 4px solid #20c997;
+            transition: background-color 0.3s ease;
+        }
+        
+        .dispatch-row:hover {
+            background-color: #b7dfce;
+        }
+        
+        /* Progress bar styling */
+        .dispatch-progress {
+            height: 10px;
+            border-radius: 20px;
+            background-color: #e9ecef;
+            overflow: hidden;
+            margin: 5px 0;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        .dispatch-progress-bar {
+            height: 100%;
+            background: linear-gradient(to right, #20c997, #38ef7d);
+            transition: width 0.5s ease;
+            box-shadow: 0 0 5px rgba(56, 239, 125, 0.5);
+        }
+        
+        /* Make the status badge more noticeable */
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            text-align: center;
+            min-width: 100px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        /* Improve modal styles */
+        .modal-content {
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .picklist-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 5px solid #20c997;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        /* AWB cell styling */
+        .order-table td:nth-child(4) {
+            font-family: monospace;
+            letter-spacing: 0.5px;
+            font-weight: 500;
+        }
+        
+        /* View Details button */
+        .btn-primary {
+            background-color: #20c997;
+            border-color: #20c997;
+        }
+        
+        .btn-primary:hover {
+            background-color: #1ba385;
+            border-color: #1ba385;
+        }
+        
+        /* Better spacing in table */
+        .order-table th,
+        .order-table td {
+            padding: 12px 15px;
+            vertical-align: middle;
+        }
+    `;
+    
+    // Add the style element to the document head
+    document.head.appendChild(style);
+});
 
         // Function to display orders in modal
         function displayCompletedPicklists() {
@@ -1927,7 +2660,7 @@ function displayOrders(data, orderType) {
                         displayPackingPicklists();
                         break;
                     case 'Dispatch':
-                        displayCompletedPicklists();
+                        displayDispatchPicklists();
                         break;
                     default:
                         // If we're not on a picklist-related tab, do nothing
@@ -1949,7 +2682,7 @@ function displayOrders(data, orderType) {
                 displayPackingPicklists();
                 return;
             } else if (status === 'Dispatch') {
-                displayCompletedPicklists();
+              displayDispatchPicklists();
                 return;
             }
             
@@ -1964,7 +2697,6 @@ function displayOrders(data, orderType) {
                         <thead>
                             <tr>
                                 <th>Platform</th>
-                                <th>Order Types</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -2206,30 +2938,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize the tab functionality
     document.querySelectorAll('.tab').forEach(tab => {
-        tab.addEventListener('click', function() {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-            currentStatus = this.dataset.status;
-            
-            switch(currentStatus) {
-                case 'Ready to Process':
-                    updateOrderStatusTable(currentStatus);
-                    break;
-                case 'Pick':
-                    displayPicklists();
-                    break;
-                case 'Pack':
-                    displayPackingPicklists();
-                    break;
-                case 'Dispatch':
-                    displayCompletedPicklists();
-                    break;
-                default:
-                    updateOrderStatusTable(currentStatus);
-                    break;
-            }
-        });
+    tab.addEventListener('click', function() {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        currentStatus = this.dataset.status;
+        
+        switch(currentStatus) {
+            case 'Ready to Process':
+                updateOrderStatusTable(currentStatus);
+                break;
+            case 'Pick':
+                displayPicklists();
+                break;
+            case 'Pack':
+                displayPackingPicklists();
+                break;
+            case 'Dispatch':
+                displayDispatchPicklists();
+                break;
+            default:
+                updateOrderStatusTable(currentStatus);
+                break;
+        }
     });
+});
     
     // Initialize with the currently active tab
     const activeTab = document.querySelector('.tab.active');

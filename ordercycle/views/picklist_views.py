@@ -8,7 +8,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from ..models import (
-    Picklist, PicklistItem, PicklistItemLocation, Picker, MasterTable
+    Picklist, PicklistItem, PicklistItemLocation, Picker, MasterTable,AmazonOrders,FlipkarOrders,FirstcryOrders,MeeshoOrders
 )
 
 class PicklistViewSet(ViewSet):
@@ -453,3 +453,144 @@ class PicklistViewSet(ViewSet):
                 'status': 'error',
                 'message': 'Picklist not found'
             }, status=404)
+        
+    @action(detail=True, methods=['delete'])
+    def delete_picklist(self, request, pk=None):
+        """
+        Delete a picklist and all its associated orders from the database
+        """
+        try:
+            picklist = get_object_or_404(Picklist, picklist_id=pk)
+            
+            # Get all items in the picklist
+            picklist_items = PicklistItem.objects.filter(picklist=picklist)
+            
+            # Get distinct order numbers and platform from the items
+            order_numbers = list(picklist_items.values_list('order_number', flat=True).distinct())
+            platform = picklist.platform
+            
+            # Delete orders from the appropriate platform table
+            model_mapping = {
+                'AMAZON': AmazonOrders,
+                'FLIPKART': FlipkarOrders,
+                'FIRSTCRY': FirstcryOrders,
+                'MEESHO': MeeshoOrders
+            }
+            
+            if platform in model_mapping:
+                # Get the appropriate model
+                order_model = model_mapping[platform]
+                
+                # Delete orders that match the order numbers in this picklist
+                deleted_orders_count = order_model.objects.filter(
+                    order_number__in=order_numbers,
+                    status='Pick'  # Only delete orders that are in 'Pick' status (part of this picklist)
+                ).delete()[0]
+            else:
+                deleted_orders_count = 0
+            
+            # Delete all picklist item locations
+            PicklistItemLocation.objects.filter(picklist_item__in=picklist_items).delete()
+            
+            # Delete all picklist items
+            picklist_items.delete()
+            
+            # Delete the picklist itself
+            picklist.delete()
+            
+            return Response({
+                'status': 'success',
+                'message': f'Picklist {pk} and all its items deleted successfully. {deleted_orders_count} orders were also deleted.'
+            })
+        
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            
+            return Response({
+                'status': 'error',
+                'message': f'Error deleting picklist: {str(e)}'
+            }, status=500)
+        
+    @action(detail=False, methods=['post'])
+    def delete_picklists(self, request):
+        """
+        Delete multiple picklists and their associated orders in bulk
+        """
+        try:
+            picklist_ids = request.data.get('picklist_ids', [])
+            
+            if not picklist_ids:
+                return Response({
+                    'status': 'error',
+                    'message': 'No picklist IDs provided'
+                }, status=400)
+            
+            picklists_deleted = 0
+            orders_deleted = 0
+            
+            for picklist_id in picklist_ids:
+                try:
+                    picklist = Picklist.objects.get(picklist_id=picklist_id)
+                    
+                    # Get all items in the picklist
+                    picklist_items = PicklistItem.objects.filter(picklist=picklist)
+                    
+                    # Get distinct order numbers and platform from the items
+                    order_numbers = list(picklist_items.values_list('order_number', flat=True).distinct())
+                    platform = picklist.platform
+                    
+                    # Delete orders from the appropriate platform table
+                    model_mapping = {
+                        'AMAZON': AmazonOrders,
+                        'FLIPKART': FlipkarOrders,
+                        'FIRSTCRY': FirstcryOrders,
+                        'MEESHO': MeeshoOrders
+                    }
+                    
+                    if platform in model_mapping:
+                        # Get the appropriate model
+                        order_model = model_mapping[platform]
+                        
+                        # Delete orders that match the order numbers in this picklist
+                        deleted_count = order_model.objects.filter(
+                            order_number__in=order_numbers,
+                            status='Pick'  # Only delete orders that are in 'Pick' status (part of this picklist)
+                        ).delete()[0]
+                        
+                        orders_deleted += deleted_count
+                    
+                    # Delete all picklist item locations
+                    PicklistItemLocation.objects.filter(picklist_item__in=picklist_items).delete()
+                    
+                    # Delete all picklist items
+                    picklist_items.delete()
+                    
+                    # Delete the picklist itself
+                    picklist.delete()
+                    
+                    picklists_deleted += 1
+                    
+                except Picklist.DoesNotExist:
+                    # Skip non-existent picklists
+                    continue
+            
+            if picklists_deleted == 0:
+                return Response({
+                    'status': 'warning',
+                    'message': 'No picklists were found to delete'
+                })
+            
+            return Response({
+                'status': 'success',
+                'message': f'Successfully deleted {picklists_deleted} picklists and {orders_deleted} associated orders'
+            })
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            
+            return Response({
+                'status': 'error',
+                'message': f'Error deleting picklists: {str(e)}'
+            }, status=500)
