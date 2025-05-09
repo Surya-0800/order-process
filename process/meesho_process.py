@@ -13,7 +13,8 @@ def extract_text_with_fitz(input_pdf, page_num, read_all = False):
         data_dict = {}
         page = doc[page_num]
         text = page.get_text("text")
-        awb = re.search(r"(\S{15})\s*Product Details", text.replace("\n","", re.IGNORECASE))
+        awb = awb = re.search(r"(?:\n)([^\n]*)(?=\nProduct\s*Details)", text)
+        print(awb.group(1))
         match = re.search(r"Product Details\n(.*?)\nTAX INVOICE", text, re.DOTALL)
         purchase_order_no = re.findall(r"Purchase Order No.(.*?)Invoice", text.replace("\n",""), re.IGNORECASE)
         # if purchase_order_no:

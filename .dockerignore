@@ -1,0 +1,66 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environment
+venv/
+ENV/
+env/
+.venv/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local development settings
+local_settings.py
+
+# Media and static files (these will be mounted as volumes)
+/media/
+/staticfiles/
+
+# Database files
+*.sqlite3
+*.db
+
+# Docker files (to prevent recursion)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Environment variables
+.env
+.env.*
+
+# Documentation
+README.md
+docs/
+
+# Test files
+test/
+tests/
