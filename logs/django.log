@@ -1,1 +1,4 @@
 INFO 2025-05-09 14:05:08,177 autoreload Watching for file changes with StatReloader
+WARNING 2025-05-10 02:10:42,285 log Not Found: /api/pdfs/
+WARNING 2025-05-10 02:10:42,326 log Not Found: /favicon.ico
+WARNING 2025-05-10 02:22:15,282 log Not Found: /api/pdfs/

@@ -18,3 +18,9 @@ numpy>=1.24.0
 python-dotenv>=1.0.0
 gunicorn>=21.2.0
 whitenoise>=6.4.0
+
+camelot-py>=0.10.1
+opencv-python-headless>=4.7.0
+tabula-py>=2.7.0
+ghostscript>=0.7
+PyPDF2
