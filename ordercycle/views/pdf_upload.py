@@ -186,22 +186,22 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
             # The last element contains output_pdf_location
             pdf_info = order_data[-1]
             pdf_url = pdf_info.get('output_pdf_location', '')
-            
             for item in items:
-                qty = int(item["Qty"])
-                if qty > 1:
-                    order_type = "Multiple"
-                if not FirstcryOrders.objects.filter(order_number=order_number, sku=item['sku'].replace("\n", "")).exists():
-                  FirstcryOrders.objects.create(
-                      order_number=order_number,
-                      order_type=order_type,
-                      sku=item['sku'].replace("\n", ""),
-                      quantity=qty,
-                      pdf_url=pdf_url,
-                      AWB = item["AWB"]
+                  qty = int(item["Qty"])
+                  if qty > 1:
+                      order_type = "Multiple"
+                  if not FirstcryOrders.objects.filter(order_number=order_number, sku=item['sku'].replace("\n", "")).exists():
+                    FirstcryOrders.objects.create(
+                        order_number=order_number,
+                        order_type=order_type,
+                        sku=item['sku'].replace("\n", ""),
+                        quantity=qty,
+                        pdf_url=pdf_url,
+                        AWB = item["shipment_id"]
 
-                  )
-                  results['firstcry_processed'] += 1
+                    )
+                    results['firstcry_processed'] += 1
+                    print(results['firstcry_processed'])
     
     def _process_amazon_pdf(self, pdf_path, data_path, media_root, results):
         """Process Amazon PDFs and create order records."""
