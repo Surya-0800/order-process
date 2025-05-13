@@ -85,7 +85,7 @@ def extract_text_with_camelot(pdf_path, page_number):
       return {} 
 
 
-def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio=0.4):
+def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio=0.46):
     """
     Splits a PDF page into two parts based on a custom split ratio.
     
@@ -109,10 +109,10 @@ def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio=0.4)
             page = doc[page_num]  # Get current page
             rect = page.rect  # Get original page size
             top_height = rect.height * top_ratio  # Calculate top section height
-            bottom_height = rect.height - top_height  # Remaining height for the bottom section
+            bottom_height = rect.height +1 - top_height  # Remaining height for the bottom section
 
             # --- Create Top Part (Custom Height) ---
-            top_rect = fitz.Rect(0, 0, rect.width, top_height)
+            top_rect = fitz.Rect(0, 0, rect.width, top_height-3)
             top_page = new_doc.new_page(width=rect.width, height=top_height)
             top_page.show_pdf_page(top_page.rect, doc, page_num, clip=top_rect)
 
