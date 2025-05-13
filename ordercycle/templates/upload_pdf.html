@@ -1146,7 +1146,7 @@
 
       formData.append('file', file);
 
-      fetch('http://localhost:8000/api/pdfs/', {
+      fetch(`${baseApiUrl}/pdfs/`, {
         method: 'POST',
         body: formData
       })
@@ -1164,7 +1164,7 @@
 
     // Function to fetch PDFs
     function fetchPDFs() {
-      fetch('http://localhost:8000/api/pdfs/')
+      fetch(`${baseApiUrl}/pdfs/`)
         .then(response => response.json())
         .then(data => {
           let list = document.getElementById('pdf-list');
@@ -1201,7 +1201,7 @@
       const loadingIndicator = document.getElementById('loading-indicator');
       loadingIndicator.style.display = 'inline-block';
 
-      fetch('http://localhost:8000/api/read-pdfs/')
+      fetch(`${baseApiUrl}/read-pdfs/`)
         .then(response => response.json())
         .then(data => {
           loadingIndicator.style.display = 'none';
@@ -1413,7 +1413,7 @@
         console.log(`Processing ${orderType} orders from endpoint: ${endpoint}`);
 
         // Don't limit the orders in the fetch, get all available orders
-        fetch(`http://localhost:8000/api/${endpoint}/?platform=${platform}&status=${status}`)
+        fetch(`${baseApiUrl}/${endpoint}/?platform=${platform}&status=${status}`)
           .then(response => {
             if (!response.ok) {
               throw new Error(`Error fetching ${orderType} orders: ${response.status} ${response.statusText}`);
