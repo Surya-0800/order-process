@@ -14,7 +14,7 @@ from django.views.decorators.http import require_http_methods
 from ..models import (
     Picklist, PicklistItem, PicklistItemLocation, MasterTable,
     AmazonOrders, FlipkarOrders, FirstcryOrders, MeeshoOrders,
-    UserProfile,PicklistDispatchStatus
+    UserProfile,PicklistDispatchStatus,ImageUpload
 )
 
 
@@ -277,10 +277,13 @@ def get_picklist_barcode(request, picklist_id):
             'message': 'Picklist not found'
         }, status=404)
 
-
 @require_http_methods(["GET"])
 def get_product_image_by_sku(request):
     """API endpoint to get product image URL and other details by SKU"""
+    from django.conf import settings
+    from django.http import HttpResponse
+    import base64
+    
     sku = request.GET.get('sku')
     
     if not sku:
@@ -290,38 +293,77 @@ def get_product_image_by_sku(request):
         # Query the database for a product with this SKU
         product = MasterTable.objects.filter(sku=sku).first()
         
-        if not product:
-            # If no product is found, return default values
-            return JsonResponse({
-                'sku': sku,
-                'image_url': f"ASINWISEIMAGES/{sku}.jpg",
-                'product_name': f"Product (SKU: {sku})",
-                'product_id': '',
-                'location': 'Unknown',
-                'box_no': '',
-                'mrp': None,
-                'generic_name': f"Product (SKU: {sku})",
-                'pack_check': '',
-                'pack_remarks': ''
-            })
+        # Initialize variables
+        product_id = ''
+        image_data = None
+        content_type = None
         
-        # Return all the requested fields
-        return JsonResponse({
-            'sku': product.sku,
-            'image_url': product.image_url,
-            'product_id': product.product_id or '',
-            'location': product.location or 'Unknown',
-            'box_no': product.box_no or '',
-            'mrp': float(product.mrp) if product.mrp is not None else None,
-            'generic_name': product.generic_name or f"Product (SKU: {sku})",
-            'pack_check': product.pack_check or '',
-            'pack_remarks': product.pack_remarks or ''
-        })
+        if product:
+            product_id = product.product_id or ''
+            
+            # Extract filename from the product's image_url (if available)
+            if product.image_url:
+                # Handle different formats: could be "ASINWISEIMAGES/B0CM5Z6HJG.jpg" or just "B0CM5Z6HJG.jpg"
+                image_filename = os.path.basename(product.image_url)
+            else:
+                # If no image_url in product, try to use product_id as the filename
+                image_filename = f"{product_id}.jpg" if product_id else f"{sku}.jpg"
+        else:
+            # If product not found, use SKU as filename
+            image_filename = f"{sku}.jpg"
+        # Check if image exists in database by filename
+        image_upload = ImageUpload.objects.filter(file_name=image_filename).first()
+        
+        # If not found, try with product_id as filename
+        if not image_upload and product_id:
+            image_upload = ImageUpload.objects.filter(file_name=f"{product_id}.jpg").first()
+            
+        # If still not found, try with SKU as filename
+        if not image_upload:
+            image_upload = ImageUpload.objects.filter(file_name=f"{sku}.jpg").first()
+        
+        # Set image data and content type if found
+        if image_upload:
+            image_data = image_upload.image
+            content_type = image_upload.content_type
+            
+            # Convert binary data to base64 string for JSON response
+            image_base64 = base64.b64encode(image_data).decode('utf-8')
+            image_url = f"data:{content_type};base64,{image_base64}"
+        else:
+            # Use "NO PICTURE.jpg" as fallback
+            default_image_path = os.path.join(settings.STATIC_ROOT, 'images', 'NO PICTURE.jpg')
+            try:
+                with open(default_image_path, 'rb') as f:
+                    default_image_data = f.read()
+                    # Convert binary data to base64 string for JSON response
+                    image_base64 = base64.b64encode(default_image_data).decode('utf-8')
+                    image_url = f"data:image/jpeg;base64,{image_base64}"
+            except FileNotFoundError:
+                # If default image file doesn't exist, fall back to static URL
+                image_url = f"{settings.STATIC_URL}images/no_image_found.jpg"
+        
+        # Prepare and return product details with image URL
+        response_data = {
+            'sku': sku,
+            'image_url': image_url,
+            'product_id': product_id,
+            'location': product.location if product else 'Unknown',
+            'box_no': product.box_no or '' if product else '',
+            'mrp': float(product.mrp) if product and product.mrp is not None else None,
+            'generic_name': product.generic_name or f"Product (SKU: {sku})" if product else f"Product (SKU: {sku})",
+            'pack_check': product.pack_check or '' if product else '',
+            'pack_remarks': product.pack_remarks or '' if product else ''
+        }
+        
+        return JsonResponse(response_data)
         
     except Exception as e:
         print(f"Error retrieving product data: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'error': f'Error retrieving product data: {str(e)}'}, status=500)
-   
+
 @require_http_methods(["POST"])
 def save_awb_and_dispatch(request):
     """

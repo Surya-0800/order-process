@@ -22,14 +22,35 @@ from .views.location_views import (
    LocationOrdersViewSet
 )
 
+from .views.proudct_images import (
+    ImageUploadViewSet, 
+    upload_image_view, 
+    upload_multiple_images  
+)
+
 from .views.picklist_views import PicklistViewSet
 
 from .views import dispatch_views as views
+from .views.base import image_processor_view
 
 urlpatterns = [
     # Base views
     path('', home, name='home'),
     path('location-orders/', location_orders_view, name='location_orders'),
+
+    # Add these URL patterns to your urlpatterns list
+    path('image-upload/', upload_image_view, name='image_upload'),  # Template view for the image upload page
+
+    # API endpoints for image uploads
+    path('api/images/upload-multiple/', upload_multiple_images, name='upload_multiple_images'),
+
+    # Additional image API endpoints if not already present
+    path('api/images/', ImageUploadViewSet.as_view({'get': 'list', 'post': 'create'}), name='image-list'),
+    path('api/images/<uuid:pk>/', ImageUploadViewSet.as_view({'get': 'retrieve', 'delete': 'destroy'}), name='image-detail'),
+    path('api/images/<uuid:pk>/download/', ImageUploadViewSet.as_view({'get': 'download'}), name='image-download'),
+
+    # If you want to process a whole folder at once (optional)
+    path('api/images/process-folder/', ImageUploadViewSet.as_view({'post': 'process_folder'}), name='process-folder'),
 
     path('api/location-counts/', LocationOrdersViewSet.as_view({'get': 'location_counts'})),
     path('api/orders-by-location/', LocationOrdersViewSet.as_view({'get': 'orders_by_location'}), name='orders_by_location'),

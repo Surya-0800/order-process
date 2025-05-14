@@ -231,3 +231,26 @@ class PicklistDispatchStatus(models.Model):
         
         self.save()
         return self.is_fully_dispatched
+    
+import uuid
+class ImageUpload(models.Model):
+    """
+    Model for storing uploaded images in PostgreSQL database.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=255, blank=True)
+    file_name = models.CharField(max_length=255)
+    image = models.BinaryField()  # Store image as binary data in PostgreSQL
+    content_type = models.CharField(max_length=100)  # Store MIME type
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    # Optional: Add a field to link to a product if needed
+    # product = models.ForeignKey('Product', on_delete=models.CASCADE, null=True, blank=True)
+    
+    class Meta:
+        verbose_name = "Image Upload"
+        verbose_name_plural = "Image Uploads"
+        ordering = ['-uploaded_at']
+    
+    def __str__(self):
+        return self.file_name or str(self.id)

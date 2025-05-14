@@ -14,7 +14,6 @@ def extract_text_with_fitz(input_pdf, page_num, read_all = False):
         page = doc[page_num]
         text = page.get_text("text")
         awb = awb = re.search(r"(?:\n)([^\n]*)(?=\nProduct\s*Details)", text)
-        print(awb.group(1))
         match = re.search(r"Product Details\n(.*?)\nTAX INVOICE", text, re.DOTALL)
         purchase_order_no = re.findall(r"Purchase Order No.(.*?)Invoice", text.replace("\n",""), re.IGNORECASE)
         # if purchase_order_no:
@@ -416,7 +415,6 @@ def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio=0.4)
                 order_details = {} 
             output_pdf_path = os.path.join(output_folder, f"Order_{prev_awb}.pdf")
             order_pages[prev_awb].append({"output_pdf_location" : output_pdf_path})
-            print(prev_awb)
             # order_pages[orderid].append({"output_pdf_location" : output_pdf_path})
             new_doc.save(output_pdf_path)
         else:

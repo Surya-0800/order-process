@@ -8,6 +8,9 @@ def home(request):
     """View for the home page."""
     return render(request, 'upload_pdf.html')
 
+def image_processor_view(request):
+    return render(request, 'product_images.html')
+
 def location_orders_view(request):
     """View for the location-based order processing page."""
     return render(request, 'location_orders.html')

@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Image Uploader</title>
+  <style>
+    /* CSS for the image uploader */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+    }
+
+    .image-uploader-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .upload-section {
+      background-color: #ffffff;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 30px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    h2 {
+      color: #333;
+      margin-top: 0;
+      margin-bottom: 24px;
+    }
+
+    .upload-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .upload-btn {
+      background-color: #4a90e2;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 12px 20px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .upload-btn:hover {
+      background-color: #3a7bc8;
+    }
+
+    .upload-btn:disabled {
+      background-color: #b3cef2;
+      cursor: not-allowed;
+    }
+
+    .drop-zone {
+      border: 2px dashed #ccc;
+      border-radius: 6px;
+      padding: 30px;
+      text-align: center;
+      margin-bottom: 20px;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .drop-zone.active {
+      border-color: #4a90e2;
+      background-color: rgba(74, 144, 226, 0.05);
+    }
+
+    .file-input {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .file-label {
+      cursor: pointer;
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-message {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .upload-icon {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+
+    .drop-message p {
+      margin: 0;
+      color: #666;
+      font-size: 16px;
+    }
+
+    .title-input {
+      margin-bottom: 20px;
+    }
+
+    .title-input label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .title-input input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    .selected-files {
+      margin-bottom: 20px;
+    }
+
+    .selected-files h3 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .selected-files ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 10px;
+      background-color: #fff;
+      border: 1px solid #eee;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+
+    .file-name {
+      flex-grow: 1;
+      margin-right: 10px;
+      font-size: 14px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-size {
+      color: #888;
+      font-size: 12px;
+      margin-right: 10px;
+    }
+
+    .remove-btn {
+      background: none;
+      border: none;
+      color: #ff5252;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0 5px;
+    }
+
+    .error-message {
+      color: #ff5252;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    .success-message {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 25px;
+      border-radius: 5px;
+      color: white;
+      background-color: #4CAF50;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+      animation: fadeIn 0.3s, fadeOut 0.3s 2.7s;
+    }
+
+    .error-toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 25px;
+      border-radius: 5px;
+      color: white;
+      background-color: #F44336;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+      animation: fadeIn 0.3s, fadeOut 0.3s 2.7s;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .upload-bar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .upload-btn {
+        margin-top: 15px;
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .upload-section {
+        padding: 15px;
+      }
+      
+      .drop-zone {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="image-uploader-container">
+    <h2>Product Image Uploader</h2>
+    
+    <div class="upload-section">
+      <div class="upload-bar">
+        <h3>Upload Product Images</h3>
+        <button id="upload-btn" class="upload-btn" disabled>Upload Images</button>
+      </div>
+      
+      <div class="title-input" style="display: none;">
+        <label for="title-prefix">Title Prefix (optional):</label>
+        <input
+          type="text"
+          id="title-prefix"
+          placeholder="Common title for all uploads"
+        >
+      </div>
+      
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" id="file-input" multiple accept="image/*" class="file-input">
+        <label for="file-input" class="file-label">
+          <div class="drop-message">
+            <i class="upload-icon">📁</i>
+            <p>Drag & drop product images here or click to browse</p>
+          </div>
+        </label>
+      </div>
+      
+      <div class="selected-files" id="selected-files-container" style="display: none;">
+        <h3>Selected Files (<span id="file-count">0</span>)</h3>
+        <ul id="selected-files-list">
+          <!-- Files will be listed here -->
+        </ul>
+      </div>
+      
+      <div id="error-message" class="error-message" style="display: none;"></div>
+    </div>
+  </div>
+
+  <!-- Hidden input for CSRF token -->
+  <input type="hidden" id="csrf-token" name="csrfmiddlewaretoken" value="">
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Elements
+      const dropZone = document.getElementById('drop-zone');
+      const fileInput = document.getElementById('file-input');
+      const titlePrefixInput = document.getElementById('title-prefix');
+      const selectedFilesContainer = document.getElementById('selected-files-container');
+      const selectedFilesList = document.getElementById('selected-files-list');
+      const fileCountElement = document.getElementById('file-count');
+      const uploadBtn = document.getElementById('upload-btn');
+      const errorMessageElement = document.getElementById('error-message');
+      
+      // Get CSRF token
+      // For Django, you'll get this from cookies or it will be automatically added to the rendered page
+      const csrfToken = document.getElementById('csrf-token').value;
+      
+      // Store selected files
+      let selectedFiles = [];
+      
+      // Event Listeners
+      dropZone.addEventListener('dragover', handleDragOver);
+      dropZone.addEventListener('dragleave', handleDragLeave);
+      dropZone.addEventListener('drop', handleDrop);
+      fileInput.addEventListener('change', handleFileChange);
+      uploadBtn.addEventListener('click', handleUpload);
+      
+      // Functions
+      function handleDragOver(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.add('active');
+      }
+      
+      function handleDragLeave(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove('active');
+      }
+      
+      function handleDrop(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove('active');
+        
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          addFiles(e.dataTransfer.files);
+        }
+      }
+      
+      function handleFileChange(e) {
+        if (e.target.files && e.target.files.length > 0) {
+          addFiles(e.target.files);
+        }
+      }
+      
+      function addFiles(fileList) {
+        const filesArray = Array.from(fileList);
+        
+        // Filter for image files only
+        const imageFiles = filesArray.filter(file => file.type.startsWith('image/'));
+        
+        if (imageFiles.length === 0) {
+          showToast('Please select image files only', 'error');
+          return;
+        }
+        
+        // Add to selected files array
+        selectedFiles = [...selectedFiles, ...imageFiles];
+        
+        // Update UI
+        updateSelectedFilesList();
+      }
+      
+      function updateSelectedFilesList() {
+        // Clear existing list
+        selectedFilesList.innerHTML = '';
+        
+        // Update count
+        fileCountElement.textContent = selectedFiles.length;
+        
+        // Show container if there are files
+        if (selectedFiles.length > 0) {
+          selectedFilesContainer.style.display = 'block';
+          uploadBtn.disabled = false;
+        } else {
+          selectedFilesContainer.style.display = 'none';
+          uploadBtn.disabled = true;
+        }
+        
+        // Add file items to the list
+        selectedFiles.forEach((file, index) => {
+          const listItem = document.createElement('li');
+          listItem.className = 'file-item';
+          
+          const nameSpan = document.createElement('span');
+          nameSpan.className = 'file-name';
+          nameSpan.textContent = file.name;
+          
+          const sizeSpan = document.createElement('span');
+          sizeSpan.className = 'file-size';
+          sizeSpan.textContent = `(${(file.size / 1024).toFixed(1)} KB)`;
+          
+          const removeBtn = document.createElement('button');
+          removeBtn.className = 'remove-btn';
+          removeBtn.textContent = '✕';
+          removeBtn.addEventListener('click', () => removeFile(index));
+          
+          listItem.appendChild(nameSpan);
+          listItem.appendChild(sizeSpan);
+          listItem.appendChild(removeBtn);
+          
+          selectedFilesList.appendChild(listItem);
+        });
+      }
+      
+      function removeFile(index) {
+        selectedFiles = selectedFiles.filter((_, i) => i !== index);
+        updateSelectedFilesList();
+      }
+      
+      function showToast(message, type = 'error') {
+        const toast = document.createElement('div');
+        toast.className = type === 'success' ? 'success-message' : 'error-toast';
+        toast.textContent = message;
+        
+        document.body.appendChild(toast);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+          document.body.removeChild(toast);
+        }, 3000);
+      }
+      
+      function handleUpload() {
+        if (selectedFiles.length === 0) {
+          showToast('Please select files to upload', 'error');
+          return;
+        }
+        
+        // Disable button and show loading state
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = 'Uploading...';
+        errorMessageElement.style.display = 'none';
+        
+        // Create form data
+        const formData = new FormData();
+        
+        selectedFiles.forEach(file => {
+          formData.append('images', file);
+        });
+        
+        const titlePrefix = titlePrefixInput.value.trim();
+        if (titlePrefix) {
+          formData.append('title_prefix', titlePrefix);
+        }
+        
+        // Send request
+        fetch('/api/images/upload-multiple/', {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': csrfToken
+          },
+          body: formData
+        })
+        .then(response => {
+          if (!response.ok) {
+            return response.json().then(data => {
+              throw new Error(data.error || 'Upload failed');
+            });
+          }
+          return response.json();
+        })
+        .then(data => {
+          // Clear form
+          selectedFiles = [];
+          titlePrefixInput.value = '';
+          updateSelectedFilesList();
+          
+          // Reset button
+          uploadBtn.textContent = 'Upload Images';
+          uploadBtn.disabled = false;
+          
+          // Show success message
+          showToast('Images uploaded successfully!', 'success');
+        })
+        .catch(error => {
+          showToast(error.message || 'Upload failed', 'error');
+          uploadBtn.textContent = 'Upload Images';
+          uploadBtn.disabled = false;
+        });
+      }
+      
+      // Helper function to get CSRF token from cookies (if needed)
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+          const cookies = document.cookie.split(';');
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+              cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+      
+      // If the CSRF token isn't available in the hidden input, try to get it from cookies
+      if (!csrfToken) {
+        document.getElementById('csrf-token').value = getCookie('csrftoken');
+      }
+    });
+  </script>
+</body>
+</html>
