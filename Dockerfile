@@ -64,5 +64,20 @@ RUN mkdir -p /app/staticfiles /app/media
 # Collect static files (optional, if needed before startup)
 RUN python manage.py collectstatic --noinput || true
 
-# Run Gunicorn server bound to all interfaces
+# Create entrypoint script to run import and then start gunicorn
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+# Try to import master data if file exists\n\
+if [ -f "/app/master_table.xlsx" ]; then\n\
+    echo "Importing master data..."\n\
+    python manage.py import_master_data /app/master_table.xlsx || echo "Import failed but continuing"\n\
+fi\n\
+\n\
+# Execute the original command\n\
+exec "$@"\n\
+' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
+
+# Use entrypoint script
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "orderCycleProject.wsgi:application"]
