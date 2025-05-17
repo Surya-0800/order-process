@@ -779,6 +779,102 @@
       font-size: 0.8em;
       margin-left: 10px;
     }
+
+    #awbDispatchModal .modal-content {
+  border-radius: 8px;
+  max-width: 700px;
+}
+
+#awb-search-results {
+  margin-top: 15px;
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 10px;
+  background-color: #f8f9fa;
+}
+
+#awb-search-results .error {
+  color: #dc3545;
+  font-weight: bold;
+  padding: 10px;
+}
+
+#awb-search-results h4 {
+  margin-top: 0;
+  color: #28a745;
+  margin-bottom: 15px;
+}
+
+#awb-number {
+  width: 100%;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid #ced4da;
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+
+#awb-search-results .order-table {
+  width: 100%;
+  margin-top: 10px;
+}
+
+#awb-search-results .order-table th {
+  background-color: #e9ecef;
+  padding: 8px;
+  text-align: left;
+}
+
+#awb-search-results .order-table td {
+  padding: 8px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+/* Button styling */
+#dispatch-orders-btn {
+  background-color: #28a745;
+  border-color: #28a745;
+}
+
+#dispatch-orders-btn:hover {
+  background-color: #218838;
+  border-color: #1e7e34;
+}
+
+#search-awb-btn {
+  margin-right: 10px;
+}
+
+/* Status badge styling */
+#awb-search-results .status-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  font-weight: bold;
+  display: inline-block;
+  text-align: center;
+}
+
+/* Make Enter key in AWB field more obvious */
+.awb-form {
+  position: relative;
+}
+
+.awb-form::after {
+  content: 'Press Enter to search';
+  position: absolute;
+  top: 12px;
+  right: 15px;
+  font-size: 0.8em;
+  color: #6c757d;
+  opacity: 0.7;
+}
+
+.awb-form:focus-within::after {
+  display: none;
+}
   </style>
 </head>
 
@@ -919,6 +1015,27 @@
         </div>
       </div>
     </div>
+
+    <div id="awbDispatchModal" class="modal">
+      <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2>Enter AWB Number to Dispatch</h2>
+        <div class="awb-form">
+          <div style="margin-bottom: 15px;">
+            <label for="awb-number" style="display: block; margin-bottom: 5px; font-weight: bold;">AWB Number:</label>
+            <input type="text" id="awb-number" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+          </div>
+          <div id="awb-search-results" style="margin-top: 15px; max-height: 300px; overflow-y: auto;">
+            <!-- Results will be displayed here -->
+          </div>
+          <div style="margin-top: 15px; text-align: right;">
+            <button id="search-awb-btn" class="btn btn-primary">Search AWB</button>
+            <button id="dispatch-awb-btn" class="btn btn-success" disabled>Complete Dispatch</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -2099,111 +2216,288 @@
         }
       });
     });
+    function openAwbDispatchModal() {
+  const modal = document.getElementById('awbDispatchModal');
+  modal.style.display = 'block';
+  document.getElementById('awb-number').value = '';
+  document.getElementById('awb-search-results').innerHTML = '';
+  document.getElementById('dispatch-awb-btn').disabled = true;
+}
+
+    function completeAwbDispatch() {
+  const awbNumber = document.getElementById('awb-number').value.trim();
+  if (!awbNumber) {
+    alert('Please enter an AWB number');
+    return;
+  }
+
+  const btn = document.getElementById('dispatch-awb-btn');
+  btn.disabled = true;
+  btn.textContent = 'Processing...';
+
+  fetch(`${baseApiUrl}/orders/complete-by-awb/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCsrfToken(),
+    },
+    body: JSON.stringify({
+      awb: awbNumber
+    })
+  })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    })
+    .then(data => {
+      alert(data.message || 'Orders have been completed successfully');
+      closeAwbDispatchModal();
+      
+      // Refresh the dispatch view
+      if (currentStatus === 'Dispatch') {
+        displayDispatchPicklists();
+      }
+    })
+    .catch(error => {
+      console.error('Error completing dispatch:', error);
+      alert(`Error completing dispatch: ${error.message}`);
+    })
+    .finally(() => {
+      btn.disabled = false;
+      btn.textContent = 'Complete Dispatch';
+    });
+}
 
     function displayDispatchPicklists() {
-      // Show loading indicator
-      const contentDiv = document.getElementById('status-content');
-      contentDiv.innerHTML = '<div class="card"><p class="text-center">Loading dispatch picklists...</p></div>';
-
-      console.log("Fetching dispatch picklists...");
-
-      fetch(`${baseApiUrl}/picklists/dispatch/`)
-        .then(response => {
-          console.log("Dispatch API response status:", response.status);
-          if (!response.ok) {
-            return response.text().then(text => {
-              console.error("Error response:", text);
-              throw new Error(`Error fetching dispatch picklists: ${response.status} ${response.statusText}`);
-            });
-          }
-          return response.json();
-        })
-        .then(data => {
-          console.log("Dispatch picklists data:", data);
-
-          if (!data.picklists || data.picklists.length === 0) {
-            contentDiv.innerHTML = '<div class="card"><p class="text-center">No picklists with dispatch orders available</p></div>';
-            return;
-          }
-
-          let html = `
-                <div class="picklist-header">
-                    <h3>Picklists with Orders in Dispatch (${data.picklists.length})</h3>
-                </div>
-                <table class="status-table">
-                    <thead>
-                        <tr>
-                            <th>Picklist ID</th>
-                            <th>Type</th>
-                            <th>Platform</th>
-                            <th>Total Orders</th>
-                            <th>Dispatch Orders</th>
-                            <th>Progress</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="dispatch-picklist-table-body">
-            `;
-
-          data.picklists.forEach(picklist => {
-            const dispatchPercentage = Math.round((picklist.dispatch_orders / picklist.total_orders) * 100) || 0;
-            let statusBadgeClass = '';
-
-            if (dispatchPercentage === 100) {
-              statusBadgeClass = 'status-completed';
-            } else if (dispatchPercentage > 50) {
-              statusBadgeClass = 'status-packing';
-            } else {
-              statusBadgeClass = 'status-printed';
-            }
-
-            html += `
-                    <tr>
-                        <td>
-                            <a href="javascript:void(0)" onclick="viewDispatchPicklistDetails('${picklist.picklist_id}')" class="picklist-link">
-                                ${picklist.picklist_id}
-                            </a>
-                        </td>
-                        <td>${picklist.picklist_type || 'N/A'}</td>
-                        <td>${picklist.platform || 'N/A'}</td>
-                        <td>${picklist.total_orders || 0}</td>
-                        <td>${picklist.dispatch_orders || 0}</td>
-                        <td>
-                            <div class="dispatch-progress">
-                                <div class="dispatch-progress-bar" style="width: ${dispatchPercentage}%"></div>
-                            </div>
-                            <span class="status-badge ${statusBadgeClass}">
-                                ${dispatchPercentage}% Dispatched
-                            </span>
-                        </td>
-                        <td>
-                            <button class="btn btn-primary" onclick="viewDispatchPicklistDetails('${picklist.picklist_id}')">
-                                View Details
-                            </button>
-                        </td>
-                    </tr>
-                `;
-          });
-
-          html += `
-                    </tbody>
-                </table>
-            `;
-
-          contentDiv.innerHTML = html;
-        })
-        .catch(error => {
-          console.error('Error fetching dispatch picklists:', error);
-          contentDiv.innerHTML = `
-                <div class="card">
-                    <p class="text-center">Error loading picklists: ${error.message}</p>
-                    <p class="text-center">
-                        <button onclick="displayDispatchPicklists()" class="btn btn-primary">Try Again</button>
-                    </p>
-                </div>
-            `;
+  fetch(`${baseApiUrl}/picklists/dispatch/`)
+    .then(response => {
+      if (!response.ok) {
+        return response.text().then(text => {
+          console.error("Error response:", text);
+          throw new Error(`Error fetching dispatch picklists: ${response.status} ${response.statusText}`);
         });
+      }
+      return response.json();
+    })
+    .then(data => {
+      const contentDiv = document.getElementById('status-content');
+
+      if (!data.picklists || data.picklists.length === 0) {
+        contentDiv.innerHTML = '<div class="card"><p class="text-center">No picklists with dispatch orders available</p></div>';
+        return;
+      }
+
+      let html = `
+          <div class="picklist-header">
+              <h3>Picklists with Orders in Dispatch (${data.picklists.length})</h3>
+              <button id="dispatch-orders-btn" class="btn btn-success">Dispatch Orders by AWB</button>
+          </div>
+          <table class="status-table">
+              <thead>
+                  <tr>
+                      <th>Picklist ID</th>
+                      <th>Type</th>
+                      <th>Platform</th>
+                      <th>Total Orders</th>
+                      <th>Dispatch Orders</th>
+                      <th>Progress</th>
+                      <th>Actions</th>
+                  </tr>
+              </thead>
+              <tbody id="dispatch-picklist-table-body">
+      `;
+
+      data.picklists.forEach(picklist => {
+        const dispatchPercentage = Math.round((picklist.dispatch_orders / picklist.total_orders) * 100) || 0;
+        let statusBadgeClass = '';
+
+        if (dispatchPercentage === 100) {
+          statusBadgeClass = 'status-completed';
+        } else if (dispatchPercentage > 50) {
+          statusBadgeClass = 'status-packing';
+        } else {
+          statusBadgeClass = 'status-printed';
+        }
+
+        html += `
+              <tr>
+                  <td>
+                      <a href="javascript:void(0)" onclick="viewDispatchPicklistDetails('${picklist.picklist_id}')" class="picklist-link">
+                          ${picklist.picklist_id}
+                      </a>
+                  </td>
+                  <td>${picklist.picklist_type || 'N/A'}</td>
+                  <td>${picklist.platform || 'N/A'}</td>
+                  <td>${picklist.total_orders || 0}</td>
+                  <td>${picklist.dispatch_orders || 0}</td>
+                  <td>
+                      <div class="dispatch-progress">
+                          <div class="dispatch-progress-bar" style="width: ${dispatchPercentage}%"></div>
+                      </div>
+                      <span class="status-badge ${statusBadgeClass}">
+                          ${dispatchPercentage}% Dispatched
+                      </span>
+                  </td>
+                  <td>
+                      <button class="btn btn-primary" onclick="viewDispatchPicklistDetails('${picklist.picklist_id}')">
+                          View Details
+                      </button>
+                  </td>
+              </tr>
+        `;
+      });
+
+      html += `
+              </tbody>
+          </table>
+      `;
+
+      contentDiv.innerHTML = html;
+
+      // Add event listener to the Dispatch Orders button
+      const dispatchOrdersBtn = document.getElementById('dispatch-orders-btn');
+      if (dispatchOrdersBtn) {
+        dispatchOrdersBtn.addEventListener('click', openAwbDispatchModal);
+      }
+    })
+    .catch(error => {
+      console.error('Error fetching dispatch picklists:', error);
+      document.getElementById('status-content').innerHTML = `
+          <div class="card">
+              <p class="text-center">Error loading picklists: ${error.message}</p>
+              <p class="text-center">
+                  <button onclick="displayDispatchPicklists()" class="btn btn-primary">Try Again</button>
+              </p>
+          </div>
+      `;
+    });
+}
+
+// Function to close AWB dispatch modal
+function closeAwbDispatchModal() {
+  const modal = document.getElementById('awbDispatchModal');
+  modal.style.display = 'none';
+}
+
+// Function to search AWB
+function searchAwbNumber() {
+  const awbNumber = document.getElementById('awb-number').value.trim();
+  if (!awbNumber) {
+    alert('Please enter an AWB number');
+    return;
+  }
+
+  const resultsContainer = document.getElementById('awb-search-results');
+  resultsContainer.innerHTML = '<p>Searching...</p>';
+
+  fetch(`${baseApiUrl}/search-awb/?awb=${encodeURIComponent(awbNumber)}`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (!data.orders || data.orders.length === 0) {
+        resultsContainer.innerHTML = '<p class="error">No orders found with this AWB number.</p>';
+        document.getElementById('dispatch-awb-btn').disabled = true;
+        return;
+      }
+
+      // Filter to only show orders in Dispatch status
+      const dispatchOrders = data.orders.filter(order => order.status === 'Dispatch');
+      
+      if (dispatchOrders.length === 0) {
+        resultsContainer.innerHTML = '<p class="error">No orders in Dispatch status found with this AWB.</p>';
+        document.getElementById('dispatch-awb-btn').disabled = true;
+        return;
+      }
+
+      // Build the results table
+      let html = `
+        <h4>Found ${dispatchOrders.length} order(s) in Dispatch status</h4>
+        <table class="order-table">
+          <thead>
+            <tr>
+              <th>Order Number</th>
+              <th>Platform</th>
+              <th>SKU</th>
+              <th>Quantity</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      dispatchOrders.forEach(order => {
+        html += `
+          <tr data-order-id="${order.id}" data-order-number="${order.order_number}" data-platform="${order.platform}">
+            <td>${order.order_number}</td>
+            <td>${order.platform}</td>
+            <td>${order.sku}</td>
+            <td>${order.quantity}</td>
+            <td><span class="status-badge status-completed">Dispatch</span></td>
+          </tr>
+        `;
+      });
+
+      html += `
+          </tbody>
+        </table>
+      `;
+
+      resultsContainer.innerHTML = html;
+      document.getElementById('dispatch-awb-btn').disabled = false;
+    })
+    .catch(error => {
+      console.error('Error searching AWB:', error);
+      resultsContainer.innerHTML = `<p class="error">Error searching AWB: ${error.message}</p>`;
+      document.getElementById('dispatch-awb-btn').disabled = true;
+    });
+}
+// Event listener setup function for AWB modal
+function setupAwbModalEventListeners() {
+  const awbDispatchModal = document.getElementById('awbDispatchModal');
+  if (awbDispatchModal) {
+    // Close button
+    const closeBtn = awbDispatchModal.querySelector('.close-modal');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closeAwbDispatchModal);
     }
+    
+    // Close when clicking outside
+    window.addEventListener('click', function(event) {
+      if (event.target === awbDispatchModal) {
+        closeAwbDispatchModal();
+      }
+    });
+    
+    // Search AWB button
+    const searchAwbBtn = document.getElementById('search-awb-btn');
+    if (searchAwbBtn) {
+      searchAwbBtn.addEventListener('click', searchAwbNumber);
+    }
+    
+    // Complete Dispatch button
+    const dispatchAwbBtn = document.getElementById('dispatch-awb-btn');
+    if (dispatchAwbBtn) {
+      dispatchAwbBtn.addEventListener('click', completeAwbDispatch);
+    }
+    
+    // Enter key in AWB input field
+    const awbInput = document.getElementById('awb-number');
+    if (awbInput) {
+      awbInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          searchAwbNumber();
+        }
+      });
+    }
+  }
+}
     function viewDispatchPicklistDetails(picklistId) {
       console.log(`Fetching dispatch details for picklist: ${picklistId}`);
 
@@ -2859,7 +3153,7 @@
                 `;
         });
     }
-
+    
     // Function to display picklists in the PACKING status
     function displayPackingPicklists() {
       fetch(`${baseApiUrl}/picklists/`)
@@ -2947,84 +3241,118 @@
     }
     // Event listener for tab navigation
     document.addEventListener('DOMContentLoaded', function () {
+  // Setup for orderModal
+  const orderModal = document.getElementById('orderModal');
+  const orderCloseBtn = orderModal.querySelector('.close-modal');
 
+  orderCloseBtn.onclick = function () {
+    orderModal.style.display = 'none';
+  }
 
-      // Setup for orderModal
-      const orderModal = document.getElementById('orderModal');
-      const orderCloseBtn = orderModal.querySelector('.close-modal');
+  // Setup for picklistModal
+  const picklistModal = document.getElementById('picklistModal');
+  const picklistCloseBtn = picklistModal.querySelector('.close-modal');
 
-      orderCloseBtn.onclick = function () {
-        displayPicklists
-        orderModal.style.display = 'none';
-      }
+  picklistCloseBtn.onclick = function () {
+    picklistModal.style.display = 'none';
+  }
 
-      // Setup for picklistModal
-      const picklistModal = document.getElementById('picklistModal');
-      const picklistCloseBtn = picklistModal.querySelector('.close-modal');
-
-      picklistCloseBtn.onclick = function () {
-        picklistModal.style.display = 'none';
-      }
-
-      // Close modals when clicking outside
-      window.onclick = function (event) {
-        if (event.target === orderModal) {
-          orderModal.style.display = 'none';
-        }
-        if (event.target === picklistModal) {
-          picklistModal.style.display = 'none';
-        }
-      }
-
-      document.addEventListener('DOMContentLoaded', function () {
-        const style = document.createElement('style');
-        style.textContent = `
-        .picklist-link {
-            color: #007bff;
-            text-decoration: none;
-            font-weight: bold;
-        }
-        .picklist-link:hover {
-            text-decoration: underline;
-        }
-    `;
-        document.head.appendChild(style);
+  // Setup for AWB dispatch modal
+  const awbDispatchModal = document.getElementById('awbDispatchModal');
+  if (awbDispatchModal) {
+    // Close button
+    const awbCloseBtn = awbDispatchModal.querySelector('.close-modal');
+    if (awbCloseBtn) {
+      awbCloseBtn.addEventListener('click', function() {
+        awbDispatchModal.style.display = 'none';
       });
-
-      // Initialize the tab functionality
-      document.querySelectorAll('.tab').forEach(tab => {
-        tab.addEventListener('click', function () {
-          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-          this.classList.add('active');
-          currentStatus = this.dataset.status;
-
-          switch (currentStatus) {
-            case 'Ready to Process':
-              updateOrderStatusTable(currentStatus);
-              break;
-            case 'Pick':
-              displayPicklists();
-              break;
-            case 'Pack':
-              displayPackingPicklists();
-              break;
-            case 'Dispatch':
-              displayDispatchPicklists();
-              break;
-            default:
-              updateOrderStatusTable(currentStatus);
-              break;
-          }
-        });
+    }
+    
+    // Search AWB button
+    const searchAwbBtn = document.getElementById('search-awb-btn');
+    if (searchAwbBtn) {
+      searchAwbBtn.addEventListener('click', searchAwbNumber);
+    }
+    
+    // Complete Dispatch button
+    const dispatchAwbBtn = document.getElementById('dispatch-awb-btn');
+    if (dispatchAwbBtn) {
+      dispatchAwbBtn.addEventListener('click', completeAwbDispatch);
+    }
+    
+    // Enter key in AWB input field
+    const awbInput = document.getElementById('awb-number');
+    if (awbInput) {
+      awbInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          searchAwbNumber();
+        }
       });
+    }
+  }
 
-      // Initialize with the currently active tab
-      const activeTab = document.querySelector('.tab.active');
-      if (activeTab) {
-        activeTab.click();
+  // Close modals when clicking outside
+  window.onclick = function (event) {
+    if (event.target === orderModal) {
+      orderModal.style.display = 'none';
+    }
+    if (event.target === picklistModal) {
+      picklistModal.style.display = 'none';
+    }
+    if (event.target === awbDispatchModal) {
+      awbDispatchModal.style.display = 'none';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const style = document.createElement('style');
+    style.textContent = `
+    .picklist-link {
+        color: #007bff;
+        text-decoration: none;
+        font-weight: bold;
+    }
+    .picklist-link:hover {
+        text-decoration: underline;
+    }
+`;
+    document.head.appendChild(style);
+  });
+
+  // Initialize the tab functionality
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      this.classList.add('active');
+      currentStatus = this.dataset.status;
+
+      switch (currentStatus) {
+        case 'Ready to Process':
+          updateOrderStatusTable(currentStatus);
+          break;
+        case 'Pick':
+          displayPicklists();
+          break;
+        case 'Pack':
+          displayPackingPicklists();
+          break;
+        case 'Dispatch':
+          displayDispatchPicklists();
+          break;
+        default:
+          updateOrderStatusTable(currentStatus);
+          break;
       }
     });
+  });
 
+  // Initialize with the currently active tab
+  const activeTab = document.querySelector('.tab.active');
+  if (activeTab) {
+    activeTab.click();
+  }
+});
   </script>
 </body>
 

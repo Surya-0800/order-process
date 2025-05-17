@@ -207,14 +207,15 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
         """Process Amazon PDFs and create order records."""
         amazon_output_dir = os.path.join(media_root, 'amazonPdfs')
         os.makedirs(amazon_output_dir, exist_ok=True)
-        
+        is_data_exists = False
         if data_path:
+            is_data_exists = True
             df = txt_to_dataframe(data_path)
             final_output_dict = grab_required_fields(df.to_dict(orient="records"))
         else:
             final_output_dict = []
             
-        amazon_data = split_pdf_by_orderid(pdf_path, amazon_output_dir, final_output_dict)
+        amazon_data = split_pdf_by_orderid(pdf_path, amazon_output_dir, final_output_dict,is_data_exists)
         
         for order_number, order_data in amazon_data.items():
             order_type = "Single"

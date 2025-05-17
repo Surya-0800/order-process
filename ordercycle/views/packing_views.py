@@ -367,7 +367,9 @@ def get_product_image_by_sku(request):
 @require_http_methods(["POST"])
 def save_awb_and_dispatch(request):
     """
-    Save the AWB number for an order and move it to Dispatch status.
+    Validate the AWB number against existing records for an order.
+    If the AWB matches what's already in the system, move the order to Dispatch status.
+    If the AWB does not match, return an error.
     Also updates the PicklistDispatchStatus for tracking dispatch progress.
     """
     try:
@@ -385,6 +387,7 @@ def save_awb_and_dispatch(request):
         # Find the platform for this order
         platform = None
         updated = 0
+        existing_awb = None
         
         # Try each platform table to find the order
         model_mapping = {
@@ -395,9 +398,20 @@ def save_awb_and_dispatch(request):
         }
         
         for plat, model in model_mapping.items():
-            if model.objects.filter(order_number=order_number).exists():
+            order = model.objects.filter(order_number=order_number).first()
+            if order:
                 platform = plat
-                # Update order with AWB and new status
+                existing_awb = order.AWB
+                
+                # Check if the order has an existing AWB that doesn't match the provided one
+                if existing_awb and existing_awb.strip() and existing_awb.strip() != awb.strip():
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': f'AWB validation failed. The entered AWB ({awb}) does not match the existing AWB ({existing_awb}) for order {order_number}.',
+                        'existing_awb': existing_awb
+                    }, status=400)
+                
+                # If AWB matches or there isn't an existing AWB, update order status
                 result = model.objects.filter(order_number=order_number).update(
                     AWB=awb,
                     status='Dispatch'  # Ensure this status is exactly 'Dispatch'
@@ -452,12 +466,13 @@ def save_awb_and_dispatch(request):
         # Prepare response
         response_data = {
             'status': 'success',
-            'message': f'AWB number {awb} saved and order moved to Dispatch',
+            'message': f'AWB number {awb} verified and order moved to Dispatch',
             'platform': platform,
             'updated': updated > 0,
             'order_number': order_number,
             'awb': awb,
-            'order_status': 'Dispatch'  # Include the new status in response
+            'order_status': 'Dispatch',  # Include the new status in response
+            'awb_match': True  # Indicate AWB validation was successful
         }
         
         # Include dispatch status info if available

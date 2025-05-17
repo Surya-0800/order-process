@@ -822,7 +822,7 @@
       <!-- Product Info (hidden initially) -->
       <div id="product-info" class="product-info" style="display: none;">
         <div class="product-image">
-          <img id="product-image" src="/static/images/placeholder.png" alt="Product Image" >
+          <img id="product-image" src="/static/images/placeholder.png" alt="Product Image">
         </div>
         <div class="product-details">
           <h3 id="product-name">Product Name</h3>
@@ -2303,7 +2303,7 @@
         }
 
         // Show loading indicator
-        showMessage('Saving AWB number and moving to Dispatch...', 'info');
+        showMessage('Validating AWB number...', 'info');
 
         // Make API call to update in the backend
         const requestBody = {
@@ -2329,7 +2329,7 @@
             return response.json();
           })
           .then(data => {
-            showMessage(data.message || 'AWB saved and order moved to Dispatch successfully', 'success');
+            showMessage(data.message || 'AWB verified and order moved to Dispatch successfully', 'success');
 
             // Update local data - mark the order status as Dispatch
             currentPicklistItems.forEach(item => {
@@ -2389,11 +2389,113 @@
           })
           .catch(error => {
             console.error("API error:", error);
-            showMessage(`Error: ${error.message}`, 'error');
+
+            // Check if the error might be an AWB mismatch
+            const errorMessage = error.message || "";
+            if (errorMessage.includes("AWB validation failed") || errorMessage.includes("does not match the existing AWB")) {
+              // Show a more detailed error for AWB validation failures
+              showAwbMismatchDialog(orderNumber, awbNumber, errorMessage);
+            } else {
+              // Show generic error
+              showMessage(`Error: ${error.message}`, 'error');
+            }
           });
       }
 
+      // Function to show a special dialog for AWB mismatches
+      function showAwbMismatchDialog(orderNumber, enteredAwb, errorMessage) {
+        // Prevent multiple dialogs
+        if (document.getElementById('awb-dialog')) {
+          document.getElementById('awb-dialog').remove();
+        }
 
+        // Extract existing AWB from error message if possible
+        let existingAwb = "";
+        const matchAwb = errorMessage.match(/existing AWB \(([^)]+)\)/);
+        if (matchAwb && matchAwb[1]) {
+          existingAwb = matchAwb[1];
+        }
+
+        // Create the dialog
+        const dialog = document.createElement('div');
+        dialog.id = 'awb-dialog';
+        dialog.className = 'awb-dialog';
+
+        // Dialog content
+        dialog.innerHTML = `
+        <div class="awb-dialog-content">
+            <div class="awb-dialog-header">
+                <h3>AWB Mismatch Error</h3>
+                <span class="awb-dialog-close">&times;</span>
+            </div>
+            <div class="awb-dialog-body">
+                <div class="error-message" style="color: #dc3545; margin-bottom: 15px; padding: 10px; background-color: #f8d7da; border-radius: 4px;">
+                    ${errorMessage}
+                </div>
+                <p>Order: <strong>${orderNumber}</strong></p>
+                <p>You entered: <strong>${enteredAwb}</strong></p>
+                ${existingAwb ? `<p>Correct AWB: <strong>${existingAwb}</strong></p>` : ''}
+                <p>Do you want to:</p>
+            </div>
+            <div class="awb-dialog-footer">
+                <button id="awb-dialog-use-existing" class="btn btn-primary" ${!existingAwb ? 'style="display:none"' : ''}>
+                    Use Correct AWB & Move to Dispatch
+                </button>
+                <button id="awb-dialog-try-again" class="btn btn-secondary">
+                    Try Again
+                </button>
+                <button id="awb-dialog-cancel" class="btn btn-danger">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    `;
+
+        // Add the dialog to the document
+        document.body.appendChild(dialog);
+
+        // Add dialog styles
+        addAwbDialogStyles();
+
+        // Show the dialog
+        dialog.style.display = 'flex';
+
+        // Close button
+        dialog.querySelector('.awb-dialog-close').addEventListener('click', function () {
+          dialog.remove();
+        });
+
+        // Cancel button
+        document.getElementById('awb-dialog-cancel').addEventListener('click', function () {
+          dialog.remove();
+        });
+
+        // Use existing AWB button
+        const useExistingBtn = document.getElementById('awb-dialog-use-existing');
+        if (useExistingBtn) {
+          useExistingBtn.addEventListener('click', function () {
+            dialog.remove();
+            if (existingAwb) {
+              // Call the function again with the correct AWB
+              saveAwbAndMoveToDispatch(orderNumber, existingAwb);
+            }
+          });
+        }
+
+        // Try again button
+        document.getElementById('awb-dialog-try-again').addEventListener('click', function () {
+          dialog.remove();
+          // Show the AWB input dialog again
+          showScanAwbDialog(orderNumber);
+        });
+
+        // Click outside to close
+        dialog.addEventListener('click', function (e) {
+          if (e.target === this) {
+            dialog.remove();
+          }
+        });
+      }
       // Helper function to update pending items table
 
       function updatePendingTable(items) {
@@ -2432,22 +2534,56 @@
           return;
         }
 
+        // Ensure viewed SKUs tracking is initialized for each order
+        Object.keys(pendingOrders).forEach(orderNumber => {
+          if (!viewedSkusByOrder[orderNumber]) {
+            viewedSkusByOrder[orderNumber] = {
+              totalSkus: pendingOrders[orderNumber].skus.length,
+              viewedSkus: new Set()
+            };
+          } else {
+            // Update total SKUs in case it changed
+            viewedSkusByOrder[orderNumber].totalSkus = pendingOrders[orderNumber].skus.length;
+          }
+        });
+
         // Add orders
         Object.values(pendingOrders).forEach(order => {
           const row = document.createElement('tr');
 
-          // Format SKUs and quantities
-          const skuDisplay = order.skus.map(sku => {
+          // Get current viewed status
+          const viewedInfo = viewedSkusByOrder[order.order_number];
+          const allSkusViewed = viewedInfo && (viewedInfo.viewedSkus.size >= viewedInfo.totalSkus);
+
+          // Create links with viewed state indicated
+          const skuListItems = order.skus.map(sku => {
             const qty = order.quantities[sku];
-            return `<div><a href="#" class="sku-link" data-sku="${sku}" title="View product details">${sku}</a> (${qty})</div>`;
+            const isViewed = viewedInfo && viewedInfo.viewedSkus.has(sku);
+            const viewedClass = isViewed ? 'viewed' : '';
+            return `<li class="sku-list-item"><a href="#" class="sku-link ${viewedClass}" data-sku="${sku}" data-order="${order.order_number}" title="View product details">${sku}</a> (${qty})</li>`;
           }).join('');
+
+          const skuDisplay = `
+            <div class="sku-list-cell">
+                <ul class="sku-list">
+                    ${skuListItems}
+                </ul>
+            </div>
+        `;
+
+          // Create a button with disabled state if not all SKUs viewed
+          const printButtonDisabled = allSkusViewed ? '' : 'disabled';
+          const printButtonClass = allSkusViewed ? 'btn btn-info btn-print-item' : 'btn btn-info btn-print-item disabled';
+          const printStatusClass = allSkusViewed ? 'print-status-ready' : 'print-status-pending';
+          const printStatusText = allSkusViewed ? 'Ready to print' : `${viewedInfo ? viewedInfo.viewedSkus.size : 0}/${viewedInfo ? viewedInfo.totalSkus : 0} SKUs viewed`;
 
           row.innerHTML = `
             <td title="${order.order_number}">${order.order_number}</td>
             <td>${skuDisplay}</td>
             <td>${order.skus.length}</td>
             <td>
-                <button class="btn btn-info btn-print-item" data-order="${order.order_number}">Print Label</button>
+                <button class="${printButtonClass}" data-order="${order.order_number}" ${printButtonDisabled}>Print Label</button>
+                <span class="print-status-indicator ${printStatusClass}">${printStatusText}</span>
             </td>
         `;
 
@@ -2457,8 +2593,10 @@
           const printBtn = row.querySelector('.btn-print-item');
           if (printBtn) {
             printBtn.addEventListener('click', function () {
-              const orderNumber = this.getAttribute('data-order');
-              printOrderLabel(currentPicklistPlatform, orderNumber);
+              if (!this.disabled) {
+                const orderNumber = this.getAttribute('data-order');
+                printOrderLabel(currentPicklistPlatform, orderNumber);
+              }
             });
           }
         });
@@ -2468,6 +2606,37 @@
           link.addEventListener('click', function (e) {
             e.preventDefault();
             const sku = this.getAttribute('data-sku');
+            const orderNumber = this.getAttribute('data-order');
+
+            // Mark this SKU as viewed for this order
+            if (viewedSkusByOrder[orderNumber]) {
+              viewedSkusByOrder[orderNumber].viewedSkus.add(sku);
+
+              // Mark this link as viewed
+              this.classList.add('viewed');
+
+              // Update status indicator
+              const viewedCount = viewedSkusByOrder[orderNumber].viewedSkus.size;
+              const totalCount = viewedSkusByOrder[orderNumber].totalSkus;
+              const statusIndicator = pendingTableBody.querySelector(`button[data-order="${orderNumber}"]`).nextElementSibling;
+
+              if (viewedCount >= totalCount) {
+                // All SKUs viewed - enable the print button
+                const printBtn = pendingTableBody.querySelector(`button[data-order="${orderNumber}"]`);
+                printBtn.disabled = false;
+                printBtn.classList.remove('disabled');
+
+                // Update status indicator
+                statusIndicator.textContent = 'Ready to print';
+                statusIndicator.classList.remove('print-status-pending');
+                statusIndicator.classList.add('print-status-ready');
+              } else {
+                // Update the counter
+                statusIndicator.textContent = `${viewedCount}/${totalCount} SKUs viewed`;
+              }
+            }
+
+            // Fetch the product image
             fetchProductImageBySku(sku);
           });
         });
@@ -3269,44 +3438,44 @@
       }
 
       function handleImageError(img) {
-    console.log("Handling image error");
-    
-    // Check if we've already tried to fix this image to prevent infinite loops
-    if (img.hasAttribute('data-error-handled')) {
-        return; // Exit to prevent infinite loop
-    }
-    
-    // Mark this image as already having been handled
-    img.setAttribute('data-error-handled', 'true');
-    
-    // Get the parent container
-    const container = img.parentNode;
-    
-    // Hide the broken image
-    img.style.display = 'none';
-    
-    // Create placeholder div
-    const placeholder = document.createElement('div');
-    placeholder.className = 'no-image-placeholder';
-    placeholder.style.width = '100%';
-    placeholder.style.height = '100%';
-    placeholder.style.display = 'flex';
-    placeholder.style.alignItems = 'center';
-    placeholder.style.justifyContent = 'center';
-    placeholder.style.backgroundColor = '#f8f9fa';
-    placeholder.style.border = '1px dashed #ced4da';
-    placeholder.style.fontSize = '14px';
-    placeholder.style.fontStyle = 'italic';
-    placeholder.style.color = '#6c757d';
-    placeholder.style.padding = '8px';
-    placeholder.style.textAlign = 'center';
-    placeholder.textContent = 'No Image Available';
-    
-    // Add the placeholder to the container
-    container.appendChild(placeholder);
-    
-    console.log("Image error handled with text placeholder");
-}
+        console.log("Handling image error");
+
+        // Check if we've already tried to fix this image to prevent infinite loops
+        if (img.hasAttribute('data-error-handled')) {
+          return; // Exit to prevent infinite loop
+        }
+
+        // Mark this image as already having been handled
+        img.setAttribute('data-error-handled', 'true');
+
+        // Get the parent container
+        const container = img.parentNode;
+
+        // Hide the broken image
+        img.style.display = 'none';
+
+        // Create placeholder div
+        const placeholder = document.createElement('div');
+        placeholder.className = 'no-image-placeholder';
+        placeholder.style.width = '100%';
+        placeholder.style.height = '100%';
+        placeholder.style.display = 'flex';
+        placeholder.style.alignItems = 'center';
+        placeholder.style.justifyContent = 'center';
+        placeholder.style.backgroundColor = '#f8f9fa';
+        placeholder.style.border = '1px dashed #ced4da';
+        placeholder.style.fontSize = '14px';
+        placeholder.style.fontStyle = 'italic';
+        placeholder.style.color = '#6c757d';
+        placeholder.style.padding = '8px';
+        placeholder.style.textAlign = 'center';
+        placeholder.textContent = 'No Image Available';
+
+        // Add the placeholder to the container
+        container.appendChild(placeholder);
+
+        console.log("Image error handled with text placeholder");
+      }
       // Optional: Improved function for setting image with fixed dimensions
       function setProductImage(url) {
         const imgElement = document.getElementById('product-image');
@@ -3354,25 +3523,25 @@
         // In a real implementation, you would continuously analyze video frames to detect barcodes
       }
       function fetchProductImageBySku(sku) {
-    if (!sku) {
-        showMessage('Invalid SKU', 'error');
-        return;
-    }
+        if (!sku) {
+          showMessage('Invalid SKU', 'error');
+          return;
+        }
 
-    // Show loading indicator
-    showMessage('Loading product details...', 'info');
+        // Show loading indicator
+        showMessage('Loading product details...', 'info');
 
-    // Call our dedicated API endpoint for getting product details by SKU
-    fetch(`/api/products/image-by-sku/?sku=${sku}`)
-        .then(response => {
+        // Call our dedicated API endpoint for getting product details by SKU
+        fetch(`/api/products/image-by-sku/?sku=${sku}`)
+          .then(response => {
             if (!response.ok) {
-                throw new Error('Failed to fetch product details');
+              throw new Error('Failed to fetch product details');
             }
             return response.json();
-        })
-        .then(data => {
+          })
+          .then(data => {
             if (!data) {
-                throw new Error('No product data returned');
+              throw new Error('No product data returned');
             }
 
             // Display the product info section
@@ -3392,33 +3561,33 @@
 
             // Set image with proper error handling
             const imgElement = document.getElementById('product-image');
-            
+
             // Log URL for debugging (truncate for large data URLs)
             console.log('Image URL type:', typeof data.image_url);
             if (data.image_url && data.image_url.startsWith('data:')) {
-                console.log('Received data URL', data.image_url.substring(0, 50) + '...');
+              console.log('Received data URL', data.image_url.substring(0, 50) + '...');
             } else {
-                console.log('Image URL:', data.image_url);
+              console.log('Image URL:', data.image_url);
             }
-            
+
             // Remove previous error handler
             imgElement.onerror = null;
-            
+
             // Add new error handler
             // imgElement.onerror = function() {
             //     console.error("Image failed to load:", this.src);
             //     handleImageError(this);
             // };
-            
+
             // Reset the image first to ensure it loads the new source
             imgElement.src = '';
-            
+
             // Force a reflow
             void imgElement.offsetWidth;
-            
+
             // Set the new image source
             imgElement.src = data.image_url || "/static/images/no_image_found.jpg";
-            
+
             // Scroll to the product info section
             productInfo.scrollIntoView({ behavior: 'smooth' });
 
@@ -3426,15 +3595,15 @@
             updateProductStatus(sku);
 
             showMessage('Product details loaded successfully!', 'success');
-        })
-        .catch(error => {
+          })
+          .catch(error => {
             console.error('Error fetching product details:', error);
             showMessage(`Error: ${error.message}. Using fallback data.`, 'error');
 
             // Still try to show product info with available picklist data
             showBasicProductInfo(sku);
-        });
-}
+          });
+      }
       // Function to update product status (packed/not packed)
       function updateProductStatus(sku) {
         // Find the product in the current picklist items
@@ -3460,6 +3629,60 @@
             printLabelBtn.disabled = false;
           }
         }
+      }
+
+      function markSkuAsViewed(sku) {
+        // Find all SKU links with this SKU
+        document.querySelectorAll(`.sku-link[data-sku="${sku}"]`).forEach(link => {
+          // Get the order number this SKU belongs to
+          const orderNumber = link.getAttribute('data-order');
+
+          // Make sure viewedSkusByOrder is initialized for this order
+          if (!viewedSkusByOrder[orderNumber]) {
+            // Find all SKUs for this order to determine the total
+            const allSkuLinksForOrder = document.querySelectorAll(`.sku-link[data-order="${orderNumber}"]`);
+            const totalSkus = allSkuLinksForOrder.length;
+
+            viewedSkusByOrder[orderNumber] = {
+              totalSkus: totalSkus,
+              viewedSkus: new Set()
+            };
+          }
+
+          // Mark this SKU as viewed for this order
+          viewedSkusByOrder[orderNumber].viewedSkus.add(sku);
+
+          // Update the link appearance
+          link.classList.add('viewed');
+
+          // Check if all SKUs are now viewed for this order
+          const viewedInfo = viewedSkusByOrder[orderNumber];
+          if (viewedInfo.viewedSkus.size >= viewedInfo.totalSkus) {
+            // Enable the print button for this order
+            const printBtn = document.querySelector(`.btn-print-item[data-order="${orderNumber}"]`);
+            if (printBtn) {
+              printBtn.disabled = false;
+              printBtn.classList.remove('disabled');
+
+              // Update status indicator if it exists
+              const statusIndicator = printBtn.nextElementSibling;
+              if (statusIndicator && statusIndicator.classList.contains('print-status-indicator')) {
+                statusIndicator.textContent = 'Ready to print';
+                statusIndicator.classList.remove('print-status-pending');
+                statusIndicator.classList.add('print-status-ready');
+              }
+            }
+          } else {
+            // Update the progress indicator
+            const printBtn = document.querySelector(`.btn-print-item[data-order="${orderNumber}"]`);
+            if (printBtn) {
+              const statusIndicator = printBtn.nextElementSibling;
+              if (statusIndicator && statusIndicator.classList.contains('print-status-indicator')) {
+                statusIndicator.textContent = `${viewedInfo.viewedSkus.size}/${viewedInfo.totalSkus} SKUs viewed`;
+              }
+            }
+          }
+        });
       }
 
       // Fallback function to show basic product info with placeholder image
@@ -3495,6 +3718,8 @@
         // Update buttons
         updateProductStatus(sku);
       }
+
+      let viewedSkusByOrder = {};
 
       function populateItemsTable(items) {
         const pendingTableBody = document.getElementById('pending-items-table-body');
@@ -3556,7 +3781,20 @@
         // Counter for unpacked and processed orders
         let unpacked = Object.keys(pendingOrders).length;
 
-        // Populate pending orders table (unchanged)
+        // Initialize viewed SKUs tracking for each order if not already initialized
+        Object.keys(pendingOrders).forEach(orderNumber => {
+          if (!viewedSkusByOrder[orderNumber]) {
+            viewedSkusByOrder[orderNumber] = {
+              totalSkus: pendingOrders[orderNumber].skus.length,
+              viewedSkus: new Set()
+            };
+          } else {
+            // Update total SKUs in case it changed
+            viewedSkusByOrder[orderNumber].totalSkus = pendingOrders[orderNumber].skus.length;
+          }
+        });
+
+        // Populate pending orders table
         Object.values(pendingOrders).forEach(order => {
           const row = document.createElement('tr');
 
@@ -3566,18 +3804,27 @@
                 <ul class="sku-list">
                     ${order.skus.map(sku => {
             const qty = order.quantities[sku];
-            return `<li class="sku-list-item"><a href="#" class="sku-link" data-sku="${sku}" title="View product details">${sku}</a> (${qty})</li>`;
+            return `<li class="sku-list-item"><a href="#" class="sku-link" data-sku="${sku}" data-order="${order.order_number}" title="View product details">${sku}</a> (${qty})</li>`;
           }).join('')}
                 </ul>
             </div>
         `;
+
+          // Get current viewed status
+          const viewedInfo = viewedSkusByOrder[order.order_number];
+          const allSkusViewed = viewedInfo && (viewedInfo.viewedSkus.size >= viewedInfo.totalSkus);
+
+          // Create a print button with disabled state if not all SKUs viewed
+          const printButtonDisabled = allSkusViewed ? '' : 'disabled';
+          const printButtonClass = allSkusViewed ? 'btn btn-info btn-print-item' : 'btn btn-info btn-print-item disabled';
+          const printButtonTitle = allSkusViewed ? 'Print Label' : 'View all SKUs before printing';
 
           row.innerHTML = `
             <td title="${order.order_number}">${order.order_number}</td>
             <td>${skuDisplay}</td>
             <td>${order.skus.length}</td>
             <td>
-                <button class="btn btn-info btn-print-item" data-order="${order.order_number}">Print Label</button>
+                <button class="${printButtonClass}" data-order="${order.order_number}" ${printButtonDisabled} title="${printButtonTitle}">Print Label</button>
             </td>
         `;
 
@@ -3585,17 +3832,44 @@
 
           // Add event listener to the print button
           const printBtn = row.querySelector('.btn-print-item');
-          printBtn.addEventListener('click', function () {
-            const orderNumber = this.getAttribute('data-order');
-            printOrderLabel(currentPicklistPlatform, orderNumber);
-          });
+          if (printBtn) {
+            printBtn.addEventListener('click', function () {
+              if (!this.disabled) {
+                const orderNumber = this.getAttribute('data-order');
+                printOrderLabel(currentPicklistPlatform, orderNumber);
+              }
+            });
+          }
         });
 
-        // Add event listener to all SKU links
-        document.querySelectorAll('.sku-link').forEach(link => {
+        // Add event listener to all SKU links with improved data tracking
+        pendingTableBody.querySelectorAll('.sku-link').forEach(link => {
           link.addEventListener('click', function (e) {
             e.preventDefault();
             const sku = this.getAttribute('data-sku');
+            const orderNumber = this.getAttribute('data-order');
+
+            // Mark this SKU as viewed for this order
+            if (viewedSkusByOrder[orderNumber]) {
+              viewedSkusByOrder[orderNumber].viewedSkus.add(sku);
+
+              // Check if all SKUs are now viewed
+              if (viewedSkusByOrder[orderNumber].viewedSkus.size >= viewedSkusByOrder[orderNumber].totalSkus) {
+                // Enable the print button for this order
+                const printBtn = pendingTableBody.querySelector(`.btn-print-item[data-order="${orderNumber}"]`);
+                if (printBtn) {
+                  printBtn.disabled = false;
+                  printBtn.classList.remove('disabled');
+                  printBtn.title = 'Print Label';
+                }
+              }
+            }
+
+            // Change the link style to indicate it's been viewed
+            this.style.fontWeight = 'bold';
+            this.style.color = '#28a745'; // Green color to indicate viewed
+
+            // Fetch the product image
             fetchProductImageBySku(sku);
           });
         });
@@ -3604,6 +3878,15 @@
         if (unpacked === 0) {
           pendingTableBody.innerHTML = '<tr><td colspan="4" class="no-items-message">No pending orders</td></tr>';
         }
+
+        // Reset tracked SKUs for orders no longer in the pending list
+        // This prevents stale data if orders are moved or removed
+        const currentOrderNumbers = Object.keys(pendingOrders);
+        Object.keys(viewedSkusByOrder).forEach(trackedOrderNumber => {
+          if (!currentOrderNumbers.includes(trackedOrderNumber)) {
+            delete viewedSkusByOrder[trackedOrderNumber];
+          }
+        });
 
         // Populate processed orders table - ONLY SHOWING NON-DISPATCHED ORDERS
         let processedCount = 0;
@@ -3665,6 +3948,57 @@
           completeBtn.classList.add('btn-warning');
         }
       }
+
+      function addDisabledButtonStyles() {
+        if (!document.getElementById('disabled-button-styles')) {
+          const style = document.createElement('style');
+          style.id = 'disabled-button-styles';
+          style.textContent = `
+            .btn.disabled,
+            .btn:disabled {
+                opacity: 0.65;
+                cursor: not-allowed;
+                pointer-events: none;
+            }
+            
+            .sku-link.viewed {
+                font-weight: bold;
+                color: #28a745;
+            }
+            
+            .print-status-indicator {
+                display: block;
+                font-size: 12px;
+                margin-top: 5px;
+                font-style: italic;
+            }
+            
+            .print-status-pending {
+                color: #dc3545;
+            }
+            
+            .print-status-ready {
+                color: #28a745;
+            }
+        `;
+          document.head.appendChild(style);
+        }
+      }
+
+      // Call this on document ready
+      document.addEventListener('DOMContentLoaded', function () {
+        // Add the CSS for disabled buttons
+        addDisabledButtonStyles();
+
+        // Reset the viewed SKUs when loading a new picklist
+        const searchPicklistBtn = document.getElementById('search-picklist-btn');
+        if (searchPicklistBtn) {
+          searchPicklistBtn.addEventListener('click', function () {
+            // Reset tracking when searching for a new picklist
+            viewedSkusByOrder = {};
+          });
+        }
+      });
 
       function updatePicklistDispatchStatus() {
         if (!currentPicklistId) {

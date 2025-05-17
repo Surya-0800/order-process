@@ -6,6 +6,7 @@ from django.db.models import Count, Case, When, IntegerField, F, Q
 from django.utils import timezone
 import json
 import traceback
+from django.views.decorators.http import require_POST
 from ordercycle.models import Picklist, PicklistItem, AmazonOrders, FlipkarOrders, FirstcryOrders, MeeshoOrders,PicklistDispatchStatus
 
 # Get picklists with orders in Dispatch status
@@ -341,3 +342,145 @@ def check_all_dispatched(picklist, platform):
                 break
         
         return all_dispatched
+
+def search_by_awb(request):
+    """
+    Search orders by AWB number
+    """
+    try:
+        awb = request.GET.get('awb')
+        if not awb:
+            return JsonResponse({'error': 'AWB number is required'}, status=400)
+        
+        # Find orders with this AWB across all platforms
+        orders = []
+        import pdb
+        pdb.set_trace()
+        
+        # Amazon orders
+        amazon_orders = AmazonOrders.objects.filter(AWB=awb)
+        for order in amazon_orders:
+            orders.append({
+                'id': order.id,
+                'order_number': order.order_number,
+                'platform': 'AMAZON',
+                'sku': order.sku,
+                'quantity': order.quantity,
+                'status': order.status,
+                'awb': order.AWB
+            })
+        
+        # Flipkart orders
+        flipkart_orders = FlipkarOrders.objects.filter(AWB=awb)
+        for order in flipkart_orders:
+            orders.append({
+                'id': order.id,
+                'order_number': order.order_number,
+                'platform': 'FLIPKART',
+                'sku': order.sku,
+                'quantity': order.quantity,
+                'status': order.status,
+                'awb': order.AWB
+            })
+        
+        # FirstCry orders
+        firstcry_orders = FirstcryOrders.objects.filter(AWB=awb)
+        for order in firstcry_orders:
+            orders.append({
+                'id': order.id,
+                'order_number': order.order_number,
+                'platform': 'FIRSTCRY',
+                'sku': order.sku,
+                'quantity': order.quantity,
+                'status': order.status,
+                'awb': order.AWB
+            })
+        
+        # Meesho orders
+        meesho_orders = MeeshoOrders.objects.filter(AWB=awb)
+        for order in meesho_orders:
+            orders.append({
+                'id': order.id,
+                'order_number': order.order_number,
+                'platform': 'MEESHO',
+                'sku': order.sku,
+                'quantity': order.quantity,
+                'status': order.status,
+                'awb': order.AWB
+            })
+        
+        return JsonResponse({
+            'orders': orders
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)
+
+@require_POST
+def complete_orders_by_awb(request):
+    """
+    Find orders by AWB number and change their status from Dispatch to Complete
+    """
+    try:
+        data = json.loads(request.body)
+        awb = data.get('awb')
+        
+        if not awb:
+            return JsonResponse({'error': 'AWB number is required'}, status=400)
+        
+        # Count of updated orders for each platform
+        updated_count = {
+            'AMAZON': 0,
+            'FLIPKART': 0,
+            'FIRSTCRY': 0,
+            'MEESHO': 0
+        }
+        
+        # Update Amazon orders
+        amazon_orders = AmazonOrders.objects.filter(AWB=awb, status='Dispatch')
+        if amazon_orders.exists():
+            updated_count['AMAZON'] = amazon_orders.count()
+            amazon_orders.update(status='Complete')
+        
+        # Update Flipkart orders
+        flipkart_orders = FlipkarOrders.objects.filter(AWB=awb, status='Dispatch')
+        if flipkart_orders.exists():
+            updated_count['FLIPKART'] = flipkart_orders.count()
+            flipkart_orders.update(status='Complete')
+        
+        # Update FirstCry orders
+        firstcry_orders = FirstcryOrders.objects.filter(AWB=awb, status='Dispatch')
+        if firstcry_orders.exists():
+            updated_count['FIRSTCRY'] = firstcry_orders.count()
+            firstcry_orders.update(status='Complete')
+        
+        # Update Meesho orders
+        meesho_orders = MeeshoOrders.objects.filter(AWB=awb, status='Dispatch')
+        if meesho_orders.exists():
+            updated_count['MEESHO'] = meesho_orders.count()
+            meesho_orders.update(status='Complete')
+        
+        total_updated = sum(updated_count.values())
+        
+        if total_updated == 0:
+            return JsonResponse({
+                'message': f'No orders in Dispatch status found with AWB: {awb}',
+                'updated': False,
+                'counts': updated_count
+            })
+        
+        platforms_updated = [p for p, c in updated_count.items() if c > 0]
+        platforms_text = ', '.join(platforms_updated)
+        
+        return JsonResponse({
+            'message': f'Successfully updated {total_updated} orders from Dispatch to Complete (Platforms: {platforms_text})',
+            'updated': True,
+            'counts': updated_count
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)

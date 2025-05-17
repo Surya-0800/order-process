@@ -94,6 +94,9 @@ urlpatterns = [
     
     # Include API routes - make sure this comes after individual API routes
     path('api/', include('ordercycle.api.urls')),
+
+    path('api/search-awb/', views.search_by_awb, name='search_by_awb'),
+    path('api/orders/complete-by-awb/', views.complete_orders_by_awb, name='complete_orders_by_awb'),
 ]
 
 # Add media URL patterns for development

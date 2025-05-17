@@ -73,7 +73,7 @@ def extract_text_from_page(page,pdf_path, ocr=False):
         text = pytesseract.image_to_string(image, config = custom_config)
     return clean_text(text)
 
-def split_pdf_by_orderid(pdf_path, output_folder, final_output_dict):
+def split_pdf_by_orderid(pdf_path, output_folder, final_output_dict,data_exists):
     """Splits a PDF into separate PDFs based on OrderID."""
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -86,7 +86,7 @@ def split_pdf_by_orderid(pdf_path, output_folder, final_output_dict):
     
     for i, page in enumerate(doc):
         text = extract_text_from_page(page,pdf_path)
-        if not text:
+        if not text and not data_exists:
           text_ocr = extract_text_from_page(page, pdf_path,ocr=True)
           awb = re.search(r"AWB (\w+)", text_ocr)
           if awb:
