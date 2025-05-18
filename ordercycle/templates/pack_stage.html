@@ -1054,7 +1054,460 @@
         }
       }
 
-      // Enhanced printer detection with better error handling
+      // Function to add the printer settings UI to your existing page
+function injectPrinterSettingsUI() {
+  // Create the printer settings card
+  const printerSettingsCard = document.createElement('div');
+  printerSettingsCard.id = 'printer-settings';
+  printerSettingsCard.className = 'card';
+  printerSettingsCard.style.display = 'none'; // Start hidden, show after QZ connects
+  
+  // Add the HTML content for the printer settings
+  printerSettingsCard.innerHTML = `
+    <h3>Printer Settings</h3>
+    
+    <div class="printer-selection">
+      <label for="printer-select">Default Label Printer:</label>
+      <select id="printer-select" class="form-control"></select>
+    </div>
+    
+    <div class="printer-selection">
+      <label for="invoice-printer-select">Default Invoice Printer:</label>
+      <select id="invoice-printer-select" class="form-control"></select>
+    </div>
+    
+    <div class="platform-printers">
+      <h4>Platform-Specific Printers</h4>
+      <p class="printer-info"><small>Set specific printers for each platform (optional)</small></p>
+      
+      <div class="platform-printer-row">
+        <div class="platform-name">Flipkart</div>
+        <div class="platform-printer-selects">
+          <div class="platform-printer-select">
+            <label>Label Printer:</label>
+            <select id="flipkart-label-printer" class="form-control platform-printer"></select>
+          </div>
+          <div class="platform-printer-select">
+            <label>Invoice Printer:</label>
+            <select id="flipkart-invoice-printer" class="form-control platform-printer"></select>
+          </div>
+        </div>
+      </div>
+      
+      <div class="platform-printer-row">
+        <div class="platform-name">Amazon</div>
+        <div class="platform-printer-selects">
+          <div class="platform-printer-select">
+            <label>Label Printer:</label>
+            <select id="amazon-label-printer" class="form-control platform-printer"></select>
+          </div>
+          <div class="platform-printer-select">
+            <label>Invoice Printer:</label>
+            <select id="amazon-invoice-printer" class="form-control platform-printer"></select>
+          </div>
+        </div>
+      </div>
+      
+      <div class="platform-printer-row">
+        <div class="platform-name">FirstCry</div>
+        <div class="platform-printer-selects">
+          <div class="platform-printer-select">
+            <label>Label Printer:</label>
+            <select id="firstcry-label-printer" class="form-control platform-printer"></select>
+          </div>
+          <div class="platform-printer-select">
+            <label>Invoice Printer:</label>
+            <select id="firstcry-invoice-printer" class="form-control platform-printer"></select>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="printer-actions">
+      <button id="save-printer-settings" class="btn btn-success">Save Printer Settings</button>
+      <button id="test-print-btn" class="btn btn-info">Test Label Printer</button>
+      <button id="test-invoice-print-btn" class="btn btn-info">Test Invoice Printer</button>
+    </div>
+    
+    <div class="printer-info">
+      <p><small>Settings are saved in your browser. Label printers are used for shipping labels, while invoice printers are used for packing slips and invoices.</small></p>
+    </div>
+  `;
+  
+  // Add CSS styles for the printer settings
+  const styleElement = document.createElement('style');
+  styleElement.textContent = `
+    .platform-printers {
+      margin-top: 20px;
+      border-top: 1px solid #eee;
+      padding-top: 15px;
+    }
+    
+    .platform-printer-row {
+      display: flex;
+      margin-bottom: 15px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #f3f3f3;
+    }
+    
+    .platform-name {
+      width: 100px;
+      font-weight: bold;
+      padding-top: 8px;
+    }
+    
+    .platform-printer-selects {
+      flex: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    
+    .platform-printer-select {
+      flex: 1;
+      min-width: 200px;
+    }
+    
+    .platform-printer-select label {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+    
+    .label-printer-option {
+      font-weight: bold;
+      color: #28a745;
+    }
+    
+    @media (max-width: 768px) {
+      .platform-printer-row {
+        flex-direction: column;
+      }
+      
+      .platform-name {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+    }
+  `;
+  document.head.appendChild(styleElement);
+  
+  // Find where to insert the printer settings
+  // Insert after the first card in the container, which is likely the search section
+  const container = document.querySelector('.container');
+  if (container) {
+    const firstCard = container.querySelector('.card');
+    if (firstCard) {
+      firstCard.parentNode.insertBefore(printerSettingsCard, firstCard.nextSibling);
+    } else {
+      // If no card found, just append to container
+      container.appendChild(printerSettingsCard);
+    }
+  }
+}
+
+// Add functionality for platform-specific printer management
+// Platform-specific printer storage
+let platformPrinters = {
+  FLIPKART: { label: '', invoice: '' },
+  AMAZON: { label: '', invoice: '' },
+  FIRSTCRY: { label: '', invoice: '' },
+  MEESHO: { label: '', invoice: '' }
+};
+
+// Default invoice printer
+let invoicePrinter = '';
+
+// Load platform printer settings from localStorage
+function loadPrinterSettings() {
+  const savedSettings = localStorage.getItem('platformPrinters');
+  if (savedSettings) {
+    try {
+      platformPrinters = JSON.parse(savedSettings);
+      
+      // Ensure all platforms exist (in case new ones were added)
+      if (!platformPrinters.FLIPKART) platformPrinters.FLIPKART = { label: '', invoice: '' };
+      if (!platformPrinters.AMAZON) platformPrinters.AMAZON = { label: '', invoice: '' };
+      if (!platformPrinters.FIRSTCRY) platformPrinters.FIRSTCRY = { label: '', invoice: '' };
+      if (!platformPrinters.MEESHO) platformPrinters.MEESHO = { label: '', invoice: '' };
+      
+      console.log("Loaded printer settings:", platformPrinters);
+    } catch (e) {
+      console.error("Error loading printer settings:", e);
+    }
+  }
+  
+  // Load default invoice printer
+  const savedInvoicePrinter = localStorage.getItem('invoicePrinter');
+  if (savedInvoicePrinter) {
+    invoicePrinter = savedInvoicePrinter;
+    console.log("Loaded invoice printer:", invoicePrinter);
+  }
+}
+
+// Save platform printer settings to localStorage
+function savePrinterSettings() {
+  try {
+    localStorage.setItem('platformPrinters', JSON.stringify(platformPrinters));
+    localStorage.setItem('invoicePrinter', invoicePrinter);
+    showMessage("Printer settings saved successfully", "success");
+    console.log("Saved printer settings:", platformPrinters);
+    console.log("Saved invoice printer:", invoicePrinter);
+  } catch (e) {
+    console.error("Error saving printer settings:", e);
+    showMessage("Error saving printer settings", "error");
+  }
+}
+
+// Initialize the printer settings UI
+function initPrinterSettings() {
+  // First make sure we have the UI in place
+  if (!document.getElementById('printer-settings')) {
+    injectPrinterSettingsUI();
+  }
+  
+  // Show the printer settings card
+  const printerSettings = document.getElementById('printer-settings');
+  if (printerSettings) {
+    printerSettings.style.display = 'block';
+  }
+  
+  // Update all printer select dropdowns
+  updatePrinterSelections();
+  
+  // Add event listeners for printer controls if not already added
+  const printerSelect = document.getElementById('printer-select');
+  if (printerSelect && !printerSelect._hasEventListener) {
+    printerSelect.addEventListener('change', function() {
+      labelPrinter = this.value;
+      console.log("Selected label printer changed to:", labelPrinter);
+      showMessage(`Selected label printer: ${labelPrinter}`, "info");
+    });
+    printerSelect._hasEventListener = true;
+  }
+  
+  const invoicePrinterSelect = document.getElementById('invoice-printer-select');
+  if (invoicePrinterSelect && !invoicePrinterSelect._hasEventListener) {
+    invoicePrinterSelect.addEventListener('change', function() {
+      invoicePrinter = this.value;
+      console.log("Selected invoice printer changed to:", invoicePrinter);
+      showMessage(`Selected invoice printer: ${invoicePrinter}`, "info");
+    });
+    invoicePrinterSelect._hasEventListener = true;
+  }
+  
+  // Platform-specific printer changes
+  document.querySelectorAll('.platform-printer').forEach(select => {
+    if (!select._hasEventListener) {
+      select.addEventListener('change', function() {
+        const id = this.id;
+        const platform = id.split('-')[0].toUpperCase();
+        const type = id.includes('invoice') ? 'invoice' : 'label';
+        
+        if (platformPrinters[platform]) {
+          platformPrinters[platform][type] = this.value;
+          console.log(`Set ${platform} ${type} printer to:`, this.value);
+        }
+      });
+      select._hasEventListener = true;
+    }
+  });
+  
+  // Save settings button
+  const saveButton = document.getElementById('save-printer-settings');
+  if (saveButton && !saveButton._hasEventListener) {
+    saveButton.addEventListener('click', function() {
+      savePrinterSettings();
+    });
+    saveButton._hasEventListener = true;
+  }
+  
+  // Test print buttons
+  const testPrintBtn = document.getElementById('test-print-btn');
+  if (testPrintBtn && !testPrintBtn._hasEventListener) {
+    testPrintBtn.addEventListener('click', function() {
+      printTestLabel();
+    });
+    testPrintBtn._hasEventListener = true;
+  }
+  
+  const testInvoicePrintBtn = document.getElementById('test-invoice-print-btn');
+  if (testInvoicePrintBtn && !testInvoicePrintBtn._hasEventListener) {
+    testInvoicePrintBtn.addEventListener('click', function() {
+      printTestInvoice();
+    });
+    testInvoicePrintBtn._hasEventListener = true;
+  }
+}
+
+// Update all printer selection dropdowns
+function updatePrinterSelections() {
+  // Populate the main printer select
+  const printerSelect = document.getElementById('printer-select');
+  if (!printerSelect) return;
+  
+  // Clear existing options
+  printerSelect.innerHTML = '';
+  
+  // Add all available printers to the select dropdown
+  populatePrinterDropdown(printerSelect, labelPrinter);
+  
+  // Populate the invoice printer select
+  const invoicePrinterSelect = document.getElementById('invoice-printer-select');
+  if (invoicePrinterSelect) {
+    invoicePrinterSelect.innerHTML = '';
+    populatePrinterDropdown(invoicePrinterSelect, invoicePrinter);
+  }
+  
+  // Populate platform-specific printer selects
+  for (const platform of ['flipkart', 'amazon', 'firstcry']) {
+    const platformUpper = platform.toUpperCase();
+    
+    // Label printer for this platform
+    const labelSelect = document.getElementById(`${platform}-label-printer`);
+    if (labelSelect) {
+      labelSelect.innerHTML = '';
+      const selectedPrinter = platformPrinters[platformUpper]?.label || '';
+      populatePrinterDropdown(labelSelect, selectedPrinter, true);
+    }
+    
+    // Invoice printer for this platform
+    const invoiceSelect = document.getElementById(`${platform}-invoice-printer`);
+    if (invoiceSelect) {
+      invoiceSelect.innerHTML = '';
+      const selectedPrinter = platformPrinters[platformUpper]?.invoice || '';
+      populatePrinterDropdown(invoiceSelect, selectedPrinter, true);
+    }
+  }
+}
+
+// Helper function to populate a printer dropdown
+function populatePrinterDropdown(selectElement, selectedPrinter, includeDefault = false) {
+  // Add "Use Default" option for platform-specific dropdowns
+  if (includeDefault) {
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = '-- Use Default --';
+    if (!selectedPrinter) {
+      defaultOption.selected = true;
+    }
+    selectElement.appendChild(defaultOption);
+  }
+  
+  // Add all available printers
+  availablePrinters.forEach(function(printer) {
+    const option = document.createElement('option');
+    option.value = printer;
+    
+    // Mark label printers with an indicator
+    if (labelPrinters.includes(printer)) {
+      option.textContent = printer + ' (Label Printer)';
+      option.classList.add('label-printer-option');
+    } else {
+      option.textContent = printer;
+    }
+    
+    // Select the current printer if it matches
+    if (printer === selectedPrinter) {
+      option.selected = true;
+    }
+    
+    selectElement.appendChild(option);
+  });
+}
+
+// Function to print a test invoice
+function printTestInvoice() {
+  if (!qzReady) {
+    showMessage("QZ Tray is not connected. Please connect first.", "error");
+    return;
+  }
+  
+  // Determine which printer to use
+  const printerToUse = invoicePrinter || defaultPrinter;
+  
+  if (!printerToUse) {
+    showMessage("No printer selected. Please select a printer first.", "error");
+    return;
+  }
+  
+  showMessage("Sending test invoice print to " + printerToUse + "...", "info");
+  
+  // Configure printer for A4/Letter
+  const config = qz.configs.create(printerToUse, {
+    colorType: 'color',
+    copies: 1,
+    density: 300,
+    margins: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
+    size: { width: 8.5, height: 11, units: 'in' }, // Letter size
+    orientation: 'portrait'
+  });
+  
+  // Create a simple test invoice
+  const currentDate = new Date().toLocaleString();
+  const printData = [
+    'TEST INVOICE',
+    '\n',
+    '----------------------------------',
+    `Date: ${currentDate}`,
+    `Printer: ${printerToUse}`,
+    '----------------------------------',
+    '\n',
+    'Item 1           $10.00',
+    'Item 2           $15.00',
+    '----------------------------------',
+    'Total            $25.00',
+    '\n',
+    '\n',
+    'THIS IS A TEST INVOICE',
+    'PLEASE DISCARD',
+    '\n',
+    '----------------------------------'
+  ];
+  
+  // Send print job
+  qz.print(config, printData).then(function() {
+    showMessage("Test invoice sent to printer successfully!", "success");
+  }).catch(function(err) {
+    console.error("Test print error:", err);
+    showMessage("Error sending test invoice: " + err.message, "error");
+  });
+}
+
+// Get printer for specified platform and document type
+function getPrinterForPlatform(platform, documentType) {
+  if (!platform) {
+    return documentType === 'invoice' ? invoicePrinter : labelPrinter;
+  }
+  
+  const platformUpper = platform.toUpperCase();
+  
+  // Check if we have a specific printer for this platform
+  if (platformPrinters[platformUpper]) {
+    const platformPrinter = platformPrinters[platformUpper][documentType];
+    
+    // If platform-specific printer is set, use it
+    if (platformPrinter) {
+      console.log(`Using ${platformUpper}-specific ${documentType} printer: ${platformPrinter}`);
+      return platformPrinter;
+    }
+  }
+  
+  // Fall back to default printer for this document type
+  return documentType === 'invoice' ? invoicePrinter : labelPrinter;
+}
+
+// Modify the existing detectPrinters function to call our initialization
+const originalDetectPrinters = detectPrinters;
+detectPrinters = function() {
+  originalDetectPrinters.apply(this, arguments);
+  
+  // After detecting printers, also load settings and initialize UI
+  setTimeout(() => {
+    loadPrinterSettings();
+    initPrinterSettings();
+  }, 500); // Small delay to ensure printers are fully detected
+};
       // Function to detect all printers and identify label printers
       function detectPrinters() {
         // Show a temporary message

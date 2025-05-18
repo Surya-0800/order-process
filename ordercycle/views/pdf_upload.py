@@ -279,3 +279,38 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
                     AWB=item["AWB"]
                 )
             results['meesho_processed'] += 1
+
+
+# Add this to one of your view files
+from django.http import JsonResponse
+import os
+from django.conf import settings
+
+def check_pdf_path(request):
+    """Debug view to check if PDF files exist"""
+    file_path = request.GET.get('file_path', '')
+    
+    # Check absolute path if provided
+    abs_exists = os.path.exists(file_path) if file_path.startswith('/') else False
+    
+    # Check relative path inside MEDIA_ROOT
+    rel_path = file_path.replace(settings.MEDIA_URL, '')
+    rel_file_path = os.path.join(settings.MEDIA_ROOT, rel_path)
+    rel_exists = os.path.exists(rel_file_path)
+    
+    # Try other variations
+    amazon_path = os.path.join(settings.MEDIA_ROOT, 'amazonPdfs', os.path.basename(file_path))
+    amazon_exists = os.path.exists(amazon_path)
+    
+    return JsonResponse({
+        'debug': True,
+        'file_path': file_path,
+        'absolute_path_exists': abs_exists,
+        'media_root': settings.MEDIA_ROOT,
+        'relative_path': rel_file_path,
+        'relative_path_exists': rel_exists,
+        'amazon_path': amazon_path,
+        'amazon_path_exists': amazon_exists,
+        'base_dir': str(settings.BASE_DIR),
+        'media_url': settings.MEDIA_URL,
+    })

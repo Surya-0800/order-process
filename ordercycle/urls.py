@@ -32,6 +32,7 @@ from .views.picklist_views import PicklistViewSet
 
 from .views import dispatch_views as views
 from .views.base import image_processor_view
+from .views.pdf_upload import check_pdf_path
 
 urlpatterns = [
     # Base views
@@ -95,8 +96,13 @@ urlpatterns = [
     # Include API routes - make sure this comes after individual API routes
     path('api/', include('ordercycle.api.urls')),
 
-    path('api/search-awb/', views.search_by_awb, name='search_by_awb'),
+    path('api/search-dispatch-awb/', views.search_by_awb, name='search_by_awb'),
     path('api/orders/complete-by-awb/', views.complete_orders_by_awb, name='complete_orders_by_awb'),
+
+    path('api/orders/change-to-dispatch/', views.change_to_dispatch, name='change-to-dispatch'),
+    path('api/orders/bulk-change-to-dispatch/', views.bulk_change_to_dispatch, name='bulk-change-to-dispatch'),
+
+    path('api/check-pdf-path/', check_pdf_path, name='check_pdf_path')
 ]
 
 # Add media URL patterns for development

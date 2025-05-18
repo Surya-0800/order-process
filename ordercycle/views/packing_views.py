@@ -368,7 +368,7 @@ def get_product_image_by_sku(request):
 def save_awb_and_dispatch(request):
     """
     Validate the AWB number against existing records for an order.
-    If the AWB matches what's already in the system, move the order to Dispatch status.
+    If the AWB matches what's already in the system, move the order to Complete status.
     If the AWB does not match, return an error.
     Also updates the PicklistDispatchStatus for tracking dispatch progress.
     """
@@ -414,7 +414,7 @@ def save_awb_and_dispatch(request):
                 # If AWB matches or there isn't an existing AWB, update order status
                 result = model.objects.filter(order_number=order_number).update(
                     AWB=awb,
-                    status='Dispatch'  # Ensure this status is exactly 'Dispatch'
+                    status='Complete'  # Changed from 'Dispatch' to 'Complete'
                 )
                 updated = result
                 
@@ -437,7 +437,6 @@ def save_awb_and_dispatch(request):
             try:
                 # Find the picklist
                 picklist = Picklist.objects.get(picklist_id=picklist_id)
-                
                 # Get or create dispatch status record
                 dispatch_status, created = PicklistDispatchStatus.objects.get_or_create(
                     picklist=picklist,
@@ -466,12 +465,12 @@ def save_awb_and_dispatch(request):
         # Prepare response
         response_data = {
             'status': 'success',
-            'message': f'AWB number {awb} verified and order moved to Dispatch',
+            'message': f'AWB number {awb} verified and order moved to Complete',
             'platform': platform,
             'updated': updated > 0,
             'order_number': order_number,
             'awb': awb,
-            'order_status': 'Dispatch',  # Include the new status in response
+            'order_status': 'Complete',  # Update the status in the response as well
             'awb_match': True  # Indicate AWB validation was successful
         }
         
