@@ -7,6 +7,9 @@ import pytesseract
 import warnings
 from datetime import datetime
 import pandas as pd
+from ordercycle.models import OrderPDF
+from .db_utils import save_pdf_to_database
+
 
 ##made
 def extract_table_with_camelot(pdf_path, page_number):
@@ -84,6 +87,7 @@ def split_pdf_by_orderid(pdf_path, output_folder, final_output_dict):
     skip_page_for_now = []
     prev_order_id= ""
     order_details = {}
+    saved_orders = []
     
     for i, page in enumerate(doc):
         text = extract_text_from_page(page,pdf_path)
@@ -130,6 +134,14 @@ def split_pdf_by_orderid(pdf_path, output_folder, final_output_dict):
             order_pages[orderid].append({"output_pdf_location" : output_pdf_path})
             with open(output_pdf_path, "wb") as output_pdf:
                 writer.write(output_pdf)
+
+            order_pdf, created = save_pdf_to_database(
+                order_id=orderid,
+                pdf_path=output_pdf_path,
+                source_type="firstcry"
+            )
+            saved_orders.append(order_pdf)
+            os.remove(output_pdf_path)
     return order_pages
 
 def excel_to_dataframe(file_path):

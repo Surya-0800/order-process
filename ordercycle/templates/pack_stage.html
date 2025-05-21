@@ -1055,15 +1055,15 @@
       }
 
       // Function to add the printer settings UI to your existing page
-function injectPrinterSettingsUI() {
-  // Create the printer settings card
-  const printerSettingsCard = document.createElement('div');
-  printerSettingsCard.id = 'printer-settings';
-  printerSettingsCard.className = 'card';
-  printerSettingsCard.style.display = 'none'; // Start hidden, show after QZ connects
-  
-  // Add the HTML content for the printer settings
-  printerSettingsCard.innerHTML = `
+      function injectPrinterSettingsUI() {
+        // Create the printer settings card
+        const printerSettingsCard = document.createElement('div');
+        printerSettingsCard.id = 'printer-settings';
+        printerSettingsCard.className = 'card';
+        printerSettingsCard.style.display = 'none'; // Start hidden, show after QZ connects
+
+        // Add the HTML content for the printer settings
+        printerSettingsCard.innerHTML = `
     <h3>Printer Settings</h3>
     
     <div class="printer-selection">
@@ -1133,10 +1133,10 @@ function injectPrinterSettingsUI() {
       <p><small>Settings are saved in your browser. Label printers are used for shipping labels, while invoice printers are used for packing slips and invoices.</small></p>
     </div>
   `;
-  
-  // Add CSS styles for the printer settings
-  const styleElement = document.createElement('style');
-  styleElement.textContent = `
+
+        // Add CSS styles for the printer settings
+        const styleElement = document.createElement('style');
+        styleElement.textContent = `
     .platform-printers {
       margin-top: 20px;
       border-top: 1px solid #eee;
@@ -1190,385 +1190,669 @@ function injectPrinterSettingsUI() {
       }
     }
   `;
-  document.head.appendChild(styleElement);
-  
-  // Find where to insert the printer settings
-  // Insert after the first card in the container, which is likely the search section
-  const container = document.querySelector('.container');
-  if (container) {
-    const firstCard = container.querySelector('.card');
-    if (firstCard) {
-      firstCard.parentNode.insertBefore(printerSettingsCard, firstCard.nextSibling);
-    } else {
-      // If no card found, just append to container
-      container.appendChild(printerSettingsCard);
-    }
-  }
-}
+        document.head.appendChild(styleElement);
 
-// Add functionality for platform-specific printer management
-// Platform-specific printer storage
-let platformPrinters = {
-  FLIPKART: { label: '', invoice: '' },
-  AMAZON: { label: '', invoice: '' },
-  FIRSTCRY: { label: '', invoice: '' },
-  MEESHO: { label: '', invoice: '' }
-};
-
-// Default invoice printer
-let invoicePrinter = '';
-
-// Load platform printer settings from localStorage
-function loadPrinterSettings() {
-  const savedSettings = localStorage.getItem('platformPrinters');
-  if (savedSettings) {
-    try {
-      platformPrinters = JSON.parse(savedSettings);
-      
-      // Ensure all platforms exist (in case new ones were added)
-      if (!platformPrinters.FLIPKART) platformPrinters.FLIPKART = { label: '', invoice: '' };
-      if (!platformPrinters.AMAZON) platformPrinters.AMAZON = { label: '', invoice: '' };
-      if (!platformPrinters.FIRSTCRY) platformPrinters.FIRSTCRY = { label: '', invoice: '' };
-      if (!platformPrinters.MEESHO) platformPrinters.MEESHO = { label: '', invoice: '' };
-      
-      console.log("Loaded printer settings:", platformPrinters);
-    } catch (e) {
-      console.error("Error loading printer settings:", e);
-    }
-  }
-  
-  // Load default invoice printer
-  const savedInvoicePrinter = localStorage.getItem('invoicePrinter');
-  if (savedInvoicePrinter) {
-    invoicePrinter = savedInvoicePrinter;
-    console.log("Loaded invoice printer:", invoicePrinter);
-  }
-}
-
-// Save platform printer settings to localStorage
-function savePrinterSettings() {
-  try {
-    localStorage.setItem('platformPrinters', JSON.stringify(platformPrinters));
-    localStorage.setItem('invoicePrinter', invoicePrinter);
-    showMessage("Printer settings saved successfully", "success");
-    console.log("Saved printer settings:", platformPrinters);
-    console.log("Saved invoice printer:", invoicePrinter);
-  } catch (e) {
-    console.error("Error saving printer settings:", e);
-    showMessage("Error saving printer settings", "error");
-  }
-}
-
-// Initialize the printer settings UI
-function initPrinterSettings() {
-  // First make sure we have the UI in place
-  if (!document.getElementById('printer-settings')) {
-    injectPrinterSettingsUI();
-  }
-  
-  // Show the printer settings card
-  const printerSettings = document.getElementById('printer-settings');
-  if (printerSettings) {
-    printerSettings.style.display = 'block';
-  }
-  
-  // Update all printer select dropdowns
-  updatePrinterSelections();
-  
-  // Add event listeners for printer controls if not already added
-  const printerSelect = document.getElementById('printer-select');
-  if (printerSelect && !printerSelect._hasEventListener) {
-    printerSelect.addEventListener('change', function() {
-      labelPrinter = this.value;
-      console.log("Selected label printer changed to:", labelPrinter);
-      showMessage(`Selected label printer: ${labelPrinter}`, "info");
-    });
-    printerSelect._hasEventListener = true;
-  }
-  
-  const invoicePrinterSelect = document.getElementById('invoice-printer-select');
-  if (invoicePrinterSelect && !invoicePrinterSelect._hasEventListener) {
-    invoicePrinterSelect.addEventListener('change', function() {
-      invoicePrinter = this.value;
-      console.log("Selected invoice printer changed to:", invoicePrinter);
-      showMessage(`Selected invoice printer: ${invoicePrinter}`, "info");
-    });
-    invoicePrinterSelect._hasEventListener = true;
-  }
-  
-  // Platform-specific printer changes
-  document.querySelectorAll('.platform-printer').forEach(select => {
-    if (!select._hasEventListener) {
-      select.addEventListener('change', function() {
-        const id = this.id;
-        const platform = id.split('-')[0].toUpperCase();
-        const type = id.includes('invoice') ? 'invoice' : 'label';
-        
-        if (platformPrinters[platform]) {
-          platformPrinters[platform][type] = this.value;
-          console.log(`Set ${platform} ${type} printer to:`, this.value);
+        // Find where to insert the printer settings
+        // Insert after the first card in the container, which is likely the search section
+        const container = document.querySelector('.container');
+        if (container) {
+          const firstCard = container.querySelector('.card');
+          if (firstCard) {
+            firstCard.parentNode.insertBefore(printerSettingsCard, firstCard.nextSibling);
+          } else {
+            // If no card found, just append to container
+            container.appendChild(printerSettingsCard);
+          }
         }
-      });
-      select._hasEventListener = true;
-    }
-  });
-  
-  // Save settings button
-  const saveButton = document.getElementById('save-printer-settings');
-  if (saveButton && !saveButton._hasEventListener) {
-    saveButton.addEventListener('click', function() {
-      savePrinterSettings();
-    });
-    saveButton._hasEventListener = true;
-  }
-  
-  // Test print buttons
-  const testPrintBtn = document.getElementById('test-print-btn');
-  if (testPrintBtn && !testPrintBtn._hasEventListener) {
-    testPrintBtn.addEventListener('click', function() {
-      printTestLabel();
-    });
-    testPrintBtn._hasEventListener = true;
-  }
-  
-  const testInvoicePrintBtn = document.getElementById('test-invoice-print-btn');
-  if (testInvoicePrintBtn && !testInvoicePrintBtn._hasEventListener) {
-    testInvoicePrintBtn.addEventListener('click', function() {
-      printTestInvoice();
-    });
-    testInvoicePrintBtn._hasEventListener = true;
-  }
-}
-
-// Update all printer selection dropdowns
-function updatePrinterSelections() {
-  // Populate the main printer select
-  const printerSelect = document.getElementById('printer-select');
-  if (!printerSelect) return;
-  
-  // Clear existing options
-  printerSelect.innerHTML = '';
-  
-  // Add all available printers to the select dropdown
-  populatePrinterDropdown(printerSelect, labelPrinter);
-  
-  // Populate the invoice printer select
-  const invoicePrinterSelect = document.getElementById('invoice-printer-select');
-  if (invoicePrinterSelect) {
-    invoicePrinterSelect.innerHTML = '';
-    populatePrinterDropdown(invoicePrinterSelect, invoicePrinter);
-  }
-  
-  // Populate platform-specific printer selects
-  for (const platform of ['flipkart', 'amazon', 'firstcry']) {
-    const platformUpper = platform.toUpperCase();
-    
-    // Label printer for this platform
-    const labelSelect = document.getElementById(`${platform}-label-printer`);
-    if (labelSelect) {
-      labelSelect.innerHTML = '';
-      const selectedPrinter = platformPrinters[platformUpper]?.label || '';
-      populatePrinterDropdown(labelSelect, selectedPrinter, true);
-    }
-    
-    // Invoice printer for this platform
-    const invoiceSelect = document.getElementById(`${platform}-invoice-printer`);
-    if (invoiceSelect) {
-      invoiceSelect.innerHTML = '';
-      const selectedPrinter = platformPrinters[platformUpper]?.invoice || '';
-      populatePrinterDropdown(invoiceSelect, selectedPrinter, true);
-    }
-  }
-}
-
-// Helper function to populate a printer dropdown
-function populatePrinterDropdown(selectElement, selectedPrinter, includeDefault = false) {
-  // Add "Use Default" option for platform-specific dropdowns
-  if (includeDefault) {
-    const defaultOption = document.createElement('option');
-    defaultOption.value = '';
-    defaultOption.textContent = '-- Use Default --';
-    if (!selectedPrinter) {
-      defaultOption.selected = true;
-    }
-    selectElement.appendChild(defaultOption);
-  }
-  
-  // Add all available printers
-  availablePrinters.forEach(function(printer) {
-    const option = document.createElement('option');
-    option.value = printer;
-    
-    // Mark label printers with an indicator
-    if (labelPrinters.includes(printer)) {
-      option.textContent = printer + ' (Label Printer)';
-      option.classList.add('label-printer-option');
-    } else {
-      option.textContent = printer;
-    }
-    
-    // Select the current printer if it matches
-    if (printer === selectedPrinter) {
-      option.selected = true;
-    }
-    
-    selectElement.appendChild(option);
-  });
-}
-
-// Function to print a test invoice
-function printTestInvoice() {
-  if (!qzReady) {
-    showMessage("QZ Tray is not connected. Please connect first.", "error");
-    return;
-  }
-  
-  // Determine which printer to use
-  const printerToUse = invoicePrinter || defaultPrinter;
-  
-  if (!printerToUse) {
-    showMessage("No printer selected. Please select a printer first.", "error");
-    return;
-  }
-  
-  showMessage("Sending test invoice print to " + printerToUse + "...", "info");
-  
-  // Configure printer for A4/Letter
-  const config = qz.configs.create(printerToUse, {
-    colorType: 'color',
-    copies: 1,
-    density: 300,
-    margins: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
-    size: { width: 8.5, height: 11, units: 'in' }, // Letter size
-    orientation: 'portrait'
-  });
-  
-  // Create a simple test invoice
-  const currentDate = new Date().toLocaleString();
-  const printData = [
-    'TEST INVOICE',
-    '\n',
-    '----------------------------------',
-    `Date: ${currentDate}`,
-    `Printer: ${printerToUse}`,
-    '----------------------------------',
-    '\n',
-    'Item 1           $10.00',
-    'Item 2           $15.00',
-    '----------------------------------',
-    'Total            $25.00',
-    '\n',
-    '\n',
-    'THIS IS A TEST INVOICE',
-    'PLEASE DISCARD',
-    '\n',
-    '----------------------------------'
-  ];
-  
-  // Send print job
-  qz.print(config, printData).then(function() {
-    showMessage("Test invoice sent to printer successfully!", "success");
-  }).catch(function(err) {
-    console.error("Test print error:", err);
-    showMessage("Error sending test invoice: " + err.message, "error");
-  });
-}
-
-// Get printer for specified platform and document type
-function getPrinterForPlatform(platform, documentType) {
-  if (!platform) {
-    return documentType === 'invoice' ? invoicePrinter : labelPrinter;
-  }
-  
-  const platformUpper = platform.toUpperCase();
-  
-  // Check if we have a specific printer for this platform
-  if (platformPrinters[platformUpper]) {
-    const platformPrinter = platformPrinters[platformUpper][documentType];
-    
-    // If platform-specific printer is set, use it
-    if (platformPrinter) {
-      console.log(`Using ${platformUpper}-specific ${documentType} printer: ${platformPrinter}`);
-      return platformPrinter;
-    }
-  }
-  
-  // Fall back to default printer for this document type
-  return documentType === 'invoice' ? invoicePrinter : labelPrinter;
-}
-
-// Modify the existing detectPrinters function to call our initialization
-const originalDetectPrinters = detectPrinters;
-detectPrinters = function() {
-  originalDetectPrinters.apply(this, arguments);
-  
-  // After detecting printers, also load settings and initialize UI
-  setTimeout(() => {
-    loadPrinterSettings();
-    initPrinterSettings();
-  }, 500); // Small delay to ensure printers are fully detected
-};
-      // Function to detect all printers and identify label printers
-      function detectPrinters() {
-        // Show a temporary message
-        showMessage("Detecting available printers...", "info");
-
-        qz.printers.find()
-          .then(function (printers) {
-            availablePrinters = printers;
-            console.log("Available printers:", availablePrinters);
-
-            if (printers.length === 0) {
-              showMessage("No printers detected. Please check your printer connections.", "warning");
-              updateQZStatus("Connected, but no printers found", "warning");
-              return;
-            }
-
-            // Identify label printers by name
-            labelPrinters = printers.filter(function (printer) {
-              const printerLower = printer.toLowerCase();
-              // Check if printer name contains any of the common label printer terms
-              return COMMON_LABEL_PRINTERS.some(term => printerLower.includes(term));
-            });
-
-            console.log("Detected label printers:", labelPrinters);
-
-            // Get default printer
-            return qz.printers.getDefault();
-          })
-          .then(function (printer) {
-            if (!printer) {
-              console.warn("No default printer found");
-              return;
-            }
-
-            defaultPrinter = printer;
-            console.log("Default printer:", defaultPrinter);
-
-            // Set label printer - prioritize detected label printers
-            if (labelPrinters.length > 0) {
-              labelPrinter = labelPrinters[0]; // Use first detected label printer
-              console.log("Auto-selected label printer:", labelPrinter);
-              showMessage(`Label printer detected: ${labelPrinter}`, "success");
-            } else {
-              // Fall back to default printer if no label printer found
-              labelPrinter = defaultPrinter;
-              console.log("No label printer detected, using default:", labelPrinter);
-              showMessage(`No label printer detected. Using default printer: ${labelPrinter}`, "info");
-            }
-
-            // Update printer selection in UI
-            updatePrinterSelection();
-          })
-          .catch(function (err) {
-            console.error("Error finding printers:", err);
-            showMessage("Failed to detect printers. Check if QZ Tray has printer permissions.", "error");
-
-            // Attempt to continue with a local browser print fallback
-            showMessage("Print operations will fall back to browser printing.", "warning");
-          });
       }
 
+      // Add functionality for platform-specific printer management
+      // Platform-specific printer storage
+      let platformPrinters = {
+        FLIPKART: { label: '', invoice: '' },
+        AMAZON: { label: '', invoice: '' },
+        FIRSTCRY: { label: '', invoice: '' },
+        MEESHO: { label: '', invoice: '' }
+      };
+
+      // Default invoice printer
+      let invoicePrinter = '';
+
+      // Load platform printer settings from localStorage
+      function loadPrinterSettings() {
+        const savedSettings = localStorage.getItem('platformPrinters');
+        if (savedSettings) {
+          try {
+            platformPrinters = JSON.parse(savedSettings);
+
+            // Ensure all platforms exist (in case new ones were added)
+            if (!platformPrinters.FLIPKART) platformPrinters.FLIPKART = { label: '', invoice: '' };
+            if (!platformPrinters.AMAZON) platformPrinters.AMAZON = { label: '', invoice: '' };
+            if (!platformPrinters.FIRSTCRY) platformPrinters.FIRSTCRY = { label: '', invoice: '' };
+            if (!platformPrinters.MEESHO) platformPrinters.MEESHO = { label: '', invoice: '' };
+
+            console.log("Loaded printer settings:", platformPrinters);
+          } catch (e) {
+            console.error("Error loading printer settings:", e);
+          }
+        }
+
+        // Load default invoice printer
+        const savedInvoicePrinter = localStorage.getItem('invoicePrinter');
+        if (savedInvoicePrinter) {
+          invoicePrinter = savedInvoicePrinter;
+          console.log("Loaded invoice printer:", invoicePrinter);
+        }
+      }
+
+      // Save platform printer settings to localStorage
+      function savePrinterSettings() {
+        try {
+          localStorage.setItem('platformPrinters', JSON.stringify(platformPrinters));
+          localStorage.setItem('invoicePrinter', invoicePrinter);
+          showMessage("Printer settings saved successfully", "success");
+          console.log("Saved printer settings:", platformPrinters);
+          console.log("Saved invoice printer:", invoicePrinter);
+        } catch (e) {
+          console.error("Error saving printer settings:", e);
+          showMessage("Error saving printer settings", "error");
+        }
+      }
+
+      // Initialize the printer settings UI
+      function initPrinterSettings() {
+        // First make sure we have the UI in place
+        if (!document.getElementById('printer-settings')) {
+          injectPrinterSettingsUI();
+        }
+
+        // Show the printer settings card
+        const printerSettings = document.getElementById('printer-settings');
+        if (printerSettings) {
+          printerSettings.style.display = 'block';
+        }
+
+        // Update all printer select dropdowns
+        updatePrinterSelections();
+
+        // Add event listeners for printer controls if not already added
+        const printerSelect = document.getElementById('printer-select');
+        if (printerSelect && !printerSelect._hasEventListener) {
+          printerSelect.addEventListener('change', function () {
+            labelPrinter = this.value;
+            console.log("Selected label printer changed to:", labelPrinter);
+            showMessage(`Selected label printer: ${labelPrinter}`, "info");
+          });
+          printerSelect._hasEventListener = true;
+        }
+
+        const invoicePrinterSelect = document.getElementById('invoice-printer-select');
+        if (invoicePrinterSelect && !invoicePrinterSelect._hasEventListener) {
+          invoicePrinterSelect.addEventListener('change', function () {
+            invoicePrinter = this.value;
+            console.log("Selected invoice printer changed to:", invoicePrinter);
+            showMessage(`Selected invoice printer: ${invoicePrinter}`, "info");
+          });
+          invoicePrinterSelect._hasEventListener = true;
+        }
+
+        // Platform-specific printer changes
+        document.querySelectorAll('.platform-printer').forEach(select => {
+          if (!select._hasEventListener) {
+            select.addEventListener('change', function () {
+              const id = this.id;
+              const platform = id.split('-')[0].toUpperCase();
+              const type = id.includes('invoice') ? 'invoice' : 'label';
+
+              if (platformPrinters[platform]) {
+                platformPrinters[platform][type] = this.value;
+                console.log(`Set ${platform} ${type} printer to:`, this.value);
+              }
+            });
+            select._hasEventListener = true;
+          }
+        });
+
+        // Save settings button
+        const saveButton = document.getElementById('save-printer-settings');
+        if (saveButton && !saveButton._hasEventListener) {
+          saveButton.addEventListener('click', function () {
+            savePrinterSettings();
+          });
+          saveButton._hasEventListener = true;
+        }
+
+        // Test print buttons
+        const testPrintBtn = document.getElementById('test-print-btn');
+        if (testPrintBtn && !testPrintBtn._hasEventListener) {
+          testPrintBtn.addEventListener('click', function () {
+            printTestLabel();
+          });
+          testPrintBtn._hasEventListener = true;
+        }
+
+        const testInvoicePrintBtn = document.getElementById('test-invoice-print-btn');
+        if (testInvoicePrintBtn && !testInvoicePrintBtn._hasEventListener) {
+          testInvoicePrintBtn.addEventListener('click', function () {
+            printTestInvoice();
+          });
+          testInvoicePrintBtn._hasEventListener = true;
+        }
+      }
+
+      // Update all printer selection dropdowns
+      function updatePrinterSelections() {
+        // Populate the main printer select
+        const printerSelect = document.getElementById('printer-select');
+        if (!printerSelect) return;
+
+        // Clear existing options
+        printerSelect.innerHTML = '';
+
+        // Add all available printers to the select dropdown
+        populatePrinterDropdown(printerSelect, labelPrinter);
+
+        // Populate the invoice printer select
+        const invoicePrinterSelect = document.getElementById('invoice-printer-select');
+        if (invoicePrinterSelect) {
+          invoicePrinterSelect.innerHTML = '';
+          populatePrinterDropdown(invoicePrinterSelect, invoicePrinter);
+        }
+
+        // Populate platform-specific printer selects
+        for (const platform of ['flipkart', 'amazon', 'firstcry']) {
+          const platformUpper = platform.toUpperCase();
+
+          // Label printer for this platform
+          const labelSelect = document.getElementById(`${platform}-label-printer`);
+          if (labelSelect) {
+            labelSelect.innerHTML = '';
+            const selectedPrinter = platformPrinters[platformUpper]?.label || '';
+            populatePrinterDropdown(labelSelect, selectedPrinter, true);
+          }
+
+          // Invoice printer for this platform
+          const invoiceSelect = document.getElementById(`${platform}-invoice-printer`);
+          if (invoiceSelect) {
+            invoiceSelect.innerHTML = '';
+            const selectedPrinter = platformPrinters[platformUpper]?.invoice || '';
+            populatePrinterDropdown(invoiceSelect, selectedPrinter, true);
+          }
+        }
+      }
+
+      // Helper function to populate a printer dropdown
+      function populatePrinterDropdown(selectElement, selectedPrinter, includeDefault = false) {
+        // Add "Use Default" option for platform-specific dropdowns
+        if (includeDefault) {
+          const defaultOption = document.createElement('option');
+          defaultOption.value = '';
+          defaultOption.textContent = '-- Use Default --';
+          if (!selectedPrinter) {
+            defaultOption.selected = true;
+          }
+          selectElement.appendChild(defaultOption);
+        }
+
+        // Add all available printers
+        availablePrinters.forEach(function (printer) {
+          const option = document.createElement('option');
+          option.value = printer;
+
+          // Mark label printers with an indicator
+          if (labelPrinters.includes(printer)) {
+            option.textContent = printer + ' (Label Printer)';
+            option.classList.add('label-printer-option');
+          } else {
+            option.textContent = printer;
+          }
+
+          // Select the current printer if it matches
+          if (printer === selectedPrinter) {
+            option.selected = true;
+          }
+
+          selectElement.appendChild(option);
+        });
+      }
+
+      // Function to print a test invoice
+      function printTestInvoice() {
+        if (!qzReady) {
+          showMessage("QZ Tray is not connected. Please connect first.", "error");
+          return;
+        }
+
+        // Determine which printer to use
+        const printerToUse = invoicePrinter || defaultPrinter;
+
+        if (!printerToUse) {
+          showMessage("No printer selected. Please select a printer first.", "error");
+          return;
+        }
+
+        showMessage("Sending test invoice print to " + printerToUse + "...", "info");
+
+        // Configure printer for A4/Letter
+        const config = qz.configs.create(printerToUse, {
+          colorType: 'color',
+          copies: 1,
+          density: 300,
+          margins: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
+          size: { width: 8.5, height: 11, units: 'in' }, // Letter size
+          orientation: 'portrait'
+        });
+
+        // Create a simple test invoice
+        const currentDate = new Date().toLocaleString();
+        const printData = [
+          'TEST INVOICE',
+          '\n',
+          '----------------------------------',
+          `Date: ${currentDate}`,
+          `Printer: ${printerToUse}`,
+          '----------------------------------',
+          '\n',
+          'Item 1           $10.00',
+          'Item 2           $15.00',
+          '----------------------------------',
+          'Total            $25.00',
+          '\n',
+          '\n',
+          'THIS IS A TEST INVOICE',
+          'PLEASE DISCARD',
+          '\n',
+          '----------------------------------'
+        ];
+
+        // Send print job
+        qz.print(config, printData).then(function () {
+          showMessage("Test invoice sent to printer successfully!", "success");
+        }).catch(function (err) {
+          console.error("Test print error:", err);
+          showMessage("Error sending test invoice: " + err.message, "error");
+        });
+      }
+      
+      function handleQzPermissions() {
+  // Create a user-friendly guide for handling permissions
+  const permissionGuide = document.createElement('div');
+  permissionGuide.id = 'qz-permission-guide';
+  permissionGuide.className = 'card';
+  permissionGuide.style.marginBottom = '20px';
+  permissionGuide.style.backgroundColor = '#f8f9fa';
+  permissionGuide.style.border = '1px solid #ddd';
+  permissionGuide.style.borderRadius = '5px';
+  permissionGuide.style.padding = '15px';
+  
+  permissionGuide.innerHTML = `
+    <h3 style="margin-top: 0; color: #007bff;">Printer Access Instructions</h3>
+    <p>To enable printing directly to your printer, you need to:</p>
+    <ol>
+      <li>Click "Allow" when your browser asks for permission to access printers</li>
+      <li>Check "Remember this decision" to avoid future prompts</li>
+      <li>Make sure QZ Tray is installed and running (look for the icon in your system tray)</li>
+    </ol>
+    <div style="display: flex; align-items: center; margin-top: 10px; padding: 10px; background-color: #e9f7fe; border-radius: 4px;">
+      <div style="margin-right: 10px; color: #0277bd;"><strong>Tip:</strong></div>
+      <div>If you click "Block", you'll need to download labels manually and print them yourself.</div>
+    </div>
+    <button id="qz-permission-dismiss" class="btn btn-primary" style="margin-top: 10px;">I understand</button>
+  `;
+  
+  // Insert at the top of the container
+  const container = document.querySelector('.container');
+  if (container && !document.getElementById('qz-permission-guide')) {
+    container.insertBefore(permissionGuide, container.firstChild);
+    
+    // Add dismiss button functionality
+    document.getElementById('qz-permission-dismiss').addEventListener('click', function() {
+      permissionGuide.remove();
+      localStorage.setItem('qz-permission-guide-dismissed', 'true');
+    });
+  }
+  
+  // Add a visible reconnect button to the QZ status area
+  updateQzConnectionButtons();
+}
+// Update the QZ status area with clearer connect/reconnect buttons
+function updateQzConnectionButtons() {
+  const qzStatusDiv = document.querySelector('.qz-status');
+  if (!qzStatusDiv) return;
+  
+  // Update the connect button
+  const connectBtn = document.getElementById('connect-qz');
+  if (connectBtn) {
+    connectBtn.textContent = qzReady ? 'Reconnect QZ Tray' : 'Connect to QZ Tray';
+    connectBtn.className = qzReady ? 'btn btn-outline-success' : 'btn btn-primary';
+    
+    // Add a test print button if connected
+    if (qzReady && !document.getElementById('test-qz-print')) {
+      const testPrintBtn = document.createElement('button');
+      testPrintBtn.id = 'test-qz-print';
+      testPrintBtn.className = 'btn btn-info';
+      testPrintBtn.textContent = 'Test Printer';
+      testPrintBtn.style.marginLeft = '10px';
+      testPrintBtn.addEventListener('click', function() {
+        printTestLabel();
+      });
+      
+      connectBtn.parentNode.insertBefore(testPrintBtn, connectBtn.nextSibling);
+    }
+  }
+}
+
+function safeReconnectQZ() {
+  // Show status
+  updateQZStatus("Disconnecting...", "disconnecting");
+  
+  // Check if already connected
+  if (qzReady && qz.websocket && typeof qz.websocket.disconnect === 'function') {
+    // Properly disconnect first
+    qz.websocket.disconnect()
+      .then(() => {
+        // Reset connection state
+        qzReady = false;
+        qzConnection = null;
+        updateQZStatus("Disconnected. Reconnecting...", "disconnected");
+        
+        // Wait a bit then reconnect
+        setTimeout(() => {
+          initQZ();
+        }, 1000);
+      })
+      .catch(err => {
+        console.error("Error disconnecting:", err);
+        // Reset state anyway and try to connect
+        qzReady = false;
+        qzConnection = null;
+        
+        // Try to connect again
+        setTimeout(() => {
+          initQZ();
+        }, 1000);
+      });
+  } else {
+    // Not connected or no disconnect method, just try to connect
+    qzReady = false;
+    qzConnection = null;
+    
+    // Try to connect
+    setTimeout(() => {
+      initQZ();
+    }, 500);
+  }
+}
+
+
+function modifyInitQZ() {
+  // Save reference to original initQZ function
+  const originalInitQZ = window.initQZ || initQZ;
+  
+  // Replace with improved version that properly checks existing connections
+  window.initQZ = function() {
+    console.log("Initializing QZ Tray connection (modified version)...");
+    
+    // First check if the QZ library loaded
+    if (typeof qz === 'undefined') {
+      console.error("QZ Tray library not loaded properly");
+      showMessage("QZ Tray library not loaded. Please check if QZ Tray is installed and reload the page.", "error");
+      return;
+    }
+    
+    // Check if connection already exists using isActive instead of status
+    if (qzReady && qz.websocket && qz.websocket.isActive && qz.websocket.isActive()) {
+      console.log("QZ Tray already connected, refreshing printer list");
+      detectPrinters();
+      updateQzConnectionButtons();
+      return;
+    }
+    
+    // Not connected or can't determine status, try to connect
+    // Show connecting status
+    updateQZStatus("Connecting to QZ Tray...", "connecting");
+    
+    try {
+      // Set certificate (can be empty for unsigned)
+      qz.security.setCertificatePromise(function(resolve, reject) {
+        resolve();
+      });
+      
+      // Set signing function (leave empty for unsigned)
+      qz.security.setSignaturePromise(function(toSign) {
+        return function(resolve, reject) {
+          resolve();
+        };
+      });
+      
+      // Connect to QZ Tray with only ONE attempt
+      // This is key to reducing permission prompts
+      qz.websocket.connect({
+        retries: 0,  // No retries
+        delay: 0     // No delay
+      }).then(function() {
+        qzReady = true;
+        qzConnection = qz.websocket;
+        
+        // Update connection status
+        updateQZStatus("Connected to QZ Tray", "connected");
+        console.log("Successfully connected to QZ Tray");
+        
+        // Get list of available printers
+        detectPrinters();
+        
+        // Update UI to show connected state
+        updateQzConnectionButtons();
+        
+      }).catch(function(err) {
+        console.error("QZ Tray connection error:", err);
+        
+        // Check specific errors
+        let errorMsg = "Failed to connect to QZ Tray. ";
+        
+        if (err.message && err.message.includes("already exists")) {
+          // Connection already exists error - should be handled by status check,
+          // but just in case we hit this error...
+          errorMsg = "QZ Tray connection already exists. Refreshing data...";
+          
+          // Update state to connected since a connection exists
+          qzReady = true;
+          
+          // Try to retrieve printers
+          setTimeout(function() {
+            detectPrinters();
+            updateQzConnectionButtons();
+          }, 500);
+        } else if (err.message && err.message.includes("SecurityError")) {
+          errorMsg += "Browser security blocked the connection. Please click 'Allow' when prompted.";
+          
+          // Show permission guide for security errors
+          if (typeof handleQzPermissions === 'function') {
+            handleQzPermissions();
+          }
+        } else if (err.message && err.message.includes("NetworkError")) {
+          errorMsg += "QZ Tray is not running or is blocked by a firewall.";
+        } else if (err.message && err.message.includes("timeout")) {
+          errorMsg += "Connection timed out. QZ Tray may not be running.";
+        }
+        
+        updateQZStatus(errorMsg, "error");
+      });
+    } catch (e) {
+      console.error("Unexpected error initializing QZ:", e);
+      updateQZStatus("Unexpected error: " + e.message, "error");
+    }
+  };
+}
+document.addEventListener('DOMContentLoaded', function() {
+  // Replace the initQZ function with our modified version
+  modifyInitQZ();
+});
+      // Get printer for specified platform and document type
+      function getPrinterForPlatform(platform, documentType) {
+        if (!platform) {
+          return documentType === 'invoice' ? invoicePrinter : labelPrinter;
+        }
+
+        const platformUpper = platform.toUpperCase();
+
+        // Check if we have a specific printer for this platform
+        if (platformPrinters[platformUpper]) {
+          const platformPrinter = platformPrinters[platformUpper][documentType];
+
+          // If platform-specific printer is set, use it
+          if (platformPrinter) {
+            console.log(`Using ${platformUpper}-specific ${documentType} printer: ${platformPrinter}`);
+            return platformPrinter;
+          }
+        }
+
+        // Fall back to default printer for this document type
+        return documentType === 'invoice' ? invoicePrinter : labelPrinter;
+      }
+
+      // Modify the existing detectPrinters function to call our initialization
+      const originalDetectPrinters = detectPrinters;
+      detectPrinters = function () {
+        originalDetectPrinters.apply(this, arguments);
+
+        // After detecting printers, also load settings and initialize UI
+        setTimeout(() => {
+          loadPrinterSettings();
+          initPrinterSettings();
+        }, 500); // Small delay to ensure printers are fully detected
+      };
+      // Function to detect all printers and identify label printers
+      function detectPrinters() {
+  console.log("Detecting available printers...");
+  showMessage("Detecting available printers...", "info");
+
+  // Safety check for QZ Tray connection
+  if (typeof qz === 'undefined' || !qzReady) {
+    console.warn("QZ Tray not ready when detecting printers");
+    updateQZStatus("QZ Tray not connected. Cannot detect printers.", "warning");
+    return Promise.reject("QZ Tray not connected");
+  }
+
+  // Clear any old printer errors
+  document.querySelectorAll('.printer-error').forEach(el => el.remove());
+
+  // Use a promise-based approach to handle errors better
+  return qz.printers.find()
+    .then(function(printers) {
+      if (!printers || printers.length === 0) {
+        console.warn("No printers detected");
+        showMessage("No printers detected. Please check your printer connections.", "warning");
+        updateQZStatus("Connected to QZ Tray, but no printers found", "warning");
+        
+        // Add detailed error information
+        const container = document.querySelector('.container');
+        if (container) {
+          const errorInfo = document.createElement('div');
+          errorInfo.className = 'card printer-error';
+          errorInfo.style.backgroundColor = '#fff3cd';
+          errorInfo.style.color = '#856404';
+          errorInfo.style.marginBottom = '20px';
+          errorInfo.style.padding = '15px';
+          
+          errorInfo.innerHTML = `
+            <h3>Printer Detection Issue</h3>
+            <p>QZ Tray is connected, but no printers were detected. This may be because:</p>
+            <ul>
+              <li>Your printer is turned off or disconnected</li>
+              <li>Your printer drivers need to be reinstalled</li>
+              <li>QZ Tray doesn't have permission to access your printers</li>
+            </ul>
+            <p>Try these solutions:</p>
+            <ol>
+              <li>Check that your printer is turned on and connected</li>
+              <li>Restart QZ Tray</li>
+              <li>Restart your browser</li>
+              <li>Reinstall your printer drivers</li>
+            </ol>
+          `;
+          
+          container.insertBefore(errorInfo, container.firstChild.nextSibling);
+        }
+        
+        // Return empty arrays but don't fail
+        availablePrinters = [];
+        labelPrinters = [];
+        return [];
+      }
+
+      availablePrinters = printers;
+      console.log("Available printers:", availablePrinters);
+
+      // Identify label printers based on name patterns
+      labelPrinters = printers.filter(function(printer) {
+        const printerLower = printer.toLowerCase();
+        return COMMON_LABEL_PRINTERS.some(term => printerLower.includes(term));
+      });
+
+      console.log("Detected label printers:", labelPrinters);
+
+      // Get default printer
+      return qz.printers.getDefault()
+        .then(function(defaultPrinterName) {
+          if (defaultPrinterName) {
+            defaultPrinter = defaultPrinterName;
+            console.log("Default printer:", defaultPrinter);
+          } else {
+            console.warn("No default printer found");
+            defaultPrinter = printers[0]; // Use first available printer as fallback
+            console.log("Using first available printer as default:", defaultPrinter);
+          }
+
+          // Set label printer - prioritize detected label printers
+          if (labelPrinters.length > 0) {
+            labelPrinter = labelPrinters[0]; // Use first detected label printer
+            console.log("Auto-selected label printer:", labelPrinter);
+            showMessage(`Label printer detected: ${labelPrinter}`, "success");
+          } else if (printers.length > 0) {
+            // Fall back to default printer if no label printer found
+            labelPrinter = defaultPrinter;
+            console.log("No label printer detected, using default:", labelPrinter);
+            showMessage(`No label printer detected. Using default printer: ${labelPrinter}`, "info");
+          } else {
+            console.warn("No printers available");
+            labelPrinter = '';
+          }
+
+          // Update printer selection in UI
+          updatePrinterSelection();
+          
+          // Load saved printer preferences
+          loadPrinterSettings();
+          
+          // Initialize printer settings UI
+          initPrinterSettings();
+          
+          return printers;
+        });
+    })
+    .catch(function(err) {
+      console.error("Error finding printers:", err);
+      
+      let errorMessage = "Failed to detect printers. ";
+      
+      if (err.message && err.message.includes("Error reading print list")) {
+        errorMessage += "QZ Tray couldn't access your printer list. Please check permissions.";
+      } else if (err.message && err.message.includes("Cannot read properties")) {
+        errorMessage += "QZ Tray connection may be unstable.";
+      } else {
+        errorMessage += err.message || "Unknown error.";
+      }
+      
+      showMessage(errorMessage, "error");
+      
+      // Reset printer lists to be safe
+      availablePrinters = [];
+      labelPrinters = [];
+      
+      return Promise.reject(err);
+    });
+}
       // Function to update QZ status display
       function updateQZStatus(message, status) {
         const statusElem = document.getElementById('qz-status-message');
@@ -1880,204 +2164,337 @@ detectPrinters = function() {
       // Function that strictly prints only the first page of a PDF
       // Modified printOrderLabel function to always mark the order as processed after printing
       function printOrderLabel(platform, orderNumber) {
-        showMessage('Preparing label for printing...', 'info');
+  showMessage('Preparing label for printing...', 'info');
 
-        const requestBody = {
-          platform: platform,
-          order_number: orderNumber
-        };
+  // Only use qzReady flag to determine if we can print, don't attempt reconnection
+  // This avoids repeated permission prompts
+  const canPrint = qzReady && labelPrinter;
+  
+  if (!canPrint) {
+    showMessage('Printer not ready. Label will be downloaded for manual printing.', 'warning');
+  }
+  
+  // Proceed with either printing or downloading based on current connection status
+  proceedWithPrintOrDownload(platform, orderNumber, canPrint);
+}
 
-        fetch('/api/print-label/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-          },
-          body: JSON.stringify(requestBody)
-        })
-          .then(response => {
-            if (!response.ok) {
-              return response.json().then(data => {
-                throw new Error(data.message || 'Error retrieving label');
-              });
+
+function proceedWithPrintOrDownload(platform, orderNumber, canPrint) {
+  const requestBody = {
+    platform: platform,
+    order_number: orderNumber
+  };
+
+  fetch('/api/print-label/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCookie('csrftoken')
+    },
+    body: JSON.stringify(requestBody)
+  })
+    .then(response => {
+      if (!response.ok) {
+        return response.json().then(data => {
+          throw new Error(data.message || 'Error retrieving label');
+        });
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (!data.pdf_url) {
+        throw new Error('No PDF URL available for this order');
+      }
+
+      let pdfUrl = data.pdf_url;
+      if (!pdfUrl.startsWith('http')) {
+        pdfUrl = window.location.origin + (pdfUrl.startsWith('/') ? '' : '/') + pdfUrl;
+      }
+
+      showMessage("Downloading label...", "info");
+
+      return fetch(pdfUrl)
+        .then(response => response.arrayBuffer())
+        .then(async arrayBuffer => {
+          const platformUpper = (data.platform || '').toUpperCase();
+          const { PDFDocument, degrees } = PDFLib;
+
+          try {
+            // Process the PDF as before
+            const fullPdf = await PDFDocument.load(arrayBuffer);
+            const newPdf = await PDFDocument.create();
+
+            // Determine which page contains the label
+            let pageIndex = 0; // Default first page
+            if (data.label_page_index !== undefined) {
+              pageIndex = data.label_page_index === -1 ? 
+                          fullPdf.getPageCount() - 1 : 
+                          data.label_page_index;
+            } else if (platformUpper === 'FIRSTCRY') {
+              pageIndex = fullPdf.getPageCount() - 1;
             }
-            return response.json();
-          })
-          .then(data => {
-            if (!data.pdf_url) {
-              throw new Error('No PDF URL available for this order');
+
+            const [selectedPage] = await newPdf.copyPages(fullPdf, [pageIndex]);
+            const page = newPdf.addPage(selectedPage);
+            const { width, height } = page.getSize();
+
+            if (platformUpper === 'FLIPKART') {
+              const cropLeft = 180;
+              const cropTop = 0;
+              const cropWidth = width - 360;
+              const cropHeight = height - 25;
+              page.setCropBox(cropLeft, cropTop, cropWidth, cropHeight);
             }
 
-            let pdfUrl = data.pdf_url;
-            if (!pdfUrl.startsWith('http')) {
-              pdfUrl = window.location.origin + (pdfUrl.startsWith('/') ? '' : '/') + pdfUrl;
+            if (platformUpper === 'MEESHO') {
+              page.setCropBox(0, 0, width, height);
+              page.setRotation(degrees(90));
+              page.setSize(432, 288);
+              console.log("Meesho label: rotated and resized to 6x4 landscape");
             }
 
-            showMessage("Downloading label...", "info");
+            // Generate the new PDF
+            const newPdfBytes = await newPdf.save();
+            const blob = new Blob([newPdfBytes], { type: 'application/pdf' });
+            
+            // Always provide download option as backup
+            const downloadUrl = URL.createObjectURL(blob);
+            
+            // Check if we can print
+            if (canPrint && qzReady && labelPrinter) {
+              showMessage(`Sending to printer: ${labelPrinter}...`, "info");
+              
+              // Convert to base64 for QZ Tray
+              const base64Data = arrayBufferToBase64(newPdfBytes);
+              
+              // Get the right printer based on platform
+              const printerToUse = getPrinterForPlatform(platformUpper, 'label');
+              console.log(`Using printer: ${printerToUse} for platform: ${platformUpper}`);
+              
+              // Configure printer based on platform
+              let config;
+              if (platformUpper === 'MEESHO') {
+                config = qz.configs.create(printerToUse, {
+                  size: { width: 6, height: 4, units: 'in' }, // Landscape
+                  margins: { top: 0, right: 0, bottom: 0, left: 0 },
+                  orientation: 'landscape',
+                  copies: 1,
+                  colorType: 'grayscale',
+                  scale: 'fit',
+                  scaleContent: true,
+                  fitToPage: true,
+                  rotate: 90,
+                  density: 300
+                });
+              } else {
+                config = qz.configs.create(printerToUse, {
+                  size: { width: 4, height: 6, units: 'in' },
+                  margins: { top: 0, right: 0, bottom: 0, left: 0 },
+                  orientation: 'portrait',
+                  copies: 1,
+                  colorType: 'grayscale',
+                  density: 300,
+                  scale: 'fit'
+                });
+              }
 
-            fetch(pdfUrl)
-              .then(response => response.arrayBuffer())
-              .then(async arrayBuffer => {
-                const platformUpper = (data.platform || '').toUpperCase();
-                const { PDFDocument, degrees } = PDFLib;
+              // Log printing attempt for debugging
+              console.log(`Attempting to print PDF (${newPdfBytes.length} bytes) to ${printerToUse}`);
+              console.log("QZ Connection status:", qzConnection ? "Connected" : "Not connected");
 
-                try {
-                  const fullPdf = await PDFDocument.load(arrayBuffer);
-                  const newPdf = await PDFDocument.create();
+              const printData = [{
+                type: 'pdf',
+                format: 'base64',
+                data: base64Data
+              }];
 
-                  let pageIndex = 0;
-                  if (platformUpper === 'FIRSTCRY') {
-                    pageIndex = fullPdf.getPageCount() - 1;
+              // Try to print with better error handling
+              qz.print(config, printData)
+                .then(() => {
+                  showMessage(`Label printed to ${printerToUse} successfully!`, "success");
+                  // Mark as printed
+                  markOrderAsPrinted(orderNumber);
+                  // Now print invoice pages
+                  printInvoicePages(orderNumber, null, platformUpper);
+                })
+                .catch(err => {
+                  console.error("QZ Printing error:", err);
+                  // Provide specific error message
+                  let errorMsg = `Printing failed: ${err.message}. `;
+                  
+                  // Add specific advice based on error type
+                  if (err.message.includes("Unable to find")) {
+                    errorMsg += `Printer "${printerToUse}" not found. `;
+                  } else if (err.message.includes("Invalid")) {
+                    errorMsg += "Invalid print configuration. ";
                   }
-
-                  const [selectedPage] = await newPdf.copyPages(fullPdf, [pageIndex]);
-                  const page = newPdf.addPage(selectedPage);
-                  const { width, height } = page.getSize();
-
-                  if (platformUpper === 'FLIPKART') {
-                    const cropLeft = 180;
-                    const cropTop = 0;
-                    const cropWidth = width - 360;
-                    const cropHeight = height - 25;
-                    page.setCropBox(cropLeft, cropTop, cropWidth, cropHeight);
-                  }
-
-                  if (platformUpper === 'MEESHO') {
-                    // Rotate the content 90 degrees and resize to 6x4 inches (landscape)
-                    page.setCropBox(0, 0, width, height); // Keep entire page
-                    page.setRotation(degrees(90));
-                    page.setSize(432, 288); // 6 inches (432pt) x 4 inches (288pt)
-                    console.log("Meesho label: rotated and resized to 6x4 landscape");
-                  }
-
-                  // Save the new PDF
-                  const newPdfBytes = await newPdf.save();
-                  const blob = new Blob([newPdfBytes], { type: 'application/pdf' });
-
-                  // Always download the label
-                  const downloadUrl = URL.createObjectURL(blob);
+                  
+                  showMessage(`${errorMsg} Downloading PDF instead.`, "warning");
+                  
+                  // Provide download as fallback
                   const a = document.createElement('a');
                   a.href = downloadUrl;
                   a.download = `label_${orderNumber}.pdf`;
                   a.click();
-                  URL.revokeObjectURL(downloadUrl);
-
-                  showMessage(`Label for order ${orderNumber} downloaded successfully!`, "success");
-
-                  // If QZ Tray is ready, also try to send to printer
-                  if (qzReady && labelPrinter) {
-                    // Create a base64 string for QZ Tray
-                    const base64Data = arrayBufferToBase64(newPdfBytes);
-
-                    // Add info that we're also trying to send to printer
-                    showMessage(`Downloaded label and attempting to send to printer: ${labelPrinter}...`, "info");
-
-                    // Configure printer based on platform
-                    let config;
-                    if (platformUpper === 'MEESHO') {
-                      config = qz.configs.create(labelPrinter, {
-                        size: { width: 6, height: 4, units: 'in' }, // Landscape
-                        margins: { top: 0, right: 0, bottom: 0, left: 0 },
-                        orientation: 'landscape',
-                        copies: 1,
-                        colorType: 'grayscale',
-                        scale: 'fit',
-                        scaleContent: true,
-                        fitToPage: true,
-                        rotate: 90,
-                        density: 300
-                      });
-                    } else {
-                      config = qz.configs.create(labelPrinter, {
-                        size: { width: 4, height: 6, units: 'in' },
-                        margins: { top: 0, right: 0, bottom: 0, left: 0 },
-                        orientation: 'portrait',
-                        copies: 1,
-                        colorType: 'grayscale',
-                        density: 300,
-                        scale: 'fit'
-                      });
-                    }
-
-                    const printData = [{
-                      type: 'pdf',
-                      format: 'base64',
-                      data: base64Data
-                    }];
-
-                    // Try to print
-                    qz.print(config, printData)
-                      .then(() => {
-                        showMessage(`Label printed to ${labelPrinter} successfully!`, "success");
-                        // Mark the order as printed, but don't prompt for AWB
-                        markOrderAsPrinted(orderNumber);
-
-                        // Now print the invoice pages too
-                        printInvoicePages(orderNumber, null, platformUpper);
-                      })
-                      .catch(err => {
-                        console.error("Printing error:", err);
-                        showMessage(`Label downloaded but printing failed: ${err.message}. Label will still be marked as processed.`, "warning");
-                        // Still mark as printed even if physical printing failed
-                        markOrderAsPrinted(orderNumber);
-
-                        // Try to print invoice pages despite label printing failure
-                        printInvoicePages(orderNumber, null, platformUpper);
-                      });
-                  } else {
-                    // No printer available, but we downloaded the label
-                    showMessage(`Label downloaded successfully. No printer available for physical printing.`, "info");
-                    markOrderAsPrinted(orderNumber);
-
-                    // Attempt to print invoice pages for download
-                    printInvoicePages(orderNumber, null, platformUpper, true);
-                  }
-                } catch (error) {
-                  console.error("PDF processing error:", error);
-                  showMessage(`Error processing PDF: ${error.message}. Trying direct download of original file.`, "error");
-
-                  // Fallback to direct download of the original PDF
-                  const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
-                  const downloadUrl = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = downloadUrl;
-                  a.download = `label_${orderNumber}_original.pdf`;
-                  a.click();
-                  URL.revokeObjectURL(downloadUrl);
-
-                  // Still mark as printed after download
+                  
+                  // Mark as printed despite physical printing failure
                   markOrderAsPrinted(orderNumber);
+                  // Try to print invoice pages despite label printing failure
+                  printInvoicePages(orderNumber, null, platformUpper);
+                });
+            } else {
+              // No QZ or printer available, just download
+              showMessage(`QZ Tray/printer not available. Downloading PDF.`, "warning");
+              const a = document.createElement('a');
+              a.href = downloadUrl;
+              a.download = `label_${orderNumber}.pdf`;
+              a.click();
+              // Still mark as printed after download
+              markOrderAsPrinted(orderNumber);
+              // Try to print invoice pages
+              printInvoicePages(orderNumber, null, platformUpper, true);
+            }
+          } catch (error) {
+            console.error("PDF processing error:", error);
+            showMessage(`Error processing PDF: ${error.message}. Trying direct download.`, "error");
 
-                  // Try to print invoice pages despite label error
-                  printInvoicePages(orderNumber, null, platformUpper, true);
-                }
-              })
-              .catch(error => {
-                console.error("PDF fetch error:", error);
-                showMessage(`Error downloading PDF: ${error.message}. Trying direct download link.`, "error");
+            // Fallback to direct download of the original PDF
+            const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
+            const downloadUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `label_${orderNumber}_original.pdf`;
+            a.click();
+            URL.revokeObjectURL(downloadUrl);
 
-                // Fallback: Try direct link download
-                const a = document.createElement('a');
-                a.href = pdfUrl;
-                a.download = `label_${orderNumber}.pdf`;
-                a.target = "_blank";
-                a.click();
+            // Still mark as printed
+            markOrderAsPrinted(orderNumber);
+            // Try to print invoice pages despite errors
+            printInvoicePages(orderNumber, null, platformUpper, true);
+          }
+        });
+    })
+    .catch(error => {
+      console.error("API error:", error);
+      showMessage(`Error: ${error.message}`, 'error');
+    });
+}
 
-                // Still mark as printed
-                markOrderAsPrinted(orderNumber);
-
-                // Try to print invoice pages anyway
-                printInvoicePages(orderNumber, null, platformUpper, true);
-              });
-          })
-          .catch(error => {
-            console.error("API error:", error);
-            showMessage(`Error: ${error.message}`, 'error');
-          });
-      }
-
-      // Helper: Convert Uint8Array to base64 string
-      function arrayBufferToBase64(buffer) {
+// Initialize everything when the document is ready
+document.addEventListener('DOMContentLoaded', function() {
+  // Add the permission guide if needed
+  if (!localStorage.getItem('qz-permission-guide-dismissed')) {
+    if (typeof handleQzPermissions === 'function') {
+      setTimeout(handleQzPermissions, 1000);
+    }
+  }
+  
+  // Modify the initQZ function to prevent repeated connection attempts
+  modifyInitQZ();
+  
+  // Add QZ reconnect button
+  addQzReconnectButton();
+  
+  // Connect to QZ only once at startup
+  setTimeout(function() {
+    // Single connection attempt
+    initQZ();
+  }, 2000);
+});
+function addQzReconnectButton() {
+  // Find or create the QZ status section
+  let qzStatusDiv = document.querySelector('.qz-status');
+  
+  if (!qzStatusDiv) {
+    // Create the div if it doesn't exist
+    qzStatusDiv = document.createElement('div');
+    qzStatusDiv.className = 'qz-status card';
+    qzStatusDiv.innerHTML = `
+      <h3>QZ Tray Connection</h3>
+      <p id="qz-status-message" class="status-disconnected">Not connected</p>
+    `;
+    
+    // Add to container
+    const container = document.querySelector('.container');
+    if (container) {
+      container.insertBefore(qzStatusDiv, container.firstChild);
+    }
+  }
+  
+  // Add or update connect button
+  let connectBtn = document.getElementById('connect-qz');
+  
+  if (!connectBtn) {
+    connectBtn = document.createElement('button');
+    connectBtn.id = 'connect-qz';
+    connectBtn.className = 'btn btn-primary';
+    connectBtn.textContent = 'Connect QZ Tray';
+    qzStatusDiv.appendChild(connectBtn);
+  }
+  
+  // Add event listener for the connect button
+  connectBtn.addEventListener('click', function() {
+    // If already connected, force reconnection
+    if (qzReady) {
+      safeReconnectQZ();
+    } else {
+      // Just try to connect
+      initQZ();
+    }
+  });
+  
+  // Add a force reconnect button for problem situations
+  let forceReconnectBtn = document.getElementById('force-reconnect-qz');
+  
+  if (!forceReconnectBtn) {
+    forceReconnectBtn = document.createElement('button');
+    forceReconnectBtn.id = 'force-reconnect-qz';
+    forceReconnectBtn.className = 'btn btn-warning';
+    forceReconnectBtn.textContent = 'Force Reconnect';
+    forceReconnectBtn.style.marginLeft = '10px';
+    qzStatusDiv.appendChild(forceReconnectBtn);
+  }
+  
+  // Add event listener for force reconnect
+  forceReconnectBtn.addEventListener('click', function() {
+    // Reset state
+    qzReady = false;
+    qzConnection = null;
+    
+    // Show status
+    updateQZStatus("Forcing reconnection...", "connecting");
+    
+    // Create a completely fresh connection
+    if (typeof qz !== 'undefined' && qz.websocket && typeof qz.websocket.disconnect === 'function') {
+      qz.websocket.disconnect().finally(() => {
+        // Set up security again
+        qz.security.setCertificatePromise(resolve => resolve());
+        qz.security.setSignaturePromise(() => resolve => resolve());
+        
+        // Connect after a short delay
+        setTimeout(() => {
+          qz.websocket.connect({retries: 0, delay: 0})
+            .then(() => {
+              qzReady = true;
+              qzConnection = qz.websocket;
+              updateQZStatus("Connected to QZ Tray", "connected");
+              detectPrinters();
+            })
+            .catch(err => {
+              console.error("Force reconnect failed:", err);
+              updateQZStatus("Force reconnect failed: " + err.message, "error");
+            });
+        }, 1000);
+      });
+    } else {
+      // If disconnect not available, just try to connect directly
+      setTimeout(() => {
+        initQZ();
+      }, 500);
+    }
+  });
+}
+function arrayBufferToBase64(buffer) {
         let binary = '';
         const bytes = new Uint8Array(buffer);
         const len = bytes.byteLength;
@@ -2088,6 +2505,122 @@ detectPrinters = function() {
 
         return btoa(binary);
       }
+      
+      function checkQzConnection() {
+  if (!qzReady) {
+    return false;
+  }
+  
+  // For QZ Tray 2.2.x compatibility
+  try {
+    if (qz.websocket && typeof qz.websocket.isActive === 'function') {
+      return qz.websocket.isActive();
+    }
+    return true; // Default to true if we can't check
+  } catch (e) {
+    console.error("Error checking QZ connection:", e);
+    return false;
+  }
+}
+// Better printer detection function
+function detectQzPrinters() {
+  // Only proceed if QZ is connected
+  if (!checkQzConnection()) {
+    showMessage("QZ Tray is not connected. Cannot detect printers.", "warning");
+    return Promise.reject("QZ Tray not connected");
+  }
+  
+  return qz.printers.find()
+    .then(printers => {
+      console.log("Detected printers:", printers);
+      if (printers.length === 0) {
+        throw new Error("No printers detected");
+      }
+      
+      // Update global printer lists
+      availablePrinters = printers;
+      
+      // Identify label printers
+      labelPrinters = printers.filter(printer => {
+        const printerLower = printer.toLowerCase();
+        return COMMON_LABEL_PRINTERS.some(term => printerLower.includes(term));
+      });
+      
+      console.log("Detected label printers:", labelPrinters);
+      
+      // If no label printers detected, show warning
+      if (labelPrinters.length === 0) {
+        showMessage("No label printers detected. Using default printer instead.", "warning");
+      }
+      
+      return printers;
+    });
+}
+
+function enhancedInitQZ() {
+  console.log("Initializing QZ Tray connection...");
+  
+  // Check if QZ library loaded
+  if (typeof qz === 'undefined') {
+    console.error("QZ Tray library not loaded properly");
+    showMessage("QZ Tray library not loaded. Please check if QZ Tray is installed and reload the page.", "error");
+    return Promise.reject("QZ library not loaded");
+  }
+  
+  if (qzReady) {
+    console.log("QZ Tray already connected, refreshing printer list");
+    return detectQzPrinters();
+  }
+  
+  // Show connecting status
+  updateQZStatus("Connecting to QZ Tray...", "connecting");
+  
+  // Set certificate (can be empty for unsigned)
+  qz.security.setCertificatePromise(function(resolve, reject) {
+    resolve();
+  });
+  
+  // Set signing function (leave empty for unsigned)
+  qz.security.setSignaturePromise(function(toSign) {
+    return function(resolve, reject) {
+      resolve();
+    };
+  });
+  
+  // Connect to QZ Tray with improved error handling
+  return qz.websocket.connect({
+    retries: 3,
+    delay: 1000
+  }).then(function() {
+    qzReady = true;
+    qzConnection = qz.websocket;
+    
+    // Update connection status
+    updateQZStatus("Connected to QZ Tray", "connected");
+    console.log("Successfully connected to QZ Tray");
+    
+    // Get list of available printers
+    return detectQzPrinters();
+  }).catch(function(err) {
+    console.error("QZ Tray connection error:", err);
+    let errorMsg = "Failed to connect to QZ Tray. ";
+    
+    // Provide specific troubleshooting advice
+    if (err.message && err.message.includes("SecurityError")) {
+      errorMsg += "Browser security blocked the connection. ";
+    } else if (err.message && err.message.includes("NetworkError")) {
+      errorMsg += "QZ Tray is not running or is blocked by a firewall. ";
+    } else if (err.message && err.message.includes("timeout")) {
+      errorMsg += "Connection timed out. QZ Tray may not be running. ";
+    }
+    
+    errorMsg += "Please ensure QZ Tray is installed and running.";
+    updateQZStatus(errorMsg, "error");
+    
+    return Promise.reject(err);
+  });
+}
+
 
       function printUsingBrowser(pdfUrl, firstPageOnly) {
         // Function is disabled as per requirements
@@ -2460,8 +2993,21 @@ detectPrinters = function() {
                   const pageCount = pdfDoc.getPageCount();
 
                   // Determine which page is the label page to exclude
-                  // This depends on the platform - we'll get this from the response
-                  const excludePage = data.label_page_index || 0;
+                  // The label_page_index could be -1 for last page (FirstCry case)
+                  let excludePage = 0; // Default - exclude first page for most platforms
+
+                  if (data.label_page_index !== undefined) {
+                    if (data.label_page_index === -1) {
+                      // If label is last page
+                      excludePage = pageCount - 1;
+                    } else {
+                      excludePage = data.label_page_index;
+                    }
+                  } else if (platform && platform.toUpperCase() === 'FIRSTCRY') {
+                    // Fallback for FirstCry if label_page_index not provided
+                    excludePage = pageCount - 1;
+                  }
+
                   console.log(`Total pages: ${pageCount}, excluding page index: ${excludePage}`);
 
                   // Copy all pages except the label page
@@ -2565,7 +3111,6 @@ detectPrinters = function() {
             showMessage(`Error retrieving invoice: ${error.message}`, 'error');
           });
       }
-
       function showScanAwbDialog(orderNumber) {
         // Prevent multiple dialogs
         if (document.getElementById('awb-dialog')) {

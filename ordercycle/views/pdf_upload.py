@@ -226,7 +226,7 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
             
             # The last element contains output_pdf_location
             pdf_info = order_data[-1]
-            pdf_url = pdf_info.get('output_pdf_location', '')
+            # pdf_url = pdf_info.get('output_pdf_location', '')
             
             for item in items:
                 qty = int(item["Qty"])
@@ -237,7 +237,7 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
                     order_type=order_type,
                     sku=item['sku'].replace("\n", ""),
                     quantity=qty,
-                    pdf_url=pdf_url,
+                    # pdf_url=pdf_url,
                     AWB=item["AWB"]
                 )
             results['amazon_processed'] += 1
@@ -314,3 +314,26 @@ def check_pdf_path(request):
         'base_dir': str(settings.BASE_DIR),
         'media_url': settings.MEDIA_URL,
     })
+
+from django.http import HttpResponse, Http404
+from django.shortcuts import get_object_or_404
+from rest_framework.decorators import api_view
+from ordercycle.models import OrderPDF
+@api_view(['GET'])
+def download_pdf(request, order_id):
+    """
+    Download a PDF for a specific order
+    """
+    print("TRYINGGGG")
+    # Get the order or return 404
+    order = get_object_or_404(OrderPDF, order_id=order_id)
+    
+    # Check if the order has PDF content
+    if not order.pdf_content:
+        raise Http404("PDF not found for this order")
+    
+    # Create the HTTP response with the PDF content
+    response = HttpResponse(order.pdf_content, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{order.filename or f'Order_{order_id}.pdf'}"'
+    
+    return response

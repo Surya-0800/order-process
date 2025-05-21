@@ -8,12 +8,14 @@ from django.utils import timezone
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.contrib.sites.shortcuts import get_current_site
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
-
+from django.urls import reverse
+from django.views.decorators.csrf import csrf_exempt
 from ..models import (
     Picklist, PicklistItem, PicklistItemLocation, UserProfile,
-    AmazonOrders, FlipkarOrders, FirstcryOrders, MeeshoOrders
+    AmazonOrders, FlipkarOrders, FirstcryOrders, MeeshoOrders,
+    OrderPDF
 )
 
 @require_http_methods(["GET"])
@@ -143,11 +145,12 @@ def send_test_print(request):
             'message': f'Error initiating test print: {str(e)}'
         }, status=500)
 
-
+@csrf_exempt
 @require_http_methods(["POST"])
 def print_label(request):
     """
-    Find and return the PDF URL for a specific order for printing
+    Find and return the PDF URL for a specific order for printing.
+    Gets the PDF directly from the OrderPDF model.
     """
     try:
         data = json.loads(request.body)
@@ -183,29 +186,95 @@ def print_label(request):
                 'message': f'Order {order_number} not found'
             }, status=404)
         
-        # Get the PDF path from the order
-        pdf_path = order.pdf_url
+        # Determine which page is the label page based on platform
+        label_page_index = 0  # Default - first page is label
         
-        if not pdf_path:
+        if platform_upper == 'FIRSTCRY':
+            # For FirstCry, the label is typically the last page
+            label_page_index = -1  # Use -1 to indicate last page
+        
+        # Check if PDF exists in the OrderPDF model
+        pdf_record = OrderPDF.objects.filter(order_id=order_number).first()
+        
+        if pdf_record:
+            # PDF exists in database - create download URL
+            print(f"DEBUG: Using PDF from database for order {order_number}")
+            
+            # Create direct download URL
+            current_site = get_current_site(request)
+            domain = current_site.domain
+            protocol = 'https' if request.is_secure() else 'http'
+            pdf_url = f"{protocol}://{domain}/api/orders/{order_number}/download/"
+            
+            return JsonResponse({
+                'status': 'success',
+                'pdf_url': pdf_url,
+                'order_number': order.order_number,
+                'awb': getattr(order, 'AWB', 'N/A'),
+                'platform': platform,
+                'label_page_index': label_page_index,
+                'source': 'database'
+            })
+        
+        # PDF not found in database - check if it exists in the file system via pdf_url
+        if not order.pdf_url:
             return JsonResponse({
                 'status': 'error',
                 'message': f'No PDF file found for order {order_number}'
             }, status=404)
         
-        # Print debug info
-        print(f"DEBUG: Original PDF path from database: {pdf_path}")
-            
-        # Handle file system paths vs URL paths
-        # Variable to store the actual file path for later
-        actual_file_path = None
+        # Get the PDF from the file system and save it to the database
+        pdf_path = order.pdf_url
         
-        # Case 1: If it's a full file system path (Windows or Unix)
-        if pdf_path.startswith('C:') or pdf_path.startswith('/'):
-            # Get just the filename from the path
+        # Check if it's a file path or URL
+        if pdf_path.startswith('/') or pdf_path.startswith('C:'):
+            # It's a file path
+            if os.path.exists(pdf_path):
+                try:
+                    # Read the file
+                    with open(pdf_path, 'rb') as f:
+                        pdf_content = f.read()
+                    
+                    # Save to database
+                    filename = os.path.basename(pdf_path)
+                    OrderPDF.objects.create(
+                        order_id=order_number,
+                        pdf_content=pdf_content,
+                        filename=filename,
+                        source_type='file_import'
+                    )
+                    
+                    print(f"DEBUG: Imported PDF from {pdf_path} to database")
+                    
+                    # Now create the URL for the database version
+                    current_site = get_current_site(request)
+                    domain = current_site.domain
+                    protocol = 'https' if request.is_secure() else 'http'
+                    pdf_url = f"{protocol}://{domain}/api/orders/{order_number}/download/"
+                    
+                    return JsonResponse({
+                        'status': 'success',
+                        'pdf_url': pdf_url,
+                        'order_number': order.order_number,
+                        'awb': getattr(order, 'AWB', 'N/A'),
+                        'platform': platform,
+                        'label_page_index': label_page_index,
+                        'source': 'database_import'
+                    })
+                except Exception as e:
+                    print(f"DEBUG: Error importing PDF to database: {str(e)}")
+                    # Fall back to file URL
+            else:
+                print(f"DEBUG: PDF file not found at {pdf_path}")
+        
+        # If we get here, we couldn't import the PDF to the database
+        # Fall back to the original file URL-based approach
+        # Convert file path to URL if necessary
+        if pdf_path.startswith('/') or pdf_path.startswith('C:'):
+            # Convert file path to URL
             filename = os.path.basename(pdf_path)
-            print(f"DEBUG: Extracted filename: {filename}")
             
-            # Determine which directory it belongs to based on platform
+            # Determine platform-specific directory
             platform_dir_mapping = {
                 'AMAZON': 'amazonPdfs',
                 'FLIPKART': 'flipkartPdfs',
@@ -213,110 +282,30 @@ def print_label(request):
                 'MEESHO': 'meeshoPdfs'
             }
             
-            pdf_url = f"{platform_dir_mapping.get(platform_upper, 'orderPdfs')}/{filename}"
-            print(f"DEBUG: Target media URL path: {pdf_url}")
-                
-            # Check if the file exists in the target media location
-            media_path = os.path.join(settings.MEDIA_ROOT, pdf_url.replace('/', os.path.sep).lstrip('/'))
-            print(f"DEBUG: Full media path: {media_path}")
-            
-            # Save this for the response
-            actual_file_path = media_path
-
-            if actual_file_path and 'media/media' in actual_file_path:
-                actual_file_path = actual_file_path.replace('media/media', 'media')
-                print(f"DEBUG: Fixed duplicate media in path: {actual_file_path}")
-            
-            # If the file doesn't exist in media directory, we need to copy it there
-            if not os.path.exists(media_path):
-                print(f"DEBUG: Media path doesn't exist, attempting to copy")
-                
-                # Ensure the directory exists
-                target_dir = os.path.dirname(media_path)
-                os.makedirs(target_dir, exist_ok=True)
-                print(f"DEBUG: Created directory: {target_dir}")
-                
-                # Only copy if source file exists
-                if os.path.exists(pdf_path):
-                    print(f"DEBUG: Source file exists at {pdf_path}, copying to {media_path}")
-                    import shutil
-                    shutil.copy2(pdf_path, media_path)
-                    
-                    # Verify the copy
-                    if os.path.exists(media_path):
-                        print(f"DEBUG: File successfully copied, size: {os.path.getsize(media_path)} bytes")
-                    else:
-                        print(f"DEBUG: File copy failed, destination file doesn't exist")
-                else:
-                    print(f"DEBUG: Source file NOT found at {pdf_path}")
-                    
-                    # Check for alternate locations
-                    alternate_path = None
-                    
-                    # Try to find the file in the existing media directories
-                    for dirpath, dirnames, filenames in os.walk(settings.MEDIA_ROOT):
-                        if filename in filenames:
-                            alternate_path = os.path.join(dirpath, filename)
-                            print(f"DEBUG: Found file in alternate location: {alternate_path}")
-                            break
-                    
-                    if alternate_path:
-                        print(f"DEBUG: Copying from alternate location: {alternate_path} to {media_path}")
-                        shutil.copy2(alternate_path, media_path)
-                        actual_file_path = media_path
-                    else:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': f'PDF file not found at {pdf_path}'
-                        }, status=404)
-            else:
-                print(f"DEBUG: File already exists at {media_path}, size: {os.path.getsize(media_path)} bytes")
-        # Case 2: It's already a relative URL path
+            pdf_url = f"/media/{platform_dir_mapping.get(platform_upper, 'orderPdfs')}/{filename}"
         else:
+            # It's already a URL
             pdf_url = pdf_path
-            print(f"DEBUG: Using existing relative URL: {pdf_url}")
-            
-            # Ensure it starts with a slash for URL formatting
             if not pdf_url.startswith('/'):
                 pdf_url = '/' + pdf_url
-                print(f"DEBUG: Added leading slash: {pdf_url}")
-            
-            # Try to determine the file path based on the URL
-            if pdf_url.startswith('/media/'):
-                path_part = pdf_url.lstrip('/media/')
-                possible_path = os.path.join(settings.MEDIA_ROOT, path_part)
-                if os.path.exists(possible_path):
-                    actual_file_path = possible_path
-                    print(f"DEBUG: Found actual file at: {actual_file_path}")
-        
-        # Make sure pdf_url starts with /media/ for proper URL construction
-        if not pdf_url.startswith('/media/'):
-            pdf_url = '/media/' + pdf_url.lstrip('/')
         
         # Convert to absolute URL
         current_site = get_current_site(request)
         domain = current_site.domain
-        print(f"DEBUG: Domain from site: {domain}")
         protocol = 'https' if request.is_secure() else 'http'
-        
         absolute_url = f"{protocol}://{domain}{pdf_url}"
-        print(f"DEBUG: Final absolute URL: {absolute_url}")
         
-        # Prepare the response
-        response_data = {
+        print(f"WARNING: Using file-based URL for PDF: {absolute_url}")
+        
+        return JsonResponse({
             'status': 'success',
             'pdf_url': absolute_url,
             'order_number': order.order_number,
             'awb': getattr(order, 'AWB', 'N/A'),
-            'platform': platform
-        }
-        
-        # Include the direct file path if it exists
-        if actual_file_path and os.path.exists(actual_file_path):
-            response_data['file_path'] = actual_file_path
-            print(f"DEBUG: Including file path in response: {actual_file_path}")
-        
-        return JsonResponse(response_data)
+            'platform': platform,
+            'label_page_index': label_page_index,
+            'source': 'file'
+        })
     
     except Exception as e:
         print(f"Error in print_label: {str(e)}")
@@ -517,7 +506,11 @@ def save_awb_number(request):
 @require_http_methods(["POST"])
 def print_invoice(request):
     """
-    Get the invoice PDF for a given order and AWB, excluding the label page.
+    Get the invoice PDF for a given order and AWB.
+    Gets the PDF directly from the OrderPDF model.
+    
+    This function re-uses the same PDF as print_label since they are
+    the same file, just different pages.
     """
     try:
         data = json.loads(request.body)
@@ -560,67 +553,133 @@ def print_invoice(request):
                 'status': 'error',
                 'message': f'Order not found for given parameters'
             }, status=404)
-        
-        # Get the PDF path from the order
-        pdf_path = order.pdf_url
-        
-        if not pdf_path:
-            return JsonResponse({
-                'status': 'error',
-                'message': f'No PDF file found for this order'
-            }, status=404)
+            
+        # Get the order_number from the found order
+        order_number = order.order_number
         
         # Determine which page is the label page based on platform
+        # This is used by the client to know which pages to process
         label_page_index = 0  # Default - first page is label
         
         if platform_upper == 'FIRSTCRY':
             # For FirstCry, the label is typically the last page
-            import fitz  # PyMuPDF
-            try:
-                # Normalize the PDF path
-                if pdf_path.startswith('/media/'):
-                    pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_path.lstrip('/media/'))
-                elif not pdf_path.startswith('/'):
-                    pdf_path = os.path.join(settings.MEDIA_ROOT, pdf_path)
-                
-                # Open the PDF and get page count
-                pdf_document = fitz.open(pdf_path)
-                page_count = len(pdf_document)
-                
-                # For FirstCry, the label is the last page
-                label_page_index = page_count - 1
-                pdf_document.close()
-            except Exception as e:
-                # If we can't determine, default to first page
-                print(f"Error determining label page: {e}")
-                label_page_index = 0
+            label_page_index = -1  # Use -1 to indicate last page
         
-        # Convert file system path to URL if needed
-        pdf_url = pdf_path
+        # Check if PDF exists in the OrderPDF model
+        pdf_record = OrderPDF.objects.filter(order_id=order_number).first()
+        
+        if pdf_record:
+            # PDF exists in database - create download URL
+            print(f"DEBUG: Using PDF from database for invoice {order_number}")
+            
+            # Create direct download URL - same PDF as label, client handles page selection
+            current_site = get_current_site(request)
+            domain = current_site.domain
+            protocol = 'https' if request.is_secure() else 'http'
+            pdf_url = f"{protocol}://{domain}/api/orders/{order_number}/download/"
+            
+            return JsonResponse({
+                'status': 'success',
+                'pdf_url': pdf_url,
+                'order_number': order.order_number,
+                'awb': order.AWB,
+                'platform': platform,
+                'label_page_index': label_page_index,
+                'source': 'database'
+            })
+        
+        # If we reach this point, we need to do the same thing as print_label
+        # to get the PDF URL from the file system and optionally import it
+        
+        # PDF not found in database - check if it exists in the file system via pdf_url
+        if not order.pdf_url:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'No PDF file found for order {order_number}'
+            }, status=404)
+        
+        # Get the PDF from the file system and save it to the database
+        pdf_path = order.pdf_url
+        
+        # Check if it's a file path or URL
         if pdf_path.startswith('/') or pdf_path.startswith('C:'):
-            # It's a file system path, extract filename
+            # It's a file path
+            if os.path.exists(pdf_path):
+                try:
+                    # Read the file
+                    with open(pdf_path, 'rb') as f:
+                        pdf_content = f.read()
+                    
+                    # Save to database
+                    filename = os.path.basename(pdf_path)
+                    OrderPDF.objects.create(
+                        order_id=order_number,
+                        pdf_content=pdf_content,
+                        filename=filename,
+                        source_type='file_import'
+                    )
+                    
+                    print(f"DEBUG: Imported PDF from {pdf_path} to database")
+                    
+                    # Now create the URL for the database version
+                    current_site = get_current_site(request)
+                    domain = current_site.domain
+                    protocol = 'https' if request.is_secure() else 'http'
+                    pdf_url = f"{protocol}://{domain}/api/orders/{order_number}/download/"
+                    
+                    return JsonResponse({
+                        'status': 'success',
+                        'pdf_url': pdf_url,
+                        'order_number': order.order_number,
+                        'awb': order.AWB,
+                        'platform': platform,
+                        'label_page_index': label_page_index,
+                        'source': 'database_import'
+                    })
+                except Exception as e:
+                    print(f"DEBUG: Error importing PDF to database: {str(e)}")
+                    # Fall back to file URL
+            else:
+                print(f"DEBUG: PDF file not found at {pdf_path}")
+        
+        # If we get here, we couldn't import the PDF to the database
+        # Fall back to the original file URL-based approach
+        if pdf_path.startswith('/') or pdf_path.startswith('C:'):
+            # Convert file path to URL
             filename = os.path.basename(pdf_path)
             
-            # Determine which directory it belongs to based on platform
+            # Determine platform-specific directory
             platform_dir_mapping = {
                 'AMAZON': 'amazonPdfs',
                 'FLIPKART': 'flipkartPdfs',
                 'FIRSTCRY': 'firstcryPdfs',
                 'MEESHO': 'meeshoPdfs'
             }
-            pdf_url = f'/media/{platform_dir_mapping.get(platform_upper, "orderPdfs")}/{filename}'
+            
+            pdf_url = f"/media/{platform_dir_mapping.get(platform_upper, 'orderPdfs')}/{filename}"
+        else:
+            # It's already a URL
+            pdf_url = pdf_path
+            if not pdf_url.startswith('/'):
+                pdf_url = '/' + pdf_url
         
-        # Prepare the response
-        response_data = {
+        # Convert to absolute URL
+        current_site = get_current_site(request)
+        domain = current_site.domain
+        protocol = 'https' if request.is_secure() else 'http'
+        absolute_url = f"{protocol}://{domain}{pdf_url}"
+        
+        print(f"WARNING: Using file-based URL for PDF: {absolute_url}")
+        
+        return JsonResponse({
             'status': 'success',
-            'pdf_url': pdf_url,
+            'pdf_url': absolute_url,
             'order_number': order.order_number,
             'awb': order.AWB,
             'platform': platform,
-            'label_page_index': label_page_index
-        }
-        
-        return JsonResponse(response_data)
+            'label_page_index': label_page_index,
+            'source': 'file'
+        })
     
     except Exception as e:
         print(f"Error in print_invoice: {str(e)}")
@@ -630,7 +689,41 @@ def print_invoice(request):
             'message': f'Error processing print request: {str(e)}'
         }, status=500)
 
-
+@require_http_methods(["GET"])
+def download_pdf(request, order_id):
+    """
+    Stream PDF content directly from the database.
+    This serves the same PDF for both label and invoice - the client
+    handles which pages to display/print.
+    """
+    try:
+        # Find PDF in database
+        pdf_record = OrderPDF.objects.filter(order_id=order_id).first()
+        
+        if not pdf_record:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'PDF for order {order_id} not found in database'
+            }, status=404)
+        
+        # Get filename or use default
+        filename = pdf_record.filename or f"order_{order_id}.pdf"
+        
+        # Create response with PDF content
+        response = HttpResponse(pdf_record.pdf_content, content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="{filename}"'
+        
+        return response
+        
+    except Exception as e:
+        print(f"Error in download_pdf: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error retrieving PDF: {str(e)}'
+        }, status=500)
+    
+    
 @require_http_methods(["GET"])
 def search_awb(request):
     """

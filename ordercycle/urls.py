@@ -16,7 +16,7 @@ from .views.packing_views import (
 from .views.printing_views import (
     get_printer_list, save_printer_preferences, get_printer_preferences,
     send_test_print, print_label, mark_order_as_printed, save_awb_number,
-    print_invoice, search_awb
+    print_invoice, search_awb,download_pdf
 )
 from .views.location_views import (
    LocationOrdersViewSet
@@ -102,7 +102,9 @@ urlpatterns = [
     path('api/orders/change-to-dispatch/', views.change_to_dispatch, name='change-to-dispatch'),
     path('api/orders/bulk-change-to-dispatch/', views.bulk_change_to_dispatch, name='bulk-change-to-dispatch'),
 
-    path('api/check-pdf-path/', check_pdf_path, name='check_pdf_path')
+    path('api/check-pdf-path/', check_pdf_path, name='check_pdf_path'),
+    path('api/orders/<str:order_id>/download/', download_pdf, name='order_pdf_download'),
+
 ]
 
 # Add media URL patterns for development

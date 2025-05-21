@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.sites.shortcuts import get_current_site
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-
+from django.views.decorators.csrf import csrf_exempt
 from ..models import (
     Picklist, PicklistItem, PicklistItemLocation, MasterTable,
     AmazonOrders, FlipkarOrders, FirstcryOrders, MeeshoOrders,
@@ -155,7 +155,7 @@ def search_product(request):
             'message': f'Error searching for product: {str(e)}'
         }, status=500)
 
-
+@csrf_exempt
 @require_http_methods(["POST"])
 def mark_picklist_completed(request, picklist_id):
     """
@@ -184,7 +184,7 @@ def mark_picklist_completed(request, picklist_id):
             'message': f'Error marking picklist as completed: {str(e)}'
         }, status=500)
 
-
+@csrf_exempt
 @require_http_methods(["POST"])
 def mark_product_packed(request):
     """
@@ -364,6 +364,7 @@ def get_product_image_by_sku(request):
         traceback.print_exc()
         return JsonResponse({'error': f'Error retrieving product data: {str(e)}'}, status=500)
 
+@csrf_exempt
 @require_http_methods(["POST"])
 def save_awb_and_dispatch(request):
     """

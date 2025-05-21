@@ -6,6 +6,8 @@ from itertools import zip_longest
 from datetime import datetime
 import numpy as np
 # from pydash import clean as _c
+from ordercycle.models import OrderPDF
+from .db_utils import save_pdf_to_database
 
 def extract_text_with_fitz(input_pdf, page_num, only_orderid=False):
     doc = fitz.open(input_pdf)
@@ -97,6 +99,7 @@ def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio=0.46
     doc = fitz.open(input_pdf)  # Open the input PDF
     
     order_pages = {}
+    saved_orders = []
 
     for page_num, page in enumerate(doc):
         if result_dict := extract_text_with_fitz(input_pdf, page_num):
@@ -141,6 +144,14 @@ def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio=0.46
             output_pdf_path = os.path.join(output_folder, f"Order_{orderid_name}.pdf")
             order_pages[str(orderid)].append({"output_pdf_location" : output_pdf_path})
             new_doc.save(output_pdf_path)
+            order_pdf, created = save_pdf_to_database(
+                order_id=orderid,
+                pdf_path=output_pdf_path,
+                order_details=order_details[orderid],
+                source_type="flipkart"
+            )
+            saved_orders.append(order_pdf)
+            os.remove(output_pdf_path)
         else:
             new_doc = fitz.open(output_pdf_path)
             new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)

@@ -4,6 +4,8 @@ from uuid import uuid4
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.core.files.base import ContentFile
+import base64
 
 class PDFUpload(models.Model):
     title = models.CharField(max_length=255, blank=True)
@@ -254,3 +256,26 @@ class ImageUpload(models.Model):
     
     def __str__(self):
         return self.file_name or str(self.id)
+    
+class OrderPDF(models.Model):
+    # Primary key field using order_id
+    order_id = models.CharField(max_length=100, primary_key=True)
+    
+    # Store the PDF content directly in PostgreSQL
+    pdf_content = models.BinaryField()
+    
+    # Additional metadata
+    filename = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    source_type = models.CharField(max_length=50, default="unknown")  # To track which script processed this
+    
+    # Store additional info as JSON
+    metadata = models.JSONField(default=dict, blank=True)
+    
+    def __str__(self):
+        return f"Order {self.order_id}"
+        
+    class Meta:
+        indexes = [
+            models.Index(fields=['created_at']),
+        ]

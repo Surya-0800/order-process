@@ -4,6 +4,8 @@ import pandas as pd
 import re, csv
 from itertools import zip_longest
 from datetime import datetime
+from ordercycle.models import OrderPDF
+from .db_utils import save_pdf_to_database
 
 def extract_text_with_fitz(input_pdf, page_num, read_all = False):
     doc = fitz.open(input_pdf)
@@ -103,6 +105,7 @@ def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio):
     order_details = {}
     prev_awb = None
     output_pdf_path = None
+    saved_orders = []
 
     try:
         for page_num, page in enumerate(doc):
@@ -349,6 +352,7 @@ def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio=0.4)
     
     order_pages = {}
     order_details = {}
+    saved_orders = []
 
     for page_num, page in enumerate(doc):
         result_dict = extract_text_with_fitz(input_pdf, page_num)
@@ -417,6 +421,15 @@ def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio=0.4)
             order_pages[prev_awb].append({"output_pdf_location" : output_pdf_path})
             # order_pages[orderid].append({"output_pdf_location" : output_pdf_path})
             new_doc.save(output_pdf_path)
+
+            order_pdf, created = save_pdf_to_database(
+                order_id=prev_awb,
+                pdf_path=output_pdf_path,
+                # order_details=order_pages[prev_awb][0],
+                source_type="meesho"
+            )
+            saved_orders.append(order_pdf)
+            os.remove(output_pdf_path)
         else:
             new_doc = fitz.open(output_pdf_path)
             new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)

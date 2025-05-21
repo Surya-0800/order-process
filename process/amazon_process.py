@@ -7,6 +7,8 @@ import pytesseract
 import warnings
 from datetime import datetime
 import pandas as pd
+from ordercycle.models import OrderPDF
+from .db_utils import save_pdf_to_database
 
 ##made
 def extract_table_with_camelot(pdf_path, page_number):
@@ -83,6 +85,7 @@ def split_pdf_by_orderid(pdf_path, output_folder, final_output_dict,data_exists)
     skip_page_for_now = []
     prev_order_id= ""
     order_details = {}
+    saved_orders = []
     
     for i, page in enumerate(doc):
         text = extract_text_from_page(page,pdf_path)
@@ -136,14 +139,28 @@ def split_pdf_by_orderid(pdf_path, output_folder, final_output_dict,data_exists)
         
         for orderid, pages in order_pages.items():
             writer = PyPDF2.PdfWriter()
+            item_details = [p for p in pages if isinstance(p, list)]
             for page_num in pages:
                 if isinstance(page_num, int):
-                  writer.add_page(reader.pages[page_num])
+                    writer.add_page(reader.pages[page_num])
             
+            # Create a temporary file
             output_pdf_path = os.path.join(output_folder, f"Order_{orderid}.pdf")
-            order_pages[orderid].append({"output_pdf_location" : output_pdf_path})
             with open(output_pdf_path, "wb") as output_pdf:
                 writer.write(output_pdf)
+            
+            # Save to database
+            
+            order_pdf, created = save_pdf_to_database(
+                order_id=orderid,
+                pdf_path=output_pdf_path,
+                order_details=item_details[0] if item_details else None,
+                source_type="amazon"
+            )
+            saved_orders.append(order_pdf)
+            
+            # Optionally delete the temporary file
+            os.remove(output_pdf_path)
            
     return order_pages
 
@@ -161,3 +178,26 @@ def grab_required_fields(data):
     filtered_data = [{col: row[col] for col in required_columns if col in row} for row in data]
     return filtered_data
 
+
+def save_pdf_to_db(order_id, pdf_path):
+    """
+    Save a PDF file to the database for a given order ID
+    
+    Args:
+        order_id (str): The order ID to use as primary key
+        pdf_path (str): Path to the PDF file
+    
+    Returns:
+        Order: The created or updated Order object
+    """
+    # Read the PDF file
+    with open(pdf_path, 'rb') as file:
+        file_content = file.read()
+    
+    # Get or create the order
+    order, created = Order.objects.get_or_create(order_id=order_id)
+    
+    # Save the PDF content
+    order.set_pdf(file_content, filename=f"Order_{order_id}.pdf")
+    
+    return order
