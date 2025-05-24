@@ -1464,8 +1464,7 @@
             <!-- Results will be displayed here -->
           </div>
           <div style="margin-top: 15px; text-align: right;">
-            <button id="search-awb-btn" class="btn btn-primary">Search AWB</button>
-            <button id="dispatch-awb-btn" class="btn btn-success" disabled>Complete Dispatch</button>
+            <button id="process-awb-btn" class="btn btn-success">Process AWB & Change to Dispatch</button>
           </div>
         </div>
       </div>
@@ -2652,161 +2651,149 @@
       });
     });
     function openAwbDispatchModal() {
-  const modal = document.getElementById('awbDispatchModal');
-  modal.style.display = 'block';
-  document.getElementById('awb-number').value = '';
-  document.getElementById('awb-search-results').innerHTML = '';
-  document.getElementById('dispatch-awb-btn').disabled = true;
-}
+      const modal = document.getElementById('awbDispatchModal');
+      modal.style.display = 'block';
+      document.getElementById('awb-number').value = '';
+      document.getElementById('awb-search-results').innerHTML = '';
+    }
 
-function completeAwbDispatch() {
-  const awbNumber = document.getElementById('awb-number').value.trim();
-  if (!awbNumber) {
-    alert('Please enter an AWB number');
-    return;
-  }
-
-  const btn = document.getElementById('dispatch-awb-btn');
-  btn.disabled = true;
-  btn.textContent = 'Processing...';
-
-  fetch(`${baseApiUrl}/orders/complete-by-awb/`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      awb: awbNumber
-    })
-  })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return response.json();
-    })
-    .then(data => {
-      alert(data.message || 'Orders have been completed successfully');
-      closeAwbDispatchModal();
-      
-      // Refresh the dispatch view
-      if (currentStatus === 'Dispatch') {
-        displayDispatchPicklists();
-      }
-    })
-    .catch(error => {
-      console.error('Error completing orders:', error);
-      alert(`Error completing orders: ${error.message}`);
-    })
-    .finally(() => {
-      btn.disabled = false;
-      btn.textContent = 'Complete Orders';
-    });
-}
-function displayDispatchPicklists() {
-  fetch(`${baseApiUrl}/picklists/dispatch/`)
-    .then(response => {
-      if (!response.ok) {
-        return response.text().then(text => {
-          console.error("Error response:", text);
-          throw new Error(`Error fetching completed orders picklists: ${response.status} ${response.statusText}`);
+    function changeAwbToDispatch(awbNumber) {
+      // First, search for orders to get their details
+      return fetch(`${baseApiUrl}/search-dispatch-awb/?awb=${encodeURIComponent(awbNumber)}`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to search orders');
+          }
+          return response.json();
+        })
+        .then(data => {
+          // Filter complete orders
+          const completeOrders = data.orders.filter(order => order.status === 'Complete');
+          
+          if (completeOrders.length === 0) {
+            throw new Error('No complete orders found');
+          }
+          
+          // Prepare order data for bulk update
+          const orderData = completeOrders.map(order => ({
+            order_number: order.order_number,
+            platform: order.platform
+          }));
+          
+          // Use your existing bulk-change-to-dispatch endpoint
+          return fetch(`${baseApiUrl}/orders/bulk-change-to-dispatch/`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              orders: orderData,
+              awb: awbNumber
+            })
+          });
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to change orders to dispatch status');
+          }
+          return response.json();
         });
-      }
-      return response.json();
-    })
-    .then(data => {
-      const contentDiv = document.getElementById('status-content');
-
-      if (!data.picklists || data.picklists.length === 0) {
-        contentDiv.innerHTML = '<div class="card"><p class="text-center">No picklists with completed orders available</p></div>';
-        return;
-      }
-
-      let html = `
-          <div class="picklist-header">
-              <h3>Picklists with Completed Orders (${data.picklists.length})</h3>
-              <button id="dispatch-orders-btn" class="btn btn-success">Complete Orders by AWB</button>
-          </div>
-          <table class="status-table">
-              <thead>
+    }
+    function displayDispatchPicklists() {
+      fetch(`${baseApiUrl}/picklists/dispatch/`)
+        .then(response => {
+          if (!response.ok) {
+            return response.text().then(text => {
+              console.error("Error response:", text);
+              throw new Error(`Error fetching dispatch picklists: ${response.status} ${response.statusText}`);
+            });
+          }
+          return response.json();
+        })
+        .then(data => {
+          const contentDiv = document.getElementById('status-content');
+    
+          if (!data.picklists || data.picklists.length === 0) {
+            contentDiv.innerHTML = '<div class="card"><p class="text-center">No picklists with dispatched orders available</p></div>';
+            return;
+          }
+    
+          let html = `
+              <div class="picklist-header">
+                  <h3>Picklists with Dispatched Orders (${data.picklists.length})</h3>
+                  <button id="dispatch-orders-btn" class="btn btn-success">Complete Orders by AWB</button>
+              </div>
+              <table class="status-table">
+                  <thead>
+                      <tr>
+                          <th>Picklist ID</th>
+                          <th>Type</th>
+                          <th>Platform</th>
+                          <th>Total Orders</th>
+                          <th>Actions</th>
+                      </tr>
+                  </thead>
+                  <tbody id="dispatch-picklist-table-body">
+          `;
+    
+          data.picklists.forEach(picklist => {
+            // Calculate dispatch percentage based on dispatched orders vs total orders
+            const dispatchPercentage = Math.round((picklist.dispatch_orders / picklist.total_orders) * 100) || 0;
+            let statusBadgeClass = '';
+    
+            if (dispatchPercentage === 100) {
+              statusBadgeClass = 'status-dispatched';
+            } else if (dispatchPercentage > 50) {
+              statusBadgeClass = 'status-packing';
+            } else {
+              statusBadgeClass = 'status-printed';
+            }
+    
+            html += `
                   <tr>
-                      <th>Picklist ID</th>
-                      <th>Type</th>
-                      <th>Platform</th>
-                      <th>Total Orders</th>
-                      <th>Completed Orders</th>
-                      <th>Progress</th>
-                      <th>Actions</th>
+                      <td>
+                          <a href="javascript:void(0)" onclick="viewDispatchPicklistDetails('${picklist.picklist_id}')" class="picklist-link">
+                              ${picklist.picklist_id}
+                          </a>
+                      </td>
+                      <td>${picklist.picklist_type || 'N/A'}</td>
+                      <td>${picklist.platform || 'N/A'}</td>
+                      <td>${picklist.total_orders || 0}</td>
+                      <td>
+                          <button class="btn btn-primary" onclick="viewDispatchPicklistDetails('${picklist.picklist_id}')">
+                              View Details
+                          </button>
+                      </td>
                   </tr>
-              </thead>
-              <tbody id="dispatch-picklist-table-body">
-      `;
-
-      data.picklists.forEach(picklist => {
-        const dispatchPercentage = Math.round((picklist.dispatch_orders / picklist.total_orders) * 100) || 0;
-        let statusBadgeClass = '';
-
-        if (dispatchPercentage === 100) {
-          statusBadgeClass = 'status-completed';
-        } else if (dispatchPercentage > 50) {
-          statusBadgeClass = 'status-packing';
-        } else {
-          statusBadgeClass = 'status-printed';
-        }
-
-        html += `
-              <tr>
-                  <td>
-                      <a href="javascript:void(0)" onclick="viewDispatchPicklistDetails('${picklist.picklist_id}')" class="picklist-link">
-                          ${picklist.picklist_id}
-                      </a>
-                  </td>
-                  <td>${picklist.picklist_type || 'N/A'}</td>
-                  <td>${picklist.platform || 'N/A'}</td>
-                  <td>${picklist.total_orders || 0}</td>
-                  <td>${picklist.dispatch_orders || 0}</td>
-                  <td>
-                      <div class="dispatch-progress">
-                          <div class="dispatch-progress-bar" style="width: ${dispatchPercentage}%"></div>
-                      </div>
-                      <span class="status-badge ${statusBadgeClass}">
-                          ${dispatchPercentage}% Completed
-                      </span>
-                  </td>
-                  <td>
-                      <button class="btn btn-primary" onclick="viewDispatchPicklistDetails('${picklist.picklist_id}')">
-                          View Details
-                      </button>
-                  </td>
-              </tr>
-        `;
-      });
-
-      html += `
-              </tbody>
-          </table>
-      `;
-
-      contentDiv.innerHTML = html;
-
-      // Add event listener to the Complete Orders button
-      const dispatchOrdersBtn = document.getElementById('dispatch-orders-btn');
-      if (dispatchOrdersBtn) {
-        dispatchOrdersBtn.addEventListener('click', openAwbDispatchModal);
-      }
-    })
-    .catch(error => {
-      console.error('Error fetching completed orders picklists:', error);
-      document.getElementById('status-content').innerHTML = `
-          <div class="card">
-              <p class="text-center">Error loading picklists: ${error.message}</p>
-              <p class="text-center">
-                  <button onclick="displayDispatchPicklists()" class="btn btn-primary">Try Again</button>
-              </p>
-          </div>
-      `;
-    });
-}
+            `;
+          });
+    
+          html += `
+                  </tbody>
+              </table>
+          `;
+    
+          contentDiv.innerHTML = html;
+    
+          // Add event listener to the Complete Orders button
+          const dispatchOrdersBtn = document.getElementById('dispatch-orders-btn');
+          if (dispatchOrdersBtn) {
+            dispatchOrdersBtn.addEventListener('click', openAwbDispatchModal);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching dispatch picklists:', error);
+          document.getElementById('status-content').innerHTML = `
+              <div class="card">
+                  <p class="text-center">Error loading picklists: ${error.message}</p>
+                  <p class="text-center">
+                      <button onclick="displayDispatchPicklists()" class="btn btn-primary">Try Again</button>
+                  </p>
+              </div>
+          `;
+        });
+    }
+    
 
 
 // Function to close AWB dispatch modal
@@ -2815,141 +2802,194 @@ function closeAwbDispatchModal() {
   modal.style.display = 'none';
 }
 
+function changeAwbToDispatchIndividual(awbNumber) {
+  return fetch(`${baseApiUrl}/search-dispatch-awb/?awb=${encodeURIComponent(awbNumber)}`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to search orders');
+      }
+      return response.json();
+    })
+    .then(data => {
+      const completeOrders = data.orders.filter(order => order.status === 'Complete');
+      
+      if (completeOrders.length === 0) {
+        throw new Error('No complete orders found');
+      }
+      
+      // Update each order individually using the single order endpoint
+      const updatePromises = completeOrders.map(order => {
+        return fetch(`${baseApiUrl}/orders/change-to-dispatch/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            order_number: order.order_number,
+            platform: order.platform,
+            awb: awbNumber
+          })
+        })
+        .then(response => {
+          if (!response.ok) {
+            console.error(`Failed to update order ${order.order_number}`);
+            return { success: false, order: order.order_number };
+          }
+          return { success: true, order: order.order_number };
+        });
+      });
+      
+      return Promise.all(updatePromises);
+    })
+    .then(results => {
+      const successful = results.filter(r => r.success).length;
+      const failed = results.filter(r => !r.success).length;
+      
+      if (failed > 0) {
+        console.warn(`${failed} orders failed to update`);
+      }
+      
+      return { 
+        message: `${successful} orders updated successfully${failed > 0 ? `, ${failed} failed` : ''}` 
+      };
+    });
+}
+
 // Function to search AWB
-function searchAwbNumber() {
+function processAwbNumber() {
   const awbNumber = document.getElementById('awb-number').value.trim();
   if (!awbNumber) {
     alert('Please enter an AWB number');
     return;
   }
 
-  const resultsContainer = document.getElementById('awb-search-results');
-  resultsContainer.innerHTML = '<p>Searching...</p>';
+  const btn = document.getElementById('process-awb-btn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Processing...';
 
+  console.log('Starting AWB processing for:', awbNumber); // Debug log
+
+  // First search for orders with this AWB
   fetch(`${baseApiUrl}/search-dispatch-awb/?awb=${encodeURIComponent(awbNumber)}`)
     .then(response => {
+      console.log('Search response status:', response.status); // Debug log
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
       return response.json();
     })
     .then(data => {
+      console.log('Search data received:', data); // Debug log
+      
       if (!data.orders || data.orders.length === 0) {
-        resultsContainer.innerHTML = '<p class="error">No orders found with this AWB number.</p>';
-        document.getElementById('dispatch-awb-btn').disabled = true;
-        return;
+        document.getElementById('awb-search-results').innerHTML = '<p class="error">No orders found with this AWB number.</p>';
+        throw new Error('No orders found with this AWB number');
       }
 
       // Filter to only show orders in Complete status
       const completeOrders = data.orders.filter(order => order.status === 'Complete');
       
       if (completeOrders.length === 0) {
-        resultsContainer.innerHTML = '<p class="error">No completed orders found with this AWB.</p>';
-        document.getElementById('dispatch-awb-btn').disabled = true;
-        return;
+        document.getElementById('awb-search-results').innerHTML = '<p class="error">No completed orders found with this AWB.</p>';
+        throw new Error('No completed orders found with this AWB');
       }
 
-      // Group orders by order number
-      const groupedOrders = {};
+      console.log('Complete orders found:', completeOrders.length); // Debug log
+
+      // Show the found orders
+      displayAwbSearchResults(data.orders, awbNumber);
+
+      // Automatically change all complete orders to dispatch
+      return changeAwbToDispatch(awbNumber);
+    })
+    .then(() => {
+      console.log('Orders successfully changed to dispatch'); // Debug log
+      alert(`Orders with AWB ${awbNumber} have been successfully changed to Dispatch status!`);
+      closeAwbDispatchModal();
       
-      completeOrders.forEach(order => {
-        const orderNumber = order.order_number;
-        
-        if (!groupedOrders[orderNumber]) {
-          groupedOrders[orderNumber] = {
-            id: order.id,
-            order_number: orderNumber,
-            platform: order.platform,
-            skus: [],
-            status: order.status,
-            awb: order.awb
-          };
-        }
-        
-        // Add SKU with quantity if not already in the list
-        const skuWithQty = `${order.sku} (${order.quantity})`;
-        if (!groupedOrders[orderNumber].skus.includes(skuWithQty)) {
-          groupedOrders[orderNumber].skus.push(skuWithQty);
-        }
-      });
-
-      // Convert to array for rendering
-      const ordersArray = Object.values(groupedOrders);
-
-      // Build the results table
-      let html = `
-        <h4>Found ${ordersArray.length} completed order(s) with this AWB</h4>
-        <table class="order-table">
-          <thead>
-            <tr>
-              <th>Order Number</th>
-              <th>Platform</th>
-              <th>SKUs</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-      `;
-
-      ordersArray.forEach(order => {
-        // Format SKUs as a list
-        const skusList = order.skus.map(sku => `<div class="sku-item">${sku}</div>`).join('');
-        
-        html += `
-          <tr data-order-id="${order.id}" data-order-number="${order.order_number}" data-platform="${order.platform}">
-            <td>${order.order_number}</td>
-            <td>${order.platform}</td>
-            <td>
-              <div class="sku-list">
-                ${skusList}
-              </div>
-            </td>
-            <td><span class="status-badge status-completed">Complete</span></td>
-            <td>
-              <button class="btn btn-primary btn-change-to-dispatch" 
-                      data-order="${order.order_number}" 
-                      data-platform="${order.platform}">
-                Change to Dispatch
-              </button>
-            </td>
-          </tr>
-        `;
-      });
-
-      html += `
-          </tbody>
-        </table>
-      `;
-
-      resultsContainer.innerHTML = html;
-      
-      // Add event listeners to the Change to Dispatch buttons
-      document.querySelectorAll('.btn-change-to-dispatch').forEach(button => {
-        button.addEventListener('click', function() {
-          const orderNumber = this.getAttribute('data-order');
-          const platform = this.getAttribute('data-platform');
-          changeOrderStatusToDispatch(orderNumber, platform, awbNumber);
-        });
-      });
-      
-      // Enable the dispatch button for bulk operation
-      const dispatchBtn = document.getElementById('dispatch-awb-btn');
-      dispatchBtn.textContent = 'Change All to Dispatch';
-      dispatchBtn.disabled = false;
-      dispatchBtn.onclick = function() {
-        // Confirm before changing all orders
-        if (confirm(`Are you sure you want to change the status of all ${ordersArray.length} orders to Dispatch?`)) {
-          changeAllOrdersToDispatch(ordersArray, awbNumber);
-        }
-      };
+      // Refresh the current view
+      if (currentStatus === 'Dispatch') {
+        displayDispatchPicklists();
+      }
     })
     .catch(error => {
-      console.error('Error searching AWB:', error);
-      resultsContainer.innerHTML = `<p class="error">Error searching AWB: ${error.message}</p>`;
-      document.getElementById('dispatch-awb-btn').disabled = true;
+      console.error('Error processing AWB:', error);
+      alert(`Error: ${error.message}`);
+    })
+    .finally(() => {
+      btn.disabled = false;
+      btn.textContent = originalText;
     });
 }
+
+function displayAwbSearchResults(orders, awbNumber) {
+  const resultsContainer = document.getElementById('awb-search-results');
+  
+  // Filter complete orders for display
+  const completeOrders = orders.filter(order => order.status === 'Complete');
+  
+  // Group orders by order number
+  const groupedOrders = {};
+  
+  completeOrders.forEach(order => {
+    const orderNumber = order.order_number;
+    
+    if (!groupedOrders[orderNumber]) {
+      groupedOrders[orderNumber] = {
+        id: order.id,
+        order_number: orderNumber,
+        platform: order.platform,
+        skus: [],
+        status: order.status,
+        awb: order.awb
+      };
+    }
+    
+    const skuWithQty = `${order.sku} (${order.quantity})`;
+    if (!groupedOrders[orderNumber].skus.includes(skuWithQty)) {
+      groupedOrders[orderNumber].skus.push(skuWithQty);
+    }
+  });
+
+  const ordersArray = Object.values(groupedOrders);
+
+  let html = `
+    <h4>Found ${ordersArray.length} completed order(s) with AWB: ${awbNumber}</h4>
+    <p style="color: #28a745; font-weight: bold;">These orders will be changed to Dispatch status...</p>
+    <table class="order-table">
+      <thead>
+        <tr>
+          <th>Order Number</th>
+          <th>Platform</th>
+          <th>SKUs</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  ordersArray.forEach(order => {
+    const skusList = order.skus.map(sku => `<div class="sku-item">${sku}</div>`).join('');
+    
+    html += `
+      <tr>
+        <td>${order.order_number}</td>
+        <td>${order.platform}</td>
+        <td>
+          <div class="sku-list">
+            ${skusList}
+          </div>
+        </td>
+        <td><span class="status-badge status-completed">Complete → Dispatch</span></td>
+      </tr>
+    `;
+  });
+
+  html += `</tbody></table>`;
+  resultsContainer.innerHTML = html;
+}
+
 
 // Function to change a single order's status from Complete to Dispatch
 function changeOrderStatusToDispatch(orderNumber, platform, awbNumber) {
@@ -3017,17 +3057,10 @@ function setupAwbModalEventListeners() {
       }
     });
     
-    // Search AWB button
-    const searchAwbBtn = document.getElementById('search-awb-btn');
-    if (searchAwbBtn) {
-      searchAwbBtn.addEventListener('click', searchAwbNumber);
-    }
-    
-    // Complete Dispatch button
-    const dispatchAwbBtn = document.getElementById('dispatch-awb-btn');
-    if (dispatchAwbBtn) {
-      dispatchAwbBtn.addEventListener('click', completeAwbDispatch);
-      dispatchAwbBtn.textContent = 'Complete Orders';
+    // Process AWB button (replaces both search and dispatch buttons)
+    const processAwbBtn = document.getElementById('process-awb-btn');
+    if (processAwbBtn) {
+      processAwbBtn.addEventListener('click', processAwbNumber);
     }
     
     // Enter key in AWB input field
@@ -3036,7 +3069,7 @@ function setupAwbModalEventListeners() {
       awbInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
           e.preventDefault();
-          searchAwbNumber();
+          processAwbNumber();
         }
       });
     }
@@ -3106,34 +3139,34 @@ function getCsrfToken() {
 }
 
 function viewDispatchPicklistDetails(picklistId) {
-  console.log(`Fetching completed orders details for picklist: ${picklistId}`);
+  console.log(`Fetching dispatch orders details for picklist: ${picklistId}`);
 
   fetch(`${baseApiUrl}/picklists/${picklistId}/dispatch-orders/`)
     .then(response => {
-      console.log("Completed orders details response status:", response.status);
+      console.log("Dispatch orders details response status:", response.status);
       if (!response.ok) {
         return response.text().then(text => {
           console.error("Error response:", text);
-          throw new Error(`Error fetching completed orders details: ${response.status} ${response.statusText}`);
+          throw new Error(`Error fetching dispatch orders details: ${response.status} ${response.statusText}`);
         });
       }
       return response.json();
     })
     .then(data => {
-      console.log("Completed orders details data:", data);
+      console.log("Dispatch orders details data:", data);
 
       // Populate the picklist modal
-      document.getElementById('picklistModalTitle').textContent = `Completed Orders - Picklist ${picklistId}`;
+      document.getElementById('picklistModalTitle').textContent = `Dispatch Orders - Picklist ${picklistId}`;
       document.getElementById('picklistPlatform').textContent = data.platform || 'Unknown';
 
       const dispatchPercentage = data.dispatch_percentage ||
         (data.total_orders > 0 ? Math.round((data.dispatch_orders / data.total_orders) * 100) : 0);
 
-      document.getElementById('picklistStatus').textContent = `${dispatchPercentage}% Completed`;
-      document.getElementById('picklistTotalItems').textContent = `${data.dispatch_orders || 0} of ${data.total_orders || 0}`;
+      document.getElementById('picklistStatus').textContent = `${dispatchPercentage}% Dispatched`;
+      document.getElementById('picklistTotalItems').textContent = `${data.dispatch_orders || 0} of ${data.total_orders || 0} Dispatched`;
       document.getElementById('picklistCreatedAt').textContent = data.created_at || 'Unknown';
 
-      // Update the table header - remove the Actions column as per requirement
+      // Update the table header
       const tableContainer = document.getElementById('picklistTableContainer');
       tableContainer.innerHTML = `
             <table class="order-table">
@@ -3179,29 +3212,54 @@ function viewDispatchPicklistDetails(picklistId) {
           }
         });
         
-        // Convert to array and sort (Complete first, then others)
+        // Convert to array and sort by status priority: Dispatch > Complete > Others
         const sortedOrders = Object.values(groupedOrders).sort((a, b) => {
-          if (a.status === 'Complete' && b.status !== 'Complete') return -1;
-          if (a.status !== 'Complete' && b.status === 'Complete') return 1;
-          return 0;
+          // Define status priority (lower number = higher priority)
+          const statusPriority = {
+            'Dispatch': 1,
+            'Complete': 2,
+            'Pack': 3,
+            'Pick': 4,
+            'Ready to Process': 5
+          };
+          
+          const aPriority = statusPriority[a.status] || 99;
+          const bPriority = statusPriority[b.status] || 99;
+          
+          // Sort by priority, then by order number as secondary sort
+          if (aPriority !== bPriority) {
+            return aPriority - bPriority;
+          }
+          
+          // Secondary sort by order number if same priority
+          return a.order_number.localeCompare(b.order_number);
         });
 
         // Create rows for each grouped order
         sortedOrders.forEach(order => {
           const row = document.createElement('tr');
 
-          // Highlight completed orders
-          if (order.status === 'Complete') {
-            row.classList.add('dispatch-row');
-          }
-
+          // Apply different styling based on status
           let statusBadgeClass = '';
-          if (order.status === 'Complete') {
+          let rowClass = '';
+          
+          if (order.status === 'Dispatch') {
+            statusBadgeClass = 'status-dispatched';
+            rowClass = 'dispatch-row';
+          } else if (order.status === 'Complete') {
             statusBadgeClass = 'status-completed';
+            rowClass = 'completed-row';
           } else if (order.status === 'Pack') {
             statusBadgeClass = 'status-packing';
+            rowClass = 'packing-row';
           } else {
             statusBadgeClass = 'status-printed';
+            rowClass = 'other-row';
+          }
+          
+          // Add the appropriate row class
+          if (rowClass) {
+            row.classList.add(rowClass);
           }
 
           // Display multiple SKUs in a formatted list
@@ -3235,8 +3293,8 @@ function viewDispatchPicklistDetails(picklistId) {
       document.getElementById('picklistModal').style.display = 'block';
     })
     .catch(error => {
-      console.error('Error fetching picklist completed orders details:', error);
-      alert('Error loading picklist completed orders details: ' + error.message);
+      console.error('Error fetching picklist dispatch orders details:', error);
+      alert('Error loading picklist dispatch orders details: ' + error.message);
     });
 }
     // Function to mark individual order as dispatched
@@ -3876,7 +3934,8 @@ function viewDispatchPicklistDetails(picklistId) {
       window.location.href = `/pack-stage/?picklist_id=${picklistId}`;
     }
     // Event listener for tab navigation
-    document.addEventListener('DOMContentLoaded', function () {
+// Event listener for tab navigation
+document.addEventListener('DOMContentLoaded', function () {
   // Setup for orderModal
   const orderModal = document.getElementById('orderModal');
   const orderCloseBtn = orderModal.querySelector('.close-modal');
@@ -3893,27 +3952,24 @@ function viewDispatchPicklistDetails(picklistId) {
     picklistModal.style.display = 'none';
   }
 
-  // Setup for AWB dispatch modal
+  // Setup for AWB dispatch modal - FIXED VERSION
   const awbDispatchModal = document.getElementById('awbDispatchModal');
   if (awbDispatchModal) {
     // Close button
     const awbCloseBtn = awbDispatchModal.querySelector('.close-modal');
     if (awbCloseBtn) {
       awbCloseBtn.addEventListener('click', function() {
-        awbDispatchModal.style.display = 'none';
+        closeAwbDispatchModal();
       });
     }
     
-    // Search AWB button
-    const searchAwbBtn = document.getElementById('search-awb-btn');
-    if (searchAwbBtn) {
-      searchAwbBtn.addEventListener('click', searchAwbNumber);
-    }
-    
-    // Complete Dispatch button
-    const dispatchAwbBtn = document.getElementById('dispatch-awb-btn');
-    if (dispatchAwbBtn) {
-      dispatchAwbBtn.addEventListener('click', completeAwbDispatch);
+    // Process AWB button - This is the key fix
+    const processAwbBtn = document.getElementById('process-awb-btn');
+    if (processAwbBtn) {
+      processAwbBtn.addEventListener('click', processAwbNumber);
+      console.log('Process AWB button event listener attached'); // Debug line
+    } else {
+      console.error('process-awb-btn not found'); // Debug line
     }
     
     // Enter key in AWB input field
@@ -3922,7 +3978,7 @@ function viewDispatchPicklistDetails(picklistId) {
       awbInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
           e.preventDefault();
-          searchAwbNumber();
+          processAwbNumber();
         }
       });
     }
@@ -3937,13 +3993,13 @@ function viewDispatchPicklistDetails(picklistId) {
       picklistModal.style.display = 'none';
     }
     if (event.target === awbDispatchModal) {
-      awbDispatchModal.style.display = 'none';
+      closeAwbDispatchModal();
     }
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
-    const style = document.createElement('style');
-    style.textContent = `
+  // Add picklist link styles
+  const style = document.createElement('style');
+  style.textContent = `
     .picklist-link {
         color: #007bff;
         text-decoration: none;
@@ -3952,9 +4008,8 @@ function viewDispatchPicklistDetails(picklistId) {
     .picklist-link:hover {
         text-decoration: underline;
     }
-`;
-    document.head.appendChild(style);
-  });
+  `;
+  document.head.appendChild(style);
 
   // Initialize the tab functionality
   document.querySelectorAll('.tab').forEach(tab => {

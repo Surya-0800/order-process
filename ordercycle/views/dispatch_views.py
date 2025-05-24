@@ -609,7 +609,7 @@ def bulk_change_to_dispatch(request):
             updated_count += count
         
         return JsonResponse({
-            'message': f'Successfully changed {updated_count} order(s) from Complete to Dispatch status and deleted {deleted_files} PDF files',
+            'message': f'Successfully changed order from Complete to Dispatch status',
             'updated_count': updated_count,
             'deleted_files': deleted_files,
             'failed_orders': failed_orders

@@ -47,3 +47,6 @@ def pack_stage_view(request):
 def picker_management(request):
     """Render the picker management page."""
     return render(request, 'picker_management.html')
+
+def admin_dashboard_view(request):
+    return render(request, 'admin_dashboard.html')

@@ -191,7 +191,7 @@ LOGGING = {
 
 # Ensure log directory exists
 os.makedirs(os.path.join(BASE_DIR, 'logs'), exist_ok=True)
-DATA_UPLOAD_MAX_NUMBER_FILES = 10000
+DATA_UPLOAD_MAX_NUMBER_FILES = 1000000
 # Security settings for production
 if not DEBUG:
     # HTTPS settings

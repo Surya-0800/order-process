@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Data Import Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .upload-section {
+            margin-bottom: 30px;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            background: rgba(102, 126, 234, 0.05);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            min-height: 120px;
+        }
+
+        .file-input-display:hover {
+            border-color: #764ba2;
+            background: rgba(118, 75, 162, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .file-input-display.dragover {
+            border-color: #764ba2;
+            background: rgba(118, 75, 162, 0.1);
+            transform: scale(1.02);
+        }
+
+        .file-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .file-text {
+            text-align: center;
+        }
+
+        .file-text h3 {
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 1.3rem;
+        }
+
+        .file-text p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .file-name {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 3px solid rgba(102, 126, 234, 0.1);
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 12px;
+            display: none;
+        }
+
+        .result.success {
+            background: rgba(46, 204, 113, 0.1);
+            border: 1px solid rgba(46, 204, 113, 0.3);
+            color: #27ae60;
+        }
+
+        .result.error {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            color: #e74c3c;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat {
+            background: rgba(255, 255, 255, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .errors {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.5);
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .error-item {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(231, 76, 60, 0.2);
+            font-size: 0.9rem;
+        }
+
+        .error-item:last-child {
+            border-bottom: none;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Master Data Import</h1>
+            <p>Upload your Excel file to import master table data</p>
+        </div>
+
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div class="upload-section">
+                <div class="file-input-wrapper">
+                    <input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls" required>
+                    <div class="file-input-display" id="fileDisplay">
+                        <div class="file-text">
+                            <div class="file-icon">📁</div>
+                            <h3>Choose Excel File</h3>
+                            <p>Drag & drop or click to browse<br>
+                            <small>Supports .xlsx and .xls files (max 10MB)</small></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="fileName" class="file-name" style="display: none;"></div>
+
+                <button type="submit" class="btn btn-primary" id="uploadBtn">
+                    Import Data
+                </button>
+            </div>
+        </form>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processing your file...</p>
+        </div>
+
+        <div class="result" id="result">
+            <div id="resultMessage"></div>
+            <div class="stats" id="stats"></div>
+            <div class="errors" id="errors" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const fileDisplay = document.getElementById('fileDisplay');
+        const fileName = document.getElementById('fileName');
+        const uploadForm = document.getElementById('uploadForm');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        const resultMessage = document.getElementById('resultMessage');
+        const stats = document.getElementById('stats');
+        const errors = document.getElementById('errors');
+
+        // File input change handler
+        fileInput.addEventListener('change', handleFileSelect);
+
+        // Drag and drop handlers
+        fileDisplay.addEventListener('dragover', handleDragOver);
+        fileDisplay.addEventListener('dragleave', handleDragLeave);
+        fileDisplay.addEventListener('drop', handleFileDrop);
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                displayFileName(file);
+            }
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            fileDisplay.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            fileDisplay.classList.remove('dragover');
+        }
+
+        function handleFileDrop(e) {
+            e.preventDefault();
+            fileDisplay.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                    fileInput.files = files;
+                    displayFileName(file);
+                } else {
+                    alert('Please select an Excel file (.xlsx or .xls)');
+                }
+            }
+        }
+
+        function displayFileName(file) {
+            fileName.textContent = `📄 Selected: ${file.name} (${formatFileSize(file.size)})`;
+            fileName.style.display = 'block';
+            
+            // Update display
+            fileDisplay.innerHTML = `
+                <div class="file-text">
+                    <div class="file-icon">✅</div>
+                    <h3>File Selected</h3>
+                    <p>Ready to import</p>
+                </div>
+            `;
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Form submission
+        uploadForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!fileInput.files[0]) {
+                alert('Please select a file first');
+                return;
+            }
+
+            // Show loading
+            uploadBtn.disabled = true;
+            loading.style.display = 'block';
+            result.style.display = 'none';
+
+            // Prepare form data
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/ajax/import-master-data/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+
+                const data = await response.json();
+                displayResult(data);
+
+            } catch (error) {
+                displayResult({
+                    status: 'error',
+                    message: 'Network error occurred. Please try again.',
+                    created_count: 0,
+                    updated_count: 0,
+                    skipped_count: 0,
+                    error_count: 0
+                });
+            } finally {
+                uploadBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+
+        function displayResult(data) {
+            result.style.display = 'block';
+            result.className = `result ${data.status}`;
+            
+            resultMessage.innerHTML = `
+                <h3>${data.status === 'success' ? '✅ Success!' : '❌ Error'}</h3>
+                <p>${data.message}</p>
+            `;
+
+            // Display statistics
+            if (data.status === 'success') {
+                stats.innerHTML = `
+                    <div class="stat">
+                        <div class="stat-number">${data.created_count}</div>
+                        <div class="stat-label">Created</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">${data.updated_count}</div>
+                        <div class="stat-label">Updated</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">${data.skipped_count}</div>
+                        <div class="stat-label">Skipped</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">${data.error_count}</div>
+                        <div class="stat-label">Errors</div>
+                    </div>
+                `;
+            } else {
+                stats.innerHTML = '';
+            }
+
+            // Display errors if any
+            if (data.errors && data.errors.length > 0) {
+                errors.style.display = 'block';
+                errors.innerHTML = '<h4>Error Details:</h4>' + 
+                    data.errors.map(error => `<div class="error-item">${error}</div>`).join('');
+            } else {
+                errors.style.display = 'none';
+            }
+        }
+
+        // CSRF token helper
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>

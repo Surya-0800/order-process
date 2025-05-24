@@ -7,7 +7,7 @@ from django.conf.urls.static import static
 
 from .views.base import (
     home, location_orders_view, picklist_detail_view, 
-    pack_stage_view, picker_management
+    pack_stage_view, picker_management,admin_dashboard_view
 )
 from .views.packing_views import (
     search_picklist, search_product, mark_picklist_completed,
@@ -28,6 +28,12 @@ from .views.proudct_images import (
     upload_multiple_images  
 )
 
+from .views.master_data import (
+    import_master_data_api, 
+    master_data_dashboard, 
+    import_master_data_ajax  
+)
+
 from .views.picklist_views import PicklistViewSet
 
 from .views import dispatch_views as views
@@ -37,6 +43,15 @@ from .views.pdf_upload import check_pdf_path
 urlpatterns = [
     # Base views
     path('', home, name='home'),
+
+    path('admin-dashboard/', admin_dashboard_view, name='admin_dashboard'),
+
+    path('api/import-master-data/', import_master_data_api, name='import_master_data_api'),
+    
+    # Dashboard
+    path('dashboard/master-data/', master_data_dashboard, name='master_data_dashboard'),
+    path('ajax/import-master-data/', import_master_data_ajax, name='import_master_data_ajax'),
+
     path('location-orders/', location_orders_view, name='location_orders'),
 
     # Add these URL patterns to your urlpatterns list

@@ -419,6 +419,17 @@ def save_awb_and_dispatch(request):
                 )
                 updated = result
                 
+                # DELETE OrderPDF record for this order after marking as Complete
+                try:
+                    from ..models import OrderPDF
+                    order_pdf = OrderPDF.objects.get(order_id=order_number)
+                    order_pdf.delete()
+                    print(f"Deleted OrderPDF record for order {order_number}")
+                except OrderPDF.DoesNotExist:
+                    print(f"No OrderPDF record found for order {order_number}")
+                except Exception as pdf_error:
+                    print(f"Error deleting OrderPDF for order {order_number}: {str(pdf_error)}")
+                
                 # Verify the update was successful by retrieving the order
                 updated_order = model.objects.filter(order_number=order_number).first()
                 if updated_order:
