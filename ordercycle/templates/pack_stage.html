@@ -2739,7 +2739,7 @@ function printInvoiceAfterLabel(platform, orderNumber, canPrint) {
                   
                   // Crop settings - only crop 50 points from top
                   const cropLeft = 0;        // No cropping from left
-                  const cropTop = 100;        // Remove 50 points from top
+                  const cropTop = 0;        
                   const cropRight = 0;       // No cropping from right
                   const cropBottom = 0;      // No cropping from bottom
                   
@@ -2785,7 +2785,7 @@ function printInvoiceAfterLabel(platform, orderNumber, canPrint) {
               // Printer configuration for FLIPKART invoices - LANDSCAPE orientation
               if (platformUpper === 'FLIPKART') {
                 config = qz.configs.create(printerToUse, {
-                  size: { width: 8.5, height: 11, units: 'in' }, // Keep original dimensions
+                  size: { width: 8.5, height: 7.5, units: 'in' }, // Keep original dimensions
                   margins: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 }, // Keep original margins
                   orientation: 'landscape',
                   copies: 1,
@@ -3484,7 +3484,7 @@ function printInvoiceAfterLabel(platform, orderNumber, canPrint) {
                 
                 // Crop settings - only crop 50 points from top
                 const cropLeft = 0;        // No cropping from left
-                const cropTop = 100;        // Remove 50 points from top
+                const cropTop = 0;        
                 const cropRight = 0;       // No cropping from right
                 const cropBottom = 0;      // No cropping from bottom
                 
@@ -3528,7 +3528,7 @@ function printInvoiceAfterLabel(platform, orderNumber, canPrint) {
             // Printer configuration for FLIPKART invoices - LANDSCAPE orientation
             if (platformUpper === 'FLIPKART') {
               config = qz.configs.create(printerToUse, {
-                size: { width: 8.5, height: 11, units: 'in' }, // Keep original dimensions
+                size: { width: 8.5, height: 7.5, units: 'in' }, // Keep original dimensions
                 margins: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 }, // Keep original margins
                 orientation: 'landscape',
                 copies: 1,
