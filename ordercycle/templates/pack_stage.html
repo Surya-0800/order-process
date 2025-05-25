@@ -2733,13 +2733,13 @@ function printInvoiceAfterLabel(platform, orderNumber, canPrint) {
               copiedPages.forEach(page => {
                 const addedPage = newPdf.addPage(page);
                 
-                // Apply cropping for FLIPKART invoices to remove left side empty space
+                // Apply cropping for FLIPKART invoices to remove top empty space
                 if (platformUpper === 'FLIPKART') {
                   const { width, height } = addedPage.getSize();
                   
-                  // Crop settings - only crop 50 points from left
-                  const cropLeft = 50;       // Remove 50 points from left
-                  const cropTop = 0;         // No cropping from top
+                  // Crop settings - only crop 50 points from top
+                  const cropLeft = 0;        // No cropping from left
+                  const cropTop = 100;        // Remove 50 points from top
                   const cropRight = 0;       // No cropping from right
                   const cropBottom = 0;      // No cropping from bottom
                   
@@ -2867,8 +2867,7 @@ function printInvoiceAfterLabel(platform, orderNumber, canPrint) {
         resolve();
       });
   });
-}    
-
+}
       function proceedWithPrintOrDownload(platform, orderNumber, canPrint) {
         const requestBody = {
           platform: platform,
@@ -3479,13 +3478,13 @@ function printInvoiceAfterLabel(platform, orderNumber, canPrint) {
             copiedPages.forEach(page => {
               const addedPage = newPdf.addPage(page);
               
-              // Apply cropping for FLIPKART invoices to remove left side empty space
+              // Apply cropping for FLIPKART invoices to remove top empty space
               if (platformUpper === 'FLIPKART') {
                 const { width, height } = addedPage.getSize();
                 
-                // Crop settings - only crop 50 points from left
-                const cropLeft = 50;       // Remove 50 points from left
-                const cropTop = 0;         // No cropping from top
+                // Crop settings - only crop 50 points from top
+                const cropLeft = 0;        // No cropping from left
+                const cropTop = 100;        // Remove 50 points from top
                 const cropRight = 0;       // No cropping from right
                 const cropBottom = 0;      // No cropping from bottom
                 
@@ -3603,7 +3602,7 @@ function printInvoiceAfterLabel(platform, orderNumber, canPrint) {
       console.error("API error:", error);
       showMessage(`Error retrieving invoice: ${error.message}`, 'error');
     });
-}      
+}
 // Barcode scanner functionality (placeholder)
       function toggleScanner(type) {
         console.log(`Toggle scanner for type: ${type}`);
