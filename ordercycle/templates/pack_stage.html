@@ -2809,17 +2809,17 @@ function printInvoiceAfterLabel(platform, orderNumber, canPrint) {
               } else {
                 // Default configuration for other platforms
                 config = qz.configs.create(printerToUse, {
-                  size: { width: 8.5, height: 11, units: 'in' },
-                  margins: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
-                  orientation: 'portrait',
-                  copies: 1,
-                  colorType: 'grayscale',
-                  scale: 'fit',
-                  scaleContent: true,
-                  fitToPage: true,
-                  density: 300
-                });
-              }
+                        size: { width: 4, height: 6, units: 'in' },
+                        margins: { top: 0, right: 0, bottom: 0, left: 0 },
+                        orientation: 'portrait',
+                        copies: 1,
+                        colorType: 'grayscale',
+                        scale: 'fit',
+                        scaleContent: true,
+                        fitToPage: true,
+                        density: 300
+                      });
+                    }
 
               const printData = [{
                 type: 'pdf',
@@ -3552,8 +3552,8 @@ function printInvoiceAfterLabel(platform, orderNumber, canPrint) {
             } else {
               // Default configuration for other platforms
               config = qz.configs.create(printerToUse, {
-                size: { width: 8.5, height: 11, units: 'in' },
-                margins: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
+                size: { width: 4, height: 6, units: 'in' },
+                margins: { top: 0, right: 0, bottom: 0, left: 0 },
                 orientation: 'portrait',
                 copies: 1,
                 colorType: 'grayscale',
