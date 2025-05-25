@@ -32,6 +32,7 @@ def get_printer_list(request):
     })
 
 
+@csrf_exempt
 @require_http_methods(["POST"])
 def save_printer_preferences(request):
     """
@@ -110,6 +111,7 @@ def get_printer_preferences(request):
         }, status=500)
 
 
+@csrf_exempt
 @require_http_methods(["POST"])
 def send_test_print(request):
     """
@@ -197,14 +199,11 @@ def print_label(request):
         pdf_record = OrderPDF.objects.filter(order_id=order_number).first()
         
         if pdf_record:
-            # PDF exists in database - create download URL
+            # PDF exists in database - create relative download URL
             print(f"DEBUG: Using PDF from database for order {order_number}")
             
-            # Create direct download URL
-            current_site = get_current_site(request)
-            domain = current_site.domain
-            protocol = 'https' if request.is_secure() else 'http'
-            pdf_url = f"{protocol}://{domain}/api/orders/{order_number}/download/"
+            # Use relative URL to avoid CORS issues
+            pdf_url = f"/api/orders/{order_number}/download/"
             
             return JsonResponse({
                 'status': 'success',
@@ -246,11 +245,8 @@ def print_label(request):
                     
                     print(f"DEBUG: Imported PDF from {pdf_path} to database")
                     
-                    # Now create the URL for the database version
-                    current_site = get_current_site(request)
-                    domain = current_site.domain
-                    protocol = 'https' if request.is_secure() else 'http'
-                    pdf_url = f"{protocol}://{domain}/api/orders/{order_number}/download/"
+                    # Now create relative URL for the database version
+                    pdf_url = f"/api/orders/{order_number}/download/"
                     
                     return JsonResponse({
                         'status': 'success',
@@ -268,10 +264,9 @@ def print_label(request):
                 print(f"DEBUG: PDF file not found at {pdf_path}")
         
         # If we get here, we couldn't import the PDF to the database
-        # Fall back to the original file URL-based approach
-        # Convert file path to URL if necessary
+        # Fall back to the original file URL-based approach with relative URLs
         if pdf_path.startswith('/') or pdf_path.startswith('C:'):
-            # Convert file path to URL
+            # Convert file path to relative URL
             filename = os.path.basename(pdf_path)
             
             # Determine platform-specific directory
@@ -284,22 +279,16 @@ def print_label(request):
             
             pdf_url = f"/media/{platform_dir_mapping.get(platform_upper, 'orderPdfs')}/{filename}"
         else:
-            # It's already a URL
+            # It's already a URL - make it relative
             pdf_url = pdf_path
             if not pdf_url.startswith('/'):
                 pdf_url = '/' + pdf_url
         
-        # Convert to absolute URL
-        current_site = get_current_site(request)
-        domain = current_site.domain
-        protocol = 'https' if request.is_secure() else 'http'
-        absolute_url = f"{protocol}://{domain}{pdf_url}"
-        
-        print(f"WARNING: Using file-based URL for PDF: {absolute_url}")
+        print(f"WARNING: Using file-based URL for PDF: {pdf_url}")
         
         return JsonResponse({
             'status': 'success',
-            'pdf_url': absolute_url,
+            'pdf_url': pdf_url,
             'order_number': order.order_number,
             'awb': getattr(order, 'AWB', 'N/A'),
             'platform': platform,
@@ -315,7 +304,7 @@ def print_label(request):
             'message': f'Error processing print request: {str(e)}'
         }, status=500)
 
-
+@csrf_exempt
 @require_http_methods(["POST"])
 def mark_order_as_printed(request):
     """
@@ -416,6 +405,7 @@ def mark_order_as_printed(request):
             'message': f'Error processing request: {str(e)}'
         }, status=500)
     
+@csrf_exempt
 @require_http_methods(["POST"])
 def save_awb_number(request):
     """
@@ -503,6 +493,7 @@ def save_awb_number(request):
         }, status=500)
 
 
+@csrf_exempt
 @require_http_methods(["POST"])
 def print_invoice(request):
     """
@@ -569,20 +560,17 @@ def print_invoice(request):
         pdf_record = OrderPDF.objects.filter(order_id=order_number).first()
         
         if pdf_record:
-            # PDF exists in database - create download URL
+            # PDF exists in database - create relative download URL (FIXED)
             print(f"DEBUG: Using PDF from database for invoice {order_number}")
             
-            # Create direct download URL - same PDF as label, client handles page selection
-            current_site = get_current_site(request)
-            domain = current_site.domain
-            protocol = 'https' if request.is_secure() else 'http'
-            pdf_url = f"{protocol}://{domain}/api/orders/{order_number}/download/"
+            # Use relative URL to avoid CORS issues
+            pdf_url = f"/api/orders/{order_number}/download/"
             
             return JsonResponse({
                 'status': 'success',
                 'pdf_url': pdf_url,
                 'order_number': order.order_number,
-                'awb': order.AWB,
+                'awb': getattr(order, 'AWB', 'N/A'),
                 'platform': platform,
                 'label_page_index': label_page_index,
                 'source': 'database'
@@ -621,17 +609,14 @@ def print_invoice(request):
                     
                     print(f"DEBUG: Imported PDF from {pdf_path} to database")
                     
-                    # Now create the URL for the database version
-                    current_site = get_current_site(request)
-                    domain = current_site.domain
-                    protocol = 'https' if request.is_secure() else 'http'
-                    pdf_url = f"{protocol}://{domain}/api/orders/{order_number}/download/"
+                    # Now create relative URL for the database version (FIXED)
+                    pdf_url = f"/api/orders/{order_number}/download/"
                     
                     return JsonResponse({
                         'status': 'success',
                         'pdf_url': pdf_url,
                         'order_number': order.order_number,
-                        'awb': order.AWB,
+                        'awb': getattr(order, 'AWB', 'N/A'),
                         'platform': platform,
                         'label_page_index': label_page_index,
                         'source': 'database_import'
@@ -643,9 +628,9 @@ def print_invoice(request):
                 print(f"DEBUG: PDF file not found at {pdf_path}")
         
         # If we get here, we couldn't import the PDF to the database
-        # Fall back to the original file URL-based approach
+        # Fall back to the original file URL-based approach with relative URLs (FIXED)
         if pdf_path.startswith('/') or pdf_path.startswith('C:'):
-            # Convert file path to URL
+            # Convert file path to relative URL
             filename = os.path.basename(pdf_path)
             
             # Determine platform-specific directory
@@ -658,24 +643,18 @@ def print_invoice(request):
             
             pdf_url = f"/media/{platform_dir_mapping.get(platform_upper, 'orderPdfs')}/{filename}"
         else:
-            # It's already a URL
+            # It's already a URL - make it relative
             pdf_url = pdf_path
             if not pdf_url.startswith('/'):
                 pdf_url = '/' + pdf_url
         
-        # Convert to absolute URL
-        current_site = get_current_site(request)
-        domain = current_site.domain
-        protocol = 'https' if request.is_secure() else 'http'
-        absolute_url = f"{protocol}://{domain}{pdf_url}"
-        
-        print(f"WARNING: Using file-based URL for PDF: {absolute_url}")
+        print(f"WARNING: Using file-based URL for PDF: {pdf_url}")
         
         return JsonResponse({
             'status': 'success',
-            'pdf_url': absolute_url,
+            'pdf_url': pdf_url,
             'order_number': order.order_number,
-            'awb': order.AWB,
+            'awb': getattr(order, 'AWB', 'N/A'),
             'platform': platform,
             'label_page_index': label_page_index,
             'source': 'file'
@@ -712,6 +691,19 @@ def download_pdf(request, order_id):
         # Create response with PDF content
         response = HttpResponse(pdf_record.pdf_content, content_type='application/pdf')
         response['Content-Disposition'] = f'inline; filename="{filename}"'
+        
+        # Add CORS headers manually to the PDF response
+        origin = request.META.get('HTTP_ORIGIN')
+        if origin and origin in [
+            'http://192.168.240.29:8080',
+            'http://192.168.240.29',
+            'http://localhost:8080',
+            'http://localhost',
+            'http://127.0.0.1:8080',
+            'http://127.0.0.1'
+        ]:
+            response['Access-Control-Allow-Origin'] = origin
+            response['Access-Control-Allow-Credentials'] = 'true'
         
         return response
         

@@ -38,12 +38,15 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',  # Added for CORS support
     'ordercycle',
     'rest_framework',
     'whitenoise.runserver_nostatic',  # Using whitenoise in development too
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  # CORS middleware - must be at the top
+    'ordercycle.middleware.CustomCorsMiddleware',  # Custom middleware for file downloads
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',  # Whitenoise for static files
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -95,6 +98,68 @@ REST_FRAMEWORK = {
     ),
 }
 
+# CORS Configuration
+# Allow requests from your frontend origin
+CORS_ALLOWED_ORIGINS = [
+    "http://192.168.240.29:8080",
+    "http://192.168.240.29",
+    "http://localhost:8080", 
+    "http://localhost:8000",
+    "http://localhost",
+    "http://127.0.0.1:8080",
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1",
+]
+
+# For development only - uncomment if needed
+# CORS_ALLOW_ALL_ORIGINS = True
+
+# Allow credentials (important for CSRF tokens and sessions)
+CORS_ALLOW_CREDENTIALS = True
+
+# Allowed headers
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'cache-control',
+    'pragma',
+]
+
+# Allowed methods
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# CORS preflight cache time
+CORS_PREFLIGHT_MAX_AGE = 86400
+
+# CSRF settings for CORS
+CSRF_TRUSTED_ORIGINS = [
+    "http://192.168.240.29:8080",
+    "http://192.168.240.29",
+    "http://localhost:8080",
+    "http://localhost:8000",
+    "http://localhost",
+    "http://127.0.0.1:8080",
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1",
+]
+
+# Additional CSRF settings
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to read CSRF cookie
+CSRF_USE_SESSIONS = False  # Use cookies instead of sessions for CSRF
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -192,6 +257,7 @@ LOGGING = {
 # Ensure log directory exists
 os.makedirs(os.path.join(BASE_DIR, 'logs'), exist_ok=True)
 DATA_UPLOAD_MAX_NUMBER_FILES = 1000000
+
 # Security settings for production
 if not DEBUG:
     # HTTPS settings
@@ -207,4 +273,11 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_BROWSER_XSS_FILTER = True
     X_FRAME_OPTIONS = 'DENY'
-
+    
+    # Update CORS settings for production
+    CORS_ALLOW_ALL_ORIGINS = False  # Make sure this is False in production
+    # Add your production domains to CORS_ALLOWED_ORIGINS
+else:
+    # Development-specific CORS settings
+    # You can be more permissive in development
+    pass
