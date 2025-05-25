@@ -2727,8 +2727,31 @@ function printInvoiceAfterLabel(platform, orderNumber, canPrint) {
 
               const copiedPages = await newPdf.copyPages(pdfDoc, pagesToCopy);
 
+              // UPDATED: Apply cropping for FLIPKART invoices
+              const platformUpper = platform ? platform.toUpperCase() : '';
+              
               copiedPages.forEach(page => {
-                newPdf.addPage(page);
+                const addedPage = newPdf.addPage(page);
+                
+                // Apply cropping for FLIPKART invoices to remove left side empty space
+                if (platformUpper === 'FLIPKART') {
+                  const { width, height } = addedPage.getSize();
+                  
+                  // Crop settings - adjust these values based on your specific needs
+                  const cropLeft = 100;      // Remove 100 points from left (adjust as needed)
+                  const cropTop = 0;         // No cropping from top
+                  const cropRight = 50;      // Remove 50 points from right (adjust as needed)
+                  const cropBottom = 0;      // No cropping from bottom
+                  
+                  // Calculate new dimensions
+                  const newWidth = width - cropLeft - cropRight;
+                  const newHeight = height - cropTop - cropBottom;
+                  
+                  // Apply crop box
+                  addedPage.setCropBox(cropLeft, cropBottom, newWidth, newHeight);
+                  
+                  console.log(`FLIPKART Invoice cropped: Original ${width}x${height}, Cropped ${newWidth}x${newHeight}`);
+                }
               });
 
               const newPdfBytes = await newPdf.save();
@@ -2753,19 +2776,18 @@ function printInvoiceAfterLabel(platform, orderNumber, canPrint) {
               if (!printerToUse) {
                 console.error("No printer available for invoice printing");
                 showMessage("No printer available for invoice printing. Please configure printers.", "error");
-                resolve(); // Don't reject, just continue
+                resolve();
                 return;
               }
 
               let config;
-              const platformUpper = platform ? platform.toUpperCase() : '';
               
-              // UPDATED: Special configuration for FLIPKART invoices - LANDSCAPE orientation
+              // Printer configuration for FLIPKART invoices - LANDSCAPE orientation
               if (platformUpper === 'FLIPKART') {
                 config = qz.configs.create(printerToUse, {
-                  size: { width: 8.5, height: 11, units: 'in' }, // Standard letter size
-                  margins: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
-                  orientation: 'landscape', // LANDSCAPE for FLIPKART
+                  size: { width: 11, height: 8.5, units: 'in' }, // Landscape: width > height
+                  margins: { top: 0.25, right: 0.25, bottom: 0.25, left: 0.25 }, // Reduced margins
+                  orientation: 'landscape',
                   copies: 1,
                   colorType: 'grayscale',
                   scale: 'fit-to-page',
@@ -2842,11 +2864,10 @@ function printInvoiceAfterLabel(platform, orderNumber, canPrint) {
       .catch(error => {
         console.error("Invoice API error:", error);
         showMessage(`Error retrieving invoice: ${error.message}`, 'warning');
-        resolve(); // Don't reject, just continue
+        resolve();
       });
   });
-}
-   
+}  
       
 
       function proceedWithPrintOrDownload(platform, orderNumber, canPrint) {
@@ -3369,200 +3390,221 @@ function printInvoiceAfterLabel(platform, orderNumber, canPrint) {
 
       // Function to print invoice pages (placeholder)
       function printInvoicePages(orderNumber, awbNumber, platform, downloadOnly = false) {
-        console.log(`Preparing to print invoice for order: ${orderNumber}, AWB: ${awbNumber}, Platform: ${platform}`);
+  console.log(`Preparing to print invoice for order: ${orderNumber}, AWB: ${awbNumber}, Platform: ${platform}`);
 
-        showMessage('Preparing invoice pages for printing...', 'info');
+  showMessage('Preparing invoice pages for printing...', 'info');
 
-        const requestBody = {
-          order_number: orderNumber,
-          awb: awbNumber,
-          platform: platform,
-          exclude_label_page: true
-        };
+  const requestBody = {
+    order_number: orderNumber,
+    awb: awbNumber,
+    platform: platform,
+    exclude_label_page: true
+  };
 
-        const csrfToken = getCSRFToken();
-        if (!csrfToken) {
-          showMessage('CSRF token not available. Please refresh the page.', 'error');
-          return;
-        }
+  const csrfToken = getCSRFToken();
+  if (!csrfToken) {
+    showMessage('CSRF token not available. Please refresh the page.', 'error');
+    return;
+  }
 
-        fetch('/api/print-invoice/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken,
-            'X-Requested-With': 'XMLHttpRequest'
-          },
-          credentials: 'same-origin',
-          body: JSON.stringify(requestBody)
-        })
-          .then(response => {
-            if (!response.ok) {
-              return response.json().then(data => {
-                throw new Error(data.message || 'Error retrieving invoice');
-              });
-            }
-            return response.json();
-          })
-          .then(data => {
-            if (!data.pdf_url) {
-              throw new Error('No PDF URL available for this order');
-            }
-
-            let pdfUrl = data.pdf_url;
-            if (!pdfUrl.startsWith('http')) {
-              pdfUrl = window.location.origin + (pdfUrl.startsWith('/') ? '' : '/') + pdfUrl;
-            }
-
-            showMessage("Processing invoice pages...", "info");
-
-            fetch(pdfUrl)
-              .then(response => response.arrayBuffer())
-              .then(async arrayBuffer => {
-                try {
-                  const { PDFDocument } = PDFLib;
-
-                  const pdfDoc = await PDFDocument.load(arrayBuffer);
-                  const newPdf = await PDFDocument.create();
-
-                  const pageCount = pdfDoc.getPageCount();
-
-                  let excludePage = 0;
-
-                  if (data.label_page_index !== undefined) {
-                    if (data.label_page_index === -1) {
-                      excludePage = pageCount - 1;
-                    } else {
-                      excludePage = data.label_page_index;
-                    }
-                  } else if (platform && platform.toUpperCase() === 'FIRSTCRY') {
-                    excludePage = pageCount - 1;
-                  }
-
-                  const pagesToCopy = [];
-                  for (let i = 0; i < pageCount; i++) {
-                    if (i !== excludePage) {
-                      pagesToCopy.push(i);
-                    }
-                  }
-
-                  if (pagesToCopy.length === 0) {
-                    showMessage("No invoice pages to print - this document only contains the label.", "warning");
-                    return;
-                  }
-
-                  const copiedPages = await newPdf.copyPages(pdfDoc, pagesToCopy);
-
-                  copiedPages.forEach(page => {
-                    newPdf.addPage(page);
-                  });
-
-                  const newPdfBytes = await newPdf.save();
-                  const blob = new Blob([newPdfBytes], { type: 'application/pdf' });
-
-                  if (downloadOnly || !qzReady) {
-                    const downloadUrl = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = downloadUrl;
-                    a.download = `invoice_${orderNumber}.pdf`;
-                    a.click();
-                    URL.revokeObjectURL(downloadUrl);
-
-                    showMessage("Invoice downloaded successfully", "success");
-                    return;
-                  }
-
-                  const base64Data = arrayBufferToBase64(newPdfBytes);
-                  const printerToUse = invoicePrinter || labelPrinter || defaultPrinter || (availablePrinters.length > 0 ? availablePrinters[0] : null);
-
-                  if (!printerToUse) {
-                    console.error("No printer available for invoice printing");
-                    showMessage("No printer available for invoice printing. Please configure printers.", "error");
-                    return;
-                  }
-
-                  let config;
-                  const platformUpper = platform ? platform.toUpperCase() : '';
-                  
-                  // UPDATED: Special configuration for FLIPKART invoices - LANDSCAPE orientation
-                  if (platformUpper === 'FLIPKART') {
-                    config = qz.configs.create(printerToUse, {
-                      size: { width: 8.5, height: 11, units: 'in' }, // Standard letter size
-                      margins: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
-                      orientation: 'landscape', // LANDSCAPE for FLIPKART
-                      copies: 1,
-                      colorType: 'grayscale',
-                      scale: 'fit-to-page',
-                      scaleContent: true,
-                      density: 300
-                    });
-                  } else if (platformUpper === 'MEESHO') {
-                    config = qz.configs.create(printerToUse, {
-                      size: { width: 4, height: 6, units: 'in' },
-                      margins: { top: 0, right: 0, bottom: 0, left: 0 },
-                      orientation: 'portrait',
-                      copies: 1,
-                      colorType: 'grayscale',
-                      scale: 'fit',
-                      scaleContent: true,
-                      fitToPage: true,
-                      density: 300
-                    });
-                  } else {
-                    // Default configuration for other platforms
-                    config = qz.configs.create(printerToUse, {
-                      size: { width: 8.5, height: 11, units: 'in' },
-                      margins: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
-                      orientation: 'portrait',
-                      copies: 1,
-                      colorType: 'grayscale',
-                      scale: 'fit',
-                      scaleContent: true,
-                      fitToPage: true,
-                      density: 300
-                    });
-                  }
-
-                  const printData = [{
-                    type: 'pdf',
-                    format: 'base64',
-                    data: base64Data
-                  }];
-
-                  showMessage(`Sending invoice to printer: ${printerToUse}...`, "info");
-
-                  qz.print(config, printData)
-                    .then(() => {
-                      showMessage(`Invoice pages printed successfully!`, "success");
-                    })
-                    .catch(err => {
-                      console.error("Invoice printing error:", err);
-                      showMessage(`Invoice printing failed: ${err.message}. Opening PDF for manual printing.`, "error");
-
-                      const downloadUrl = URL.createObjectURL(blob);
-                      window.open(downloadUrl, '_blank');
-                      setTimeout(() => URL.revokeObjectURL(downloadUrl), 30000);
-                    });
-                } catch (error) {
-                  console.error("Error processing invoice PDF:", error);
-                  showMessage(`Error processing invoice PDF: ${error.message}. Try printing it manually.`, "error");
-
-                  window.open(pdfUrl, '_blank');
-                }
-              })
-              .catch(error => {
-                console.error("Error fetching invoice PDF:", error);
-                showMessage(`Error downloading invoice PDF: ${error.message}. Trying direct link.`, "error");
-
-                window.open(pdfUrl, '_blank');
-              });
-          })
-          .catch(error => {
-            console.error("API error:", error);
-            showMessage(`Error retrieving invoice: ${error.message}`, 'error');
-          });
+  fetch('/api/print-invoice/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrfToken,
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    credentials: 'same-origin',
+    body: JSON.stringify(requestBody)
+  })
+    .then(response => {
+      if (!response.ok) {
+        return response.json().then(data => {
+          throw new Error(data.message || 'Error retrieving invoice');
+        });
       }
-   
+      return response.json();
+    })
+    .then(data => {
+      if (!data.pdf_url) {
+        throw new Error('No PDF URL available for this order');
+      }
+
+      let pdfUrl = data.pdf_url;
+      if (!pdfUrl.startsWith('http')) {
+        pdfUrl = window.location.origin + (pdfUrl.startsWith('/') ? '' : '/') + pdfUrl;
+      }
+
+      showMessage("Processing invoice pages...", "info");
+
+      fetch(pdfUrl)
+        .then(response => response.arrayBuffer())
+        .then(async arrayBuffer => {
+          try {
+            const { PDFDocument } = PDFLib;
+
+            const pdfDoc = await PDFDocument.load(arrayBuffer);
+            const newPdf = await PDFDocument.create();
+
+            const pageCount = pdfDoc.getPageCount();
+
+            let excludePage = 0;
+
+            if (data.label_page_index !== undefined) {
+              if (data.label_page_index === -1) {
+                excludePage = pageCount - 1;
+              } else {
+                excludePage = data.label_page_index;
+              }
+            } else if (platform && platform.toUpperCase() === 'FIRSTCRY') {
+              excludePage = pageCount - 1;
+            }
+
+            const pagesToCopy = [];
+            for (let i = 0; i < pageCount; i++) {
+              if (i !== excludePage) {
+                pagesToCopy.push(i);
+              }
+            }
+
+            if (pagesToCopy.length === 0) {
+              showMessage("No invoice pages to print - this document only contains the label.", "warning");
+              return;
+            }
+
+            const copiedPages = await newPdf.copyPages(pdfDoc, pagesToCopy);
+
+            // UPDATED: Apply cropping for FLIPKART invoices
+            const platformUpper = platform ? platform.toUpperCase() : '';
+            
+            copiedPages.forEach(page => {
+              const addedPage = newPdf.addPage(page);
+              
+              // Apply cropping for FLIPKART invoices to remove left side empty space
+              if (platformUpper === 'FLIPKART') {
+                const { width, height } = addedPage.getSize();
+                
+                // Crop settings - adjust these values based on your specific needs
+                const cropLeft = 100;      // Remove 100 points from left (adjust as needed)
+                const cropTop = 0;         // No cropping from top
+                const cropRight = 50;      // Remove 50 points from right (adjust as needed)
+                const cropBottom = 0;      // No cropping from bottom
+                
+                // Calculate new dimensions
+                const newWidth = width - cropLeft - cropRight;
+                const newHeight = height - cropTop - cropBottom;
+                
+                // Apply crop box
+                addedPage.setCropBox(cropLeft, cropBottom, newWidth, newHeight);
+                
+                console.log(`FLIPKART Invoice cropped: Original ${width}x${height}, Cropped ${newWidth}x${newHeight}`);
+              }
+            });
+
+            const newPdfBytes = await newPdf.save();
+            const blob = new Blob([newPdfBytes], { type: 'application/pdf' });
+
+            if (downloadOnly || !qzReady) {
+              const downloadUrl = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = downloadUrl;
+              a.download = `invoice_${orderNumber}.pdf`;
+              a.click();
+              URL.revokeObjectURL(downloadUrl);
+
+              showMessage("Invoice downloaded successfully", "success");
+              return;
+            }
+
+            const base64Data = arrayBufferToBase64(newPdfBytes);
+            const printerToUse = invoicePrinter || labelPrinter || defaultPrinter || (availablePrinters.length > 0 ? availablePrinters[0] : null);
+
+            if (!printerToUse) {
+              console.error("No printer available for invoice printing");
+              showMessage("No printer available for invoice printing. Please configure printers.", "error");
+              return;
+            }
+
+            let config;
+            
+            // Printer configuration for FLIPKART invoices - LANDSCAPE orientation
+            if (platformUpper === 'FLIPKART') {
+              config = qz.configs.create(printerToUse, {
+                size: { width: 11, height: 8.5, units: 'in' }, // Landscape: width > height
+                margins: { top: 0.25, right: 0.25, bottom: 0.25, left: 0.25 }, // Reduced margins
+                orientation: 'landscape',
+                copies: 1,
+                colorType: 'grayscale',
+                scale: 'fit-to-page',
+                scaleContent: true,
+                density: 300
+              });
+            } else if (platformUpper === 'MEESHO') {
+              config = qz.configs.create(printerToUse, {
+                size: { width: 4, height: 6, units: 'in' },
+                margins: { top: 0, right: 0, bottom: 0, left: 0 },
+                orientation: 'portrait',
+                copies: 1,
+                colorType: 'grayscale',
+                scale: 'fit',
+                scaleContent: true,
+                fitToPage: true,
+                density: 300
+              });
+            } else {
+              // Default configuration for other platforms
+              config = qz.configs.create(printerToUse, {
+                size: { width: 8.5, height: 11, units: 'in' },
+                margins: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
+                orientation: 'portrait',
+                copies: 1,
+                colorType: 'grayscale',
+                scale: 'fit',
+                scaleContent: true,
+                fitToPage: true,
+                density: 300
+              });
+            }
+
+            const printData = [{
+              type: 'pdf',
+              format: 'base64',
+              data: base64Data
+            }];
+
+            showMessage(`Sending invoice to printer: ${printerToUse}...`, "info");
+
+            qz.print(config, printData)
+              .then(() => {
+                showMessage(`Invoice pages printed successfully!`, "success");
+              })
+              .catch(err => {
+                console.error("Invoice printing error:", err);
+                showMessage(`Invoice printing failed: ${err.message}. Opening PDF for manual printing.`, "error");
+
+                const downloadUrl = URL.createObjectURL(blob);
+                window.open(downloadUrl, '_blank');
+                setTimeout(() => URL.revokeObjectURL(downloadUrl), 30000);
+              });
+          } catch (error) {
+            console.error("Error processing invoice PDF:", error);
+            showMessage(`Error processing invoice PDF: ${error.message}. Try printing it manually.`, "error");
+
+            window.open(pdfUrl, '_blank');
+          }
+        })
+        .catch(error => {
+          console.error("Error fetching invoice PDF:", error);
+          showMessage(`Error downloading invoice PDF: ${error.message}. Trying direct link.`, "error");
+
+          window.open(pdfUrl, '_blank');
+        });
+    })
+    .catch(error => {
+      console.error("API error:", error);
+      showMessage(`Error retrieving invoice: ${error.message}`, 'error');
+    });
+}
       // Barcode scanner functionality (placeholder)
       function toggleScanner(type) {
         console.log(`Toggle scanner for type: ${type}`);
