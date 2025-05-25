@@ -529,6 +529,101 @@
       padding-top: 10px;
     }
 
+    /* Printer selection styles */
+.printer-selection-section {
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 5px;
+  border-left: 4px solid #28a745;
+  margin-bottom: 20px;
+}
+
+.printer-selection-section h3 {
+  margin-top: 0;
+  color: #28a745;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.printer-selection-section h3::before {
+  content: "🖨️";
+}
+
+.printer-controls-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 15px;
+}
+
+.printer-control-group {
+  background: white;
+  padding: 15px;
+  border-radius: 5px;
+  border: 1px solid #dee2e6;
+}
+
+.printer-control-group h4 {
+  margin: 0 0 10px 0;
+  color: #495057;
+  font-size: 16px;
+}
+
+.printer-control-group select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: white;
+  margin-bottom: 10px;
+}
+
+.printer-control-group .printer-info {
+  font-size: 12px;
+  color: #6c757d;
+  margin-top: 5px;
+}
+
+.printer-status {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.printer-status.label-printer {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.printer-status.regular-printer {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.printer-test-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btn-test-print {
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 3px;
+}
+
+@media (max-width: 768px) {
+  .printer-controls-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+}
+
     .label-printer-option {
       font-weight: bold;
       color: #28a745;
@@ -843,6 +938,43 @@
       </div>
     </div>
 
+          <!-- Printer Selection Section -->
+<div id="printer-selection-section" class="printer-selection-section card" style="display: none;">
+  <h3>Select Your Printers</h3>
+  <div class="printer-controls-grid">
+    <!-- Label Printer Selection -->
+    <div class="printer-control-group">
+      <h4>Label Printer</h4>
+      <select id="label-printer-select">
+        <option value="">Select Label Printer...</option>
+      </select>
+      <div class="printer-info" id="label-printer-info">
+        No printer selected
+      </div>
+      <div class="printer-test-buttons">
+        <button id="test-label-printer" class="btn btn-info btn-test-print" disabled>Test Print</button>
+      </div>
+    </div>
+
+    <!-- Invoice Printer Selection -->
+    <div class="printer-control-group">
+      <h4>Invoice Printer</h4>
+      <select id="invoice-printer-select">
+        <option value="">Select Invoice Printer...</option>
+      </select>
+      <div class="printer-info" id="invoice-printer-info">
+        No printer selected
+      </div>
+      <div class="printer-test-buttons">
+        <button id="test-invoice-printer" class="btn btn-info btn-test-print" disabled>Test Print</button>
+      </div>
+    </div>
+  </div>
+  <div style="text-align: center; margin-top: 15px;">
+    <button id="refresh-printers" class="btn btn-secondary">Refresh Printer List</button>
+  </div>
+</div>
+
     <!-- Order Products Section - NEW -->
     <div id="order-products-section" class="order-products-section">
       <div class="order-header">
@@ -972,6 +1104,7 @@
       let currentPicklistPlatform = null;
       let currentOrderNumber = null;
       let orderValidatedSkus = new Set(); // Track validated SKUs for current order
+      let invoicePrinter = '';
 
       // Common label printer models to match against
       const COMMON_LABEL_PRINTERS = [
@@ -1323,13 +1456,13 @@
       function detectPrinters() {
         console.log("Detecting available printers...");
         showMessage("Detecting available printers...", "info");
-
+      
         if (typeof qz === 'undefined' || !qzReady) {
           console.warn("QZ Tray not ready when detecting printers");
           updateQZStatus("QZ Tray not connected. Cannot detect printers.", "warning");
           return Promise.reject("QZ Tray not connected");
         }
-
+      
         return qz.printers.find()
           .then(function(printers) {
             if (!printers || printers.length === 0) {
@@ -1339,19 +1472,22 @@
               
               availablePrinters = [];
               labelPrinters = [];
+              labelPrinter = '';
+              invoicePrinter = '';
+              hidePrinterSelection();
               return [];
             }
-
+      
             availablePrinters = printers;
             console.log("Available printers:", availablePrinters);
-
+      
             labelPrinters = printers.filter(function(printer) {
               const printerLower = printer.toLowerCase();
               return COMMON_LABEL_PRINTERS.some(term => printerLower.includes(term));
             });
-
+      
             console.log("Detected label printers:", labelPrinters);
-
+      
             return qz.printers.getDefault()
               .then(function(defaultPrinterName) {
                 if (defaultPrinterName) {
@@ -1362,20 +1498,13 @@
                   defaultPrinter = printers[0];
                   console.log("Using first available printer as default:", defaultPrinter);
                 }
-
-                if (labelPrinters.length > 0) {
-                  labelPrinter = labelPrinters[0];
-                  console.log("Auto-selected label printer:", labelPrinter);
-                  showMessage(`Label printer detected: ${labelPrinter}`, "success");
-                } else if (printers.length > 0) {
-                  labelPrinter = defaultPrinter;
-                  console.log("No label printer detected, using default:", labelPrinter);
-                  showMessage(`No label printer detected. Using default printer: ${labelPrinter}`, "info");
-                } else {
-                  console.warn("No printers available");
-                  labelPrinter = '';
-                }
-
+      
+                // Show printer selection immediately when printers are detected
+                showMessage(`Found ${printers.length} printer${printers.length > 1 ? 's' : ''}. Please select your preferred printers below.`, "success");
+                showPrinterSelection();
+      
+                console.log("Printer detection completed. User can now select printers.");
+      
                 return printers;
               });
           })
@@ -1396,10 +1525,14 @@
             
             availablePrinters = [];
             labelPrinters = [];
+            labelPrinter = '';
+            invoicePrinter = '';
+            hidePrinterSelection();
             
             return Promise.reject(err);
           });
       }
+      
 
       // Function to update QZ status display
       function updateQZStatus(message, status) {
@@ -1412,30 +1545,184 @@
           qzStatusDiv.innerHTML = `
             <h3>QZ Tray Connection</h3>
             <p id="qz-status-message" class="status-disconnected">${message}</p>
-            <button id="connect-qz" class="btn btn-primary">Connect QZ Tray</button>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+              <button id="connect-qz" class="btn btn-primary">Connect QZ Tray</button>
+            </div>
           `;
           container.insertBefore(qzStatusDiv, container.firstChild);
           
           statusElem = document.getElementById('qz-status-message');
           
-          // Add event listener for the connect button
+          // Add event listener
           document.getElementById('connect-qz').addEventListener('click', function () {
             initQZ();
           });
         } else {
           statusElem.textContent = message;
         }
-
+      
         statusElem.className = 'status-' + status;
-
+      
         const connectBtn = document.getElementById('connect-qz');
+        
         if (connectBtn) {
           if (status === 'connected') {
-            connectBtn.textContent = 'Refresh Printer List';
+            connectBtn.textContent = 'Refresh Connection';
           } else {
             connectBtn.textContent = 'Connect QZ Tray';
           }
         }
+      }
+
+      function showPrinterSelection() {
+        const section = document.getElementById('printer-selection-section');
+        if (section) {
+          section.style.display = 'block';
+          populatePrinterSelections();
+        }
+      }
+      
+      function hidePrinterSelection() {
+        const section = document.getElementById('printer-selection-section');
+        if (section) {
+          section.style.display = 'none';
+        }
+      }
+      
+      function populatePrinterSelections() {
+        const labelSelect = document.getElementById('label-printer-select');
+        const invoiceSelect = document.getElementById('invoice-printer-select');
+        
+        if (!labelSelect || !invoiceSelect) return;
+        
+        // Clear existing options (except first)
+        labelSelect.innerHTML = '<option value="">Select Label Printer...</option>';
+        invoiceSelect.innerHTML = '<option value="">Select Invoice Printer...</option>';
+        
+        if (!availablePrinters || availablePrinters.length === 0) {
+          labelSelect.innerHTML += '<option value="" disabled>No printers found</option>';
+          invoiceSelect.innerHTML += '<option value="" disabled>No printers found</option>';
+          return;
+        }
+        
+        // Populate both selects with all available printers
+        availablePrinters.forEach(printer => {
+          const isLabelPrinter = labelPrinters.includes(printer);
+          const labelOption = document.createElement('option');
+          const invoiceOption = document.createElement('option');
+          
+          labelOption.value = printer;
+          labelOption.textContent = printer + (isLabelPrinter ? ' (Recommended for Labels)' : '');
+          
+          invoiceOption.value = printer;
+          invoiceOption.textContent = printer + (isLabelPrinter ? ' (Label Printer)' : '');
+          
+          labelSelect.appendChild(labelOption);
+          invoiceSelect.appendChild(invoiceOption);
+        });
+        
+        // Auto-select recommended printers but let user change
+        if (!labelPrinter) {
+          if (labelPrinters.length > 0) {
+            labelPrinter = labelPrinters[0];
+            labelSelect.value = labelPrinter;
+            updatePrinterInfo('label', labelPrinter);
+          }
+        } else {
+          labelSelect.value = labelPrinter;
+          updatePrinterInfo('label', labelPrinter);
+        }
+        
+        if (!invoicePrinter) {
+          // For invoice, use first available printer or label printer
+          invoicePrinter = availablePrinters[0];
+          invoiceSelect.value = invoicePrinter;
+          updatePrinterInfo('invoice', invoicePrinter);
+        } else {
+          invoiceSelect.value = invoicePrinter;
+          updatePrinterInfo('invoice', invoicePrinter);
+        }
+        
+        // Special message for single printer
+        if (availablePrinters.length === 1) {
+          showMessage(`One printer detected: ${availablePrinters[0]}. You can use it for both labels and invoices.`, 'info');
+        }
+      }
+      
+      function updatePrinterInfo(type, printerName) {
+        const infoElement = document.getElementById(`${type}-printer-info`);
+        const testButton = document.getElementById(`test-${type}-printer`);
+        
+        if (!printerName) {
+          infoElement.textContent = 'No printer selected';
+          if (testButton) testButton.disabled = true;
+          return;
+        }
+        
+        const isLabelPrinter = labelPrinters.includes(printerName);
+        const statusClass = isLabelPrinter ? 'label-printer' : 'regular-printer';
+        const statusText = isLabelPrinter ? 'Label Printer' : 'Regular Printer';
+        
+        // Add additional info
+        let additionalInfo = '';
+        if (availablePrinters.length === 1) {
+          additionalInfo = '<br><small style="color: #6c757d;">(Only printer available)</small>';
+        } else if (type === 'invoice' && printerName === labelPrinter && labelPrinter) {
+          additionalInfo = '<br><small style="color: #6c757d;">(Same as label printer)</small>';
+        }
+        
+        infoElement.innerHTML = `
+          Selected: <strong>${printerName}</strong><br>
+          <span class="printer-status ${statusClass}">${statusText}</span>
+          ${additionalInfo}
+        `;
+        
+        if (testButton) testButton.disabled = false;
+      }
+      
+      function testPrint(type) {
+        const printerName = type === 'label' ? labelPrinter : invoicePrinter;
+        
+        if (!printerName || !qzReady) {
+          showMessage(`Cannot test print: ${!printerName ? 'No printer selected' : 'QZ Tray not connected'}`, 'error');
+          return;
+        }
+        
+        showMessage(`Sending test print to ${printerName}...`, 'info');
+        
+        // Create a simple test document
+        const testContent = `
+          TEST PRINT - ${type.toUpperCase()} PRINTER
+          
+          Printer: ${printerName}
+          Date: ${new Date().toLocaleString()}
+          Type: ${type === 'label' ? 'Label Printer Test' : 'Invoice Printer Test'}
+          
+          If you can read this, the printer is working correctly.
+        `;
+        
+        const config = qz.configs.create(printerName, {
+          size: type === 'label' ? 
+            { width: 4, height: 6, units: 'in' } : 
+            { width: 8.5, height: 11, units: 'in' },
+          margins: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
+          copies: 1
+        });
+        
+        const printData = [{
+          type: 'raw',
+          format: 'plain',
+          data: testContent
+        }];
+        
+        qz.print(config, printData)
+          .then(() => {
+            showMessage(`Test print sent to ${printerName} successfully!`, 'success');
+          })
+          .catch(err => {
+            console.error('Test print error:', err);
+            showMessage(`Test print failed: ${err.message}`, 'error');
+          });
       }
 
       // Tab functionality
@@ -1543,6 +1830,56 @@
             searchAwb();
           }
         });
+        const labelSelect = document.getElementById('label-printer-select');
+        if (labelSelect) {
+          labelSelect.addEventListener('change', function() {
+            labelPrinter = this.value;
+            updatePrinterInfo('label', labelPrinter);
+            console.log('Label printer changed to:', labelPrinter);
+            
+            if (labelPrinter) {
+              showMessage(`Label printer set to: ${labelPrinter}`, 'success');
+            }
+          });
+        }
+        
+        // Invoice printer selection
+        const invoiceSelect = document.getElementById('invoice-printer-select');
+        if (invoiceSelect) {
+          invoiceSelect.addEventListener('change', function() {
+            invoicePrinter = this.value;
+            updatePrinterInfo('invoice', invoicePrinter);
+            console.log('Invoice printer changed to:', invoicePrinter);
+            
+            if (invoicePrinter) {
+              showMessage(`Invoice printer set to: ${invoicePrinter}`, 'success');
+            }
+          });
+        }
+        
+        // Test print buttons
+        const testLabelBtn = document.getElementById('test-label-printer');
+        if (testLabelBtn) {
+          testLabelBtn.addEventListener('click', function() {
+            testPrint('label');
+          });
+        }
+        
+        const testInvoiceBtn = document.getElementById('test-invoice-printer');
+        if (testInvoiceBtn) {
+          testInvoiceBtn.addEventListener('click', function() {
+            testPrint('invoice');
+          });
+        }
+        
+        // Refresh printers button
+        const refreshBtn = document.getElementById('refresh-printers');
+        if (refreshBtn) {
+          refreshBtn.addEventListener('click', function() {
+            showMessage('Refreshing printer list...', 'info');
+            detectPrinters();
+          });
+        }
       });
 
       // Function to search for a picklist
@@ -2181,7 +2518,25 @@
                   }
       
                   if (platformUpper === 'MEESHO') {
-                    page.setCropBox(0, 0, width, height);
+                    // Instead of setCropBox and rotation, resize the page to fit label dimensions
+                    const targetWidth = 288; // 4 inches * 72 DPI
+                    const targetHeight = 432; // 6 inches * 72 DPI
+                    
+                    // Scale the content to fit within the target dimensions
+                    const scaleX = targetWidth / width;
+                    const scaleY = targetHeight / height;
+                    const scale = Math.min(scaleX, scaleY); // Use the smaller scale to maintain aspect ratio
+                    
+                    // Calculate centered position
+                    const scaledWidth = width * scale;
+                    const scaledHeight = height * scale;
+                    const offsetX = (targetWidth - scaledWidth) / 2;
+                    const offsetY = (targetHeight - scaledHeight) / 2;
+                    
+                    // Apply scaling and centering
+                    page.scaleContent(scale, scale);
+                    page.translateContent(offsetX, offsetY);
+                    page.setSize(targetWidth, targetHeight);
                   }
       
                   const newPdfBytes = await newPdf.save();
@@ -2197,13 +2552,14 @@
                       config = qz.configs.create(printerToUse, {
                         size: { width: 4, height: 6, units: 'in' },
                         margins: { top: 0, right: 0, bottom: 0, left: 0 },
-                        orientation: 'landscape',
+                        orientation: 'portrait',
                         copies: 1,
                         colorType: 'grayscale',
-                        scale: 'fit',
+                        scale: 'fit-to-page', // This ensures content fits within the page
                         scaleContent: true,
-                        fitToPage: true,
-                        density: 300
+                        autoSize: true,
+                        density: 203, // Standard label printer DPI
+                        units: 'in'
                       });
                     } else {
                       config = qz.configs.create(printerToUse, {
@@ -2389,14 +2745,21 @@
                     }
       
                     const base64Data = arrayBufferToBase64(newPdfBytes);
-                    const printerToUse = labelPrinter;
+                    const printerToUse = invoicePrinter || labelPrinter || defaultPrinter || (availablePrinters.length > 0 ? availablePrinters[0] : null);
+
+                    if (!printerToUse) {
+                      console.error("No printer available for invoice printing");
+                      showMessage("No printer available for invoice printing. Please configure printers.", "error");
+                      resolve(); // Don't reject, just continue
+                      return;
+                    }
       
                     let config;
                     if (platform && platform.toUpperCase() === 'MEESHO') {
                       config = qz.configs.create(printerToUse, {
                         size: { width: 4, height: 6, units: 'in' },
                         margins: { top: 0, right: 0, bottom: 0, left: 0 },
-                        orientation: 'landscape',
+                        orientation: 'portrait',
                         copies: 1,
                         colorType: 'grayscale',
                         scale: 'fit',
@@ -2562,13 +2925,14 @@
                       config = qz.configs.create(printerToUse, {
                         size: { width: 4, height: 6, units: 'in' },
                         margins: { top: 0, right: 0, bottom: 0, left: 0 },
-                        orientation: 'landscape',
+                        orientation: 'portrait',
                         copies: 1,
                         colorType: 'grayscale',
-                        scale: 'fit',
+                        scale: 'fit-to-page', // This ensures content fits within the page
                         scaleContent: true,
-                        fitToPage: true,
-                        density: 300
+                        autoSize: true,
+                        density: 203, // Standard label printer DPI
+                        units: 'in'
                       });
                     } else {
                       config = qz.configs.create(printerToUse, {
@@ -3091,14 +3455,20 @@
                   }
       
                   const base64Data = arrayBufferToBase64(newPdfBytes);
-                  const printerToUse = labelPrinter;
+                  const printerToUse = invoicePrinter || labelPrinter || defaultPrinter || (availablePrinters.length > 0 ? availablePrinters[0] : null);
+
+                  if (!printerToUse) {
+                    console.error("No printer available for invoice printing");
+                    showMessage("No printer available for invoice printing. Please configure printers.", "error");
+                    return;
+                  }
       
                   let config;
                   if (platform && platform.toUpperCase() === 'MEESHO') {
                     config = qz.configs.create(printerToUse, {
                       size: { width: 4, height: 6, units: 'in' },
                       margins: { top: 0, right: 0, bottom: 0, left: 0 },
-                      orientation: 'landscape',
+                      orientation: 'portrait',
                       copies: 1,
                       colorType: 'grayscale',
                       scale: 'fit',
