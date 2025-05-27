@@ -36,22 +36,21 @@ def get_dispatch_picklists(request):
                 
                 # Include picklists with at least one completed order
                 for status in dispatch_statuses:
-                    if status.dispatched_orders > 0:
-                        percentage = 0
-                        if status.total_orders > 0:
-                            percentage = (status.dispatched_orders / status.total_orders) * 100
-                        
-                        picklist = status.picklist
-                        picklists_data.append({
-                            'picklist_id': picklist.picklist_id,
-                            'picklist_type': picklist.picklist_type,
-                            'platform': picklist.platform,
-                            'total_orders': status.total_orders,
-                            'dispatch_orders': status.dispatched_orders,
-                            'dispatch_percentage': round(percentage, 1),
-                            'status': picklist.status,
-                            'created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S')
-                        })
+                    percentage = 0
+                    if status.total_orders > 0:
+                        percentage = (status.dispatched_orders / status.total_orders) * 100
+                    
+                    picklist = status.picklist
+                    picklists_data.append({
+                        'picklist_id': picklist.picklist_id,
+                        'picklist_type': picklist.picklist_type,
+                        'platform': picklist.platform,
+                        'total_orders': status.total_orders,
+                        'dispatch_orders': status.dispatched_orders,
+                        'dispatch_percentage': round(percentage, 1),
+                        'status': picklist.status,
+                        'created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                    })
                 
                 print(f"Using dispatch model, found {len(picklists_data)} picklists with complete orders")
         except Exception as e:

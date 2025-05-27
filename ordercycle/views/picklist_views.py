@@ -82,6 +82,22 @@ class PicklistViewSet(ViewSet):
             # Get all active pickers
             pickers = Picker.objects.filter(is_active=True).values('picker_id', 'name')
             
+            # Check if picklist has an assigned picker
+            assigned_picker_id = None
+            assigned_picker_name = None
+            
+            # Try to find if there's a picker assigned to any items in this picklist
+            # You might want to add a picker field to the Picklist model itself
+            # For now, we'll check if any item has a picker assigned
+            first_picker_info = PicklistItemLocation.objects.filter(
+                picklist_item__picklist=picklist,
+                picker__isnull=False
+            ).select_related('picker').first()
+            
+            if first_picker_info and first_picker_info.picker:
+                assigned_picker_id = first_picker_info.picker.picker_id
+                assigned_picker_name = first_picker_info.picker.name
+            
             # Get items with enhanced data
             detailed_items = []
             for item in items:
@@ -133,6 +149,8 @@ class PicklistViewSet(ViewSet):
                 'picklist_type': picklist.picklist_type,
                 'status': picklist.status,
                 'platform': picklist.platform,
+                'picker_id': assigned_picker_id,      # Add this line
+                'picker_name': assigned_picker_name,  # Add this line
                 'items': detailed_items,
                 'pickers': list(pickers),
                 'created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(picklist, 'created_at') else None
@@ -143,7 +161,6 @@ class PicklistViewSet(ViewSet):
                 'status': 'error',
                 'message': 'Picklist not found'
             }, status=404)
-        
     @action(detail=True, methods=['post'])
     def undo_picked(self, request, pk=None):
         """
@@ -355,9 +372,14 @@ class PicklistViewSet(ViewSet):
                 except PicklistItem.DoesNotExist:
                     continue
             
+            # Get picker name for response
+            picker_name = picker.name if hasattr(picker, 'name') and picker.name else picker_id
+            
             return Response({
                 'status': 'success',
-                'message': f'Assigned picker {picker_id} to {updated_count} items'
+                'message': f'Assigned picker {picker_name} ({picker_id}) to {updated_count} items',
+                'picker_id': picker_id,
+                'picker_name': picker_name
             })
         
         except Picklist.DoesNotExist:

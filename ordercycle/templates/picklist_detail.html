@@ -34,6 +34,24 @@
       color: #333;
     }
 
+    /* Platform header styling */
+    .platform-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px 20px;
+      border-radius: 8px 8px 0 0;
+      margin: -20px -20px 20px -20px;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .platform-name {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 0;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+
     .btn {
       border: none;
       padding: 10px 15px;
@@ -245,13 +263,30 @@
       background-color: #dc3545;
     }
 
-    /* Picker info box */
+    /* Picker info box - Enhanced styling */
     .picker-info {
-      background-color: #e9f7fe;
-      padding: 10px 15px;
-      border-radius: 5px;
+      background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+      padding: 15px 20px;
+      border-radius: 8px;
       margin-bottom: 15px;
       border-left: 5px solid #007bff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .picker-info.unassigned {
+      background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+      border-left: 5px solid #ff9800;
+    }
+
+    .picker-status {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .picker-details {
+      font-size: 14px;
+      color: #666;
     }
 
     /* Status badge styling */
@@ -361,6 +396,11 @@
         margin-bottom: 10px !important;
       }
 
+      .platform-header {
+        background: #333 !important;
+        color: white !important;
+      }
+
       /* Ensure table prints well */
       .table th,
       .table td {
@@ -382,6 +422,21 @@
 <body>
   <div class="container">
     <div class="card">
+      <!-- Platform Header -->
+      <div class="platform-header">
+        <h1 class="platform-name" id="platform-name">{{ platform_name | default:"Platform Name" }}</h1>
+      </div>
+
+      <!-- Picker Info Box - Always visible -->
+      <div id="picker-info" class="picker-info unassigned">
+        <div class="picker-status">
+          <strong>Picker:</strong> <span id="picker-status-display">Unassigned</span>
+        </div>
+        <div id="picker-details" class="picker-details">
+          No picker has been assigned to this picklist yet.
+        </div>
+      </div>
+
       <div class="picklist-header">
         <div class="picklist-header-container">
           <h2>PICKLIST ID: <span id="picklist-id">{{ picklist_id }}</span></h2>
@@ -394,11 +449,11 @@
           </div>
         </div>
         <div class="picker-selector no-print">
-          <label for="picker-select">PICKER ID:</label>
+          <label for="picker-select">ASSIGN PICKER:</label>
           <select id="picker-select">
             <option value="">-- Select Picker --</option>
             {% for picker in pickers %}
-            <option value="{{ picker.picker_id }}">{{ picker.picker_id }}</option>
+            <option value="{{ picker.picker_id }}" data-name="{{ picker.name | default:picker.picker_id }}">{{ picker.name | default:picker.picker_id }} ({{ picker.picker_id }})</option>
             {% endfor %}
           </select>
           <button id="print-btn" class="btn btn-primary">PRINT</button>
@@ -407,12 +462,6 @@
 
       <!-- Success message container - initially hidden -->
       <div id="status-message" class="alert alert-success" style="display: none;"></div>
-
-      <!-- Picker info box - initially hidden -->
-      <div id="picker-info" class="picker-info" style="display: none;">
-        <strong>Picker ID:</strong> <span id="picker-id-display"></span>
-        <div id="picker-details"></div>
-      </div>
 
       <!-- Top action buttons -->
       <div class="action-buttons no-print">
@@ -471,7 +520,7 @@
       const undoAllBtnBottom = document.getElementById('undo-all-btn-bottom');
       const picklistItems = document.getElementById('picklist-items');
       const pickerInfo = document.getElementById('picker-info');
-      const pickerIdDisplay = document.getElementById('picker-id-display');
+      const pickerStatusDisplay = document.getElementById('picker-status-display');
       const pickerDetails = document.getElementById('picker-details');
       const statusMessage = document.getElementById('status-message');
       const picklistStatus = document.getElementById('picklist-status');
@@ -492,6 +541,7 @@
       let currentSortField = 'sku'; // Default sort field
       let currentSortDirection = 'desc'; // Default sort direction (descending)
       let selectedPickerId = null; // Track selected picker ID
+      let selectedPickerName = null; // Track selected picker name
       let currentStatus = ''; // Track current picklist status
 
       const deleteBtn = document.getElementById('delete-btn');
@@ -669,11 +719,16 @@
       // Assign picker when selected
       pickerSelect.addEventListener('change', function () {
         const pickerId = this.value;
+        const selectedOption = this.options[this.selectedIndex];
+        const pickerName = selectedOption.getAttribute('data-name');
+        
         if (pickerId) {
-          assignPicker(pickerId);
+          assignPicker(pickerId, pickerName);
         } else {
-          // Hide picker info if no picker selected
-          pickerInfo.style.display = 'none';
+          // Reset to unassigned state
+          selectedPickerId = null;
+          selectedPickerName = null;
+          updatePickerInfoDisplay();
         }
       });
 
@@ -972,6 +1027,18 @@
             currentStatus = data.status;
             updateStatusDisplay();
 
+            // Check if picker is assigned and update display
+            if (data.picker_id) {
+              selectedPickerId = data.picker_id;
+              selectedPickerName = data.picker_name || data.picker_id;
+              
+              // Set the select dropdown to the assigned picker
+              pickerSelect.value = selectedPickerId;
+            }
+            
+            // Update picker info display
+            updatePickerInfoDisplay();
+
             // Apply the merging function to combine items with the same SKU
             allItems = mergeItemsBySku(originalItems);
             console.log("Original items:", originalItems.length);
@@ -979,11 +1046,6 @@
 
             // Sort and render the items
             sortAndRenderItems();
-
-            // If we have a selected picker, show their info
-            if (selectedPickerId) {
-              updatePickerInfoDisplay(selectedPickerId);
-            }
           })
           .catch(error => {
             console.error('Error loading picklist items:', error);
@@ -1063,25 +1125,26 @@
         picklistItems.innerHTML = html;
       }
 
-      // Function to update picker info display
-      function updatePickerInfoDisplay(pickerId) {
-        if (!pickerId) {
-          pickerInfo.style.display = 'none';
-          return;
+      // Enhanced function to update picker info display
+      function updatePickerInfoDisplay() {
+        if (selectedPickerId && selectedPickerName) {
+          // Picker is assigned
+          pickerInfo.className = 'picker-info'; // Remove unassigned class
+          pickerStatusDisplay.textContent = `${selectedPickerName} (${selectedPickerId})`;
+          pickerDetails.innerHTML = `
+            <div>Assigned on: ${new Date().toLocaleString()}</div>
+            <div>Status: Active</div>
+          `;
+        } else {
+          // No picker assigned
+          pickerInfo.className = 'picker-info unassigned';
+          pickerStatusDisplay.textContent = 'Unassigned';
+          pickerDetails.innerHTML = 'No picker has been assigned to this picklist yet.';
         }
-
-        // Display the picker ID
-        pickerIdDisplay.textContent = pickerId;
-
-        // You can add more picker details here if available
-        pickerDetails.innerHTML = `<div>Selected on: ${new Date().toLocaleString()}</div>`;
-
-        // Show the picker info box
-        pickerInfo.style.display = 'block';
       }
 
       // Function to assign picker
-      function assignPicker(pickerId) {
+      function assignPicker(pickerId, pickerName) {
         fetch(`/api/picklists/${picklistId}/assign-picker/`, {
           method: 'POST',
           headers: {
@@ -1101,11 +1164,12 @@
           .then(data => {
             showStatusMessage(data.message);
 
-            // Store the selected picker ID
+            // Store the selected picker ID and name
             selectedPickerId = pickerId;
+            selectedPickerName = pickerName;
 
             // Update the picker info display
-            updatePickerInfoDisplay(pickerId);
+            updatePickerInfoDisplay();
 
             // Reload picklist items
             loadPicklistItems();
@@ -1113,6 +1177,9 @@
           .catch(error => {
             console.error('Error assigning picker:', error);
             alert(`Error: ${error.message}`);
+            
+            // Reset the select dropdown on error
+            pickerSelect.value = '';
           });
       }
 

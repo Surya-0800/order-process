@@ -14,31 +14,36 @@ def image_processor_view(request):
 def location_orders_view(request):
     """View for the location-based order processing page."""
     return render(request, 'location_orders.html')
-
+from django.http import Http404
+from ..models import Picklist, Picker
 def picklist_detail_view(request, picklist_id):
     """
-    Render the picklist details page with barcode capabilities.
+    View to display picklist details page
     """
-    from django.http import Http404
-    from ..models import Picklist, Picker
-    
     try:
-        # Check if picklist exists
+        # Get the picklist to extract platform information
         picklist = Picklist.objects.get(picklist_id=picklist_id)
         
-        # Get all active pickers
-        pickers = Picker.objects.filter(is_active=True)
+        # Get all active pickers with names
+        pickers = Picker.objects.filter(is_active=True).values('picker_id', 'name')
         
         context = {
             'picklist_id': picklist_id,
-            'pickers': pickers,
-            # Add barcode library CSS/JS resources to template context
-            'include_barcode_library': True,
+            'platform_name': picklist.platform,  # Add this line
+            'pickers': list(pickers),
         }
         
         return render(request, 'picklist_detail.html', context)
+        
     except Picklist.DoesNotExist:
-        raise Http404("Picklist does not exist")
+        # Handle case where picklist doesn't exist
+        context = {
+            'picklist_id': picklist_id,
+            'platform_name': 'Unknown Platform',  # Fallback
+            'pickers': [],
+            'error': 'Picklist not found'
+        }
+        return render(request, 'picklist_detail.html', context)
 
 def pack_stage_view(request):
     """Render the packing stage page."""

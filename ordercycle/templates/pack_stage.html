@@ -1,13 +1,11 @@
-{% load static %}
-<!DOCTYPE html>
+{% load static %}<!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="csrf-token" content="{% csrf_token %}">
-  <title>Packing Stage</title>
-  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Packing Stage</title>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <style>
     /* Base styles */
     body {
@@ -867,7 +865,12 @@
   </script>
 
   <div class="container">
-    <h1>Packing Stage</h1>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h1>Packing Stage</h1>
+      <a href="/" class="btn btn-primary" style="padding: 10px 25px;">
+        Back to Homepage
+      </a>
+    </div>
 
     <!-- Tab Navigation -->
     <div class="tabs">
@@ -2088,7 +2091,7 @@
         productLoading.style.display = 'inline-block';
         productInfo.style.display = 'none';
       
-        fetch(`/api/products/search/?product_id=${productId}`)
+        fetch(`/api/search-product/?product_id=${productId}`)
           .then(response => {
             if (!response.ok) {
               return response.json().then(data => {

@@ -11,7 +11,7 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-if ! command -v docker-compose &> /dev/null; then
+if ! command -v docker compose &> /dev/null; then
     echo "Docker Compose is not installed. Please install Docker Compose first."
     exit 1
 fi
@@ -50,15 +50,15 @@ fi
 mkdir -p logs
 
 # Check if any containers are already running
-if docker-compose ps | grep -q "Up"; then
+if docker compose ps | grep -q "Up"; then
     echo "Stopping existing containers..."
-    docker-compose down
+    docker compose down
 fi
 
 # Build and start the containers
 echo "Building and starting containers..."
-docker-compose build
-docker-compose up -d
+docker compose build
+docker compose up -d
 
 # Wait for the database to be ready
 echo "Waiting for database to be ready..."
@@ -66,26 +66,26 @@ sleep 10
 
 # Run migrations
 echo "Running database migrations..."
-docker-compose exec web python manage.py migrate
+docker compose exec web python manage.py migrate
 
 # Collect static files
 echo "Collecting static files..."
-docker-compose exec web python manage.py collectstatic --no-input
+docker compose exec web python manage.py collectstatic --no-input
 
 # Check if PDF processing dependencies are correctly installed
 echo "Checking PDF processing dependencies..."
-docker-compose exec web python check_pdf_deps.py
+docker compose exec web python check_pdf_deps.py
 
 # Show container status
 echo "Container status:"
-docker-compose ps
+docker compose ps
 
 # Show logs of the web container
 echo "Web container logs:"
-docker-compose logs --tail=20 web
+docker compose logs --tail=20 web
 
 echo "Deployment completed successfully!"
 echo "Your application should now be running at http://localhost"
 echo ""
 echo "To create a superuser, run:"
-echo "docker-compose exec web python manage.py createsuperuser"
+echo "docker compose exec web python manage.py createsuperuser"
