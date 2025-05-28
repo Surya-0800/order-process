@@ -14,14 +14,14 @@ from django.views.decorators.csrf import csrf_exempt
 from ..models import (
     Picklist, PicklistItem, PicklistItemLocation, MasterTable,
     AmazonOrders, FlipkarOrders, FirstcryOrders, MeeshoOrders,
-    UserProfile,PicklistDispatchStatus,ImageUpload
+    UserProfile,PicklistDispatchStatus,ImageUpload,PicklistSKUValidation
 )
 
 
 @require_http_methods(["GET"])
 def search_picklist(request):
     """
-    Search for a picklist by ID
+    Updated search for a picklist by ID with SKU validation status
     """
     picklist_id = request.GET.get('picklist_id', '')
     if not picklist_id:
@@ -41,10 +41,7 @@ def search_picklist(request):
         for item in items:
             # Get location info if available
             location = "Unknown"
-            
-            # Use the actual picked status from the database
             picked = item.picked
-            
             picker_id = None
             
             if hasattr(item, 'location_info'):
@@ -64,8 +61,16 @@ def search_picklist(request):
                     awb = order.AWB
                     break
             
-            # CRITICAL: Only include orders that are NOT in Dispatch status
+            # Only include orders that are NOT in Dispatch status
             if order_status != 'Dispatch':
+                # Get or create SKU validation record
+                sku_validation, created = PicklistSKUValidation.objects.get_or_create(
+                    picklist=picklist,
+                    sku=item.sku,
+                    order_number=item.order_number,
+                    defaults={'validated': False}
+                )
+                
                 items_data.append({
                     'id': item.id,
                     'order_number': item.order_number,
@@ -75,8 +80,12 @@ def search_picklist(request):
                     'picked': picked,
                     'picker_id': picker_id,
                     'awb': awb,
-                    'order_status': order_status  # Include status for debugging
+                    'order_status': order_status,
+                    'validated': sku_validation.validated
                 })
+        
+        # Get validation status
+        validation_status = picklist.get_validation_status()
         
         return JsonResponse({
             'status': 'success',
@@ -87,7 +96,8 @@ def search_picklist(request):
                 'status': picklist.status,
                 'platform': picklist.platform,
                 'created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                'items': items_data
+                'items': items_data,
+                'validation_status': validation_status
             }
         })
     
@@ -97,13 +107,104 @@ def search_picklist(request):
             'message': f'Picklist with ID {picklist_id} not found or not in PACKING status'
         }, status=404)
     
+@csrf_exempt
+@require_http_methods(["POST"])
+def validate_sku(request):
+    """
+    Mark a SKU as validated for a specific picklist and order
+    """
+    try:
+        data = json.loads(request.body)
+        picklist_id = data.get('picklist_id')
+        sku = data.get('sku')
+        order_number = data.get('order_number')
+        
+        if not all([picklist_id, sku, order_number]):
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Picklist ID, SKU, and Order Number are required'
+            }, status=400)
+        
+        # Get picklist
+        picklist = get_object_or_404(Picklist, picklist_id=picklist_id)
+        
+        # Get or create SKU validation record
+        sku_validation, created = PicklistSKUValidation.objects.get_or_create(
+            picklist=picklist,
+            sku=sku,
+            order_number=order_number,
+            defaults={'validated': False}
+        )
+        
+        # Mark as validated
+        sku_validation.validated = True
+        sku_validation.validated_at = timezone.now()
+        sku_validation.save()
+        
+        # Get updated validation status for the entire picklist
+        validation_status = picklist.get_validation_status()
+        
+        # Get validation status for this specific order
+        order_validation_status = picklist.get_order_validation_status(order_number)
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'SKU {sku} validated successfully',
+            'validation_status': validation_status,
+            'order_validation_status': order_validation_status,
+            'all_validated': validation_status['all_validated'],
+            'order_all_validated': order_validation_status['all_validated']
+        })
+    
+    except Exception as e:
+        print(f"Error in validate_sku: {str(e)}")
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error validating SKU: {str(e)}'
+        }, status=500)
+    
+@require_http_methods(["GET"])
+def get_validation_status(request):
+    """
+    Get validation status for a picklist or specific order
+    """
+    picklist_id = request.GET.get('picklist_id', '')
+    order_number = request.GET.get('order_number', '')
+    
+    if not picklist_id:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Picklist ID is required'
+        }, status=400)
+    
+    try:
+        picklist = get_object_or_404(Picklist, picklist_id=picklist_id)
+        
+        if order_number:
+            # Get validation status for specific order
+            validation_status = picklist.get_order_validation_status(order_number)
+        else:
+            # Get validation status for entire picklist
+            validation_status = picklist.get_validation_status()
+        
+        return JsonResponse({
+            'status': 'success',
+            'validation_status': validation_status
+        })
+    
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error getting validation status: {str(e)}'
+        }, status=500)
 
 @require_http_methods(["GET"])
 def search_product(request):
     """
-    Search for a product by product ID
+    Sequential validation logic: Show first unvalidated order with this SKU
     """
     product_id = request.GET.get('product_id', '')
+    picklist_id = request.GET.get('picklist_id', '')
     
     if not product_id:
         return JsonResponse({
@@ -112,18 +213,6 @@ def search_product(request):
         }, status=400)
     
     try:
-        # Construct the image path based on product ID
-        image_path = f"/media/ASINWISEIMAGES/{product_id}.jpg"
-        
-        # Check if the file exists
-        import os
-        from django.conf import settings
-        
-        full_image_path = os.path.join(settings.MEDIA_ROOT, "ASINWISEIMAGES", f"{product_id}.jpg")
-        if not os.path.exists(full_image_path):
-            # If image doesn't exist, use a default "not found" image
-            image_path = "/static/images/no_image_found.jpg"
-        
         # Find the product in the master table
         product = MasterTable.objects.filter(product_id=product_id).first()
         
@@ -133,12 +222,94 @@ def search_product(request):
                 'message': f'Product with ID {product_id} not found'
             }, status=404)
         
+        # Check if image exists in database
+        image_upload = ImageUpload.objects.filter(file_name=f"{product_id}.jpg").first()
+        
+        if image_upload:
+            import base64
+            image_base64 = base64.b64encode(image_upload.image).decode('utf-8')
+            image_url = f"data:{image_upload.content_type};base64,{image_base64}"
+        else:
+            image_url = "/static/images/no_image_found.jpg"
+        
+        # Sequential validation logic
+        validation_info = None
+        in_current_picklist = False
+        
+        if picklist_id:
+            try:
+                picklist = Picklist.objects.get(picklist_id=picklist_id)
+                
+                # Find ALL orders with this SKU in the picklist
+                picklist_items = PicklistItem.objects.filter(
+                    picklist=picklist, 
+                    sku=product.sku
+                ).order_by('order_number')  # Consistent ordering
+                
+                if picklist_items.exists():
+                    in_current_picklist = True
+                    
+                    # Create validation records for all orders with this SKU
+                    all_orders_with_sku = []
+                    unvalidated_orders = []
+                    
+                    for item in picklist_items:
+                        # Get or create validation record
+                        sku_validation, created = PicklistSKUValidation.objects.get_or_create(
+                            picklist=picklist,
+                            sku=product.sku,
+                            order_number=item.order_number,
+                            defaults={'validated': False}
+                        )
+                        
+                        order_info = {
+                            'order_number': item.order_number,
+                            'validated': sku_validation.validated,
+                            'quantity': item.quantity
+                        }
+                        
+                        all_orders_with_sku.append(order_info)
+                        
+                        if not sku_validation.validated:
+                            unvalidated_orders.append(order_info)
+                    
+                    # SEQUENTIAL LOGIC: Return the first unvalidated order
+                    if unvalidated_orders:
+                        # Show first unvalidated order
+                        current_order = unvalidated_orders[0]
+                        validation_info = {
+                            'order_number': current_order['order_number'],
+                            'validated': False,
+                            'can_validate': True,
+                            'quantity': current_order['quantity'],
+                            # Statistics for display
+                            'total_orders_with_sku': len(all_orders_with_sku),
+                            'validated_orders_count': len(all_orders_with_sku) - len(unvalidated_orders),
+                            'remaining_orders': len(unvalidated_orders),
+                            'progress_message': f"Order {current_order['order_number']} - {len(unvalidated_orders)} remaining to validate"
+                        }
+                    else:
+                        # All orders are validated
+                        validation_info = {
+                            'order_number': all_orders_with_sku[0]['order_number'],  # Show any order for print button
+                            'validated': True,
+                            'can_validate': False,
+                            'quantity': all_orders_with_sku[0]['quantity'],
+                            'total_orders_with_sku': len(all_orders_with_sku),
+                            'validated_orders_count': len(all_orders_with_sku),
+                            'remaining_orders': 0,
+                            'progress_message': f"All {len(all_orders_with_sku)} orders validated ✅"
+                        }
+                    
+            except Picklist.DoesNotExist:
+                pass
+        
         # Return product details
-        return JsonResponse({
+        response_data = {
             'status': 'success',
             'product': {
                 'sku': product.sku,
-                'image_url': image_path,
+                'image_url': image_url,
                 'location': product.location,
                 'product_id': product.product_id,
                 'box_no': product.box_no or '',
@@ -146,15 +317,23 @@ def search_product(request):
                 'generic_name': product.generic_name or '',
                 'pack_check': product.pack_check or '',
                 'pack_remarks': product.pack_remarks or ''
-            }
-        })
+            },
+            'in_current_picklist': in_current_picklist
+        }
+        
+        if validation_info:
+            response_data['validation_info'] = validation_info
+        
+        return JsonResponse(response_data)
     
     except Exception as e:
+        print(f"Error in search_product: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'status': 'error',
             'message': f'Error searching for product: {str(e)}'
         }, status=500)
-
 @csrf_exempt
 @require_http_methods(["POST"])
 def mark_picklist_completed(request, picklist_id):

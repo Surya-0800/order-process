@@ -116,6 +116,69 @@ class Picklist(models.Model):
             except (ValueError, TypeError):
                 return "111002"
         return "111002"  # First picklist ID
+    
+    def get_validation_status(self):
+        """
+        Get validation status for all SKUs in this picklist
+        """
+        # Get all unique SKU-Order combinations in this picklist
+        picklist_items = PicklistItem.objects.filter(picklist=self)
+        total_skus = picklist_items.values('sku', 'order_number').distinct().count()
+        
+        # Ensure validation records exist for all SKUs
+        for item in picklist_items.values('sku', 'order_number').distinct():
+            PicklistSKUValidation.objects.get_or_create(
+                picklist=self,
+                sku=item['sku'],
+                order_number=item['order_number'],
+                defaults={'validated': False}
+            )
+        
+        # Count validated SKUs
+        validated_count = PicklistSKUValidation.objects.filter(
+            picklist=self, 
+            validated=True
+        ).count()
+        
+        return {
+            'total_skus': total_skus,
+            'validated_count': validated_count,
+            'all_validated': validated_count == total_skus and total_skus > 0
+        }
+
+    def get_order_validation_status(self, order_number):
+        """
+        Get validation status for a specific order in this picklist
+        """
+        # Get all SKUs for this order in this picklist
+        order_skus = PicklistItem.objects.filter(
+            picklist=self, 
+            order_number=order_number
+        ).values('sku').distinct()
+        
+        total_order_skus = order_skus.count()
+        
+        # Ensure validation records exist for all SKUs in this order
+        for item in order_skus:
+            PicklistSKUValidation.objects.get_or_create(
+                picklist=self,
+                sku=item['sku'],
+                order_number=order_number,
+                defaults={'validated': False}
+            )
+        
+        # Count validated SKUs for this order
+        validated_order_skus = PicklistSKUValidation.objects.filter(
+            picklist=self,
+            order_number=order_number,
+            validated=True
+        ).count()
+        
+        return {
+            'total_skus': total_order_skus,
+            'validated_count': validated_order_skus,
+            'all_validated': validated_order_skus == total_order_skus and total_order_skus > 0
+        }
 
 class PicklistItem(models.Model):
     picklist = models.ForeignKey(Picklist, on_delete=models.CASCADE, related_name='items')
@@ -176,13 +239,18 @@ def save_user_profile(sender, instance, **kwargs):
 
 # Add this to your models.py file
 
+# Enhanced PicklistDispatchStatus model in models.py
+
 class PicklistDispatchStatus(models.Model):
     """
-    Model to track which picklists have orders in Dispatch status
+    Model to track dispatch workflow for picklists
+    Tracks orders in Complete (ready to dispatch) and Dispatch (already dispatched) status
     """
     picklist = models.OneToOneField(Picklist, on_delete=models.CASCADE, related_name='dispatch_status')
-    total_orders = models.IntegerField(default=0)
-    dispatched_orders = models.IntegerField(default=0)
+    total_orders = models.IntegerField(default=0)  # Total orders in this picklist
+    dispatched_orders = models.IntegerField(default=0)  # Orders in 'Dispatch' status
+    complete_orders = models.IntegerField(default=0)  # Orders in 'Complete' status (ready to dispatch)
+    total_relevant_orders = models.IntegerField(default=0)  # Complete + Dispatch orders
     is_fully_dispatched = models.BooleanField(default=False)
     last_updated = models.DateTimeField(auto_now=True)
     
@@ -191,49 +259,96 @@ class PicklistDispatchStatus(models.Model):
         verbose_name_plural = "Picklist Dispatch Statuses"
     
     def __str__(self):
-        percentage = 0
+        dispatch_percentage = 0
         if self.total_orders > 0:
-            percentage = (self.dispatched_orders / self.total_orders) * 100
+            dispatch_percentage = (self.dispatched_orders / self.total_orders) * 100
         
-        return f"{self.picklist.picklist_id}: {self.dispatched_orders}/{self.total_orders} ({percentage:.1f}% dispatched)"
+        return f"{self.picklist.picklist_id}: {self.dispatched_orders}/{self.total_orders} ({dispatch_percentage:.1f}% dispatched) | {self.complete_orders} ready"
     
     def update_status(self):
         """
-        Update the dispatch counts and status by checking all orders in the picklist
+        Legacy method - just calls the enhanced version
         """
-        platform = self.picklist.platform
+        return self.update_status_with_complete_and_dispatch()
+    
+    def update_status_with_complete_and_dispatch(self):
+        """
+        Update counts for both Complete and Dispatch orders
+        """
+        platform = self.picklist.platform.upper()
         picklist_items = PicklistItem.objects.filter(picklist=self.picklist)
         order_numbers = picklist_items.values_list('order_number', flat=True).distinct()
         
         self.total_orders = len(order_numbers)
         self.dispatched_orders = 0
+        self.complete_orders = 0
         
-        # Count dispatched orders based on platform
+        # Count orders in both Complete and Dispatch status
         for order_num in order_numbers:
-            is_dispatched = False
+            order_status = None
             
             if platform == 'AMAZON':
-                is_dispatched = AmazonOrders.objects.filter(order_number=order_num, status='Dispatch').exists()
+                order = AmazonOrders.objects.filter(order_number=order_num).first()
             elif platform == 'FLIPKART':
-                is_dispatched = FlipkarOrders.objects.filter(order_number=order_num, status='Dispatch').exists()
+                order = FlipkarOrders.objects.filter(order_number=order_num).first()
             elif platform == 'FIRSTCRY':
-                is_dispatched = FirstcryOrders.objects.filter(order_number=order_num, status='Dispatch').exists()
+                order = FirstcryOrders.objects.filter(order_number=order_num).first()
             elif platform == 'MEESHO':
-                is_dispatched = MeeshoOrders.objects.filter(order_number=order_num, status='Dispatch').exists()
+                order = MeeshoOrders.objects.filter(order_number=order_num).first()
             
-            if is_dispatched:
-                self.dispatched_orders += 1
+            if order:
+                if order.status == 'Dispatch':
+                    self.dispatched_orders += 1
+                elif order.status == 'Complete':
+                    self.complete_orders += 1
         
+        # Calculate totals
+        self.total_relevant_orders = self.dispatched_orders + self.complete_orders
         self.is_fully_dispatched = (self.dispatched_orders == self.total_orders) and (self.total_orders > 0)
-        
-        # If all orders are dispatched, update the picklist status to "DISPATCH"
-        if self.is_fully_dispatched and self.picklist.status != 'DISPATCH':
-            self.picklist.status = 'DISPATCH'
-            self.picklist.save()
         
         self.save()
         return self.is_fully_dispatched
     
+    def get_dispatch_summary(self):
+        """
+        Get a summary of the dispatch status for this picklist
+        """
+        dispatch_percentage = 0
+        complete_percentage = 0
+        
+        if self.total_orders > 0:
+            dispatch_percentage = (self.dispatched_orders / self.total_orders) * 100
+            complete_percentage = (self.complete_orders / self.total_orders) * 100
+        
+        return {
+            'picklist_id': self.picklist.picklist_id,
+            'platform': self.picklist.platform,
+            'total_orders': self.total_orders,
+            'dispatched_orders': self.dispatched_orders,
+            'complete_orders': self.complete_orders,
+            'total_relevant_orders': self.total_relevant_orders,
+            'dispatch_percentage': round(dispatch_percentage, 1),
+            'complete_percentage': round(complete_percentage, 1),
+            'is_fully_dispatched': self.is_fully_dispatched,
+            'has_orders_to_process': self.complete_orders > 0,
+            'workflow_status': self._get_workflow_status()
+        }
+    
+    def _get_workflow_status(self):
+        """
+        Get a human-readable workflow status
+        """
+        if self.total_relevant_orders == 0:
+            return "No orders ready for dispatch"
+        elif self.is_fully_dispatched:
+            return "Fully dispatched"
+        elif self.dispatched_orders > 0 and self.complete_orders > 0:
+            return "Partially dispatched"
+        elif self.dispatched_orders == 0 and self.complete_orders > 0:
+            return "Ready to dispatch"
+        else:
+            return "In progress"
+        
 import uuid
 class ImageUpload(models.Model):
     """
@@ -279,3 +394,25 @@ class OrderPDF(models.Model):
         indexes = [
             models.Index(fields=['created_at']),
         ]
+
+class PicklistSKUValidation(models.Model):
+    """
+    Model to track which SKUs have been validated for each picklist
+    """
+    picklist = models.ForeignKey(Picklist, on_delete=models.CASCADE, related_name='sku_validations')
+    sku = models.CharField(max_length=200, db_index=True)
+    order_number = models.CharField(max_length=200, db_index=True)
+    validated = models.BooleanField(default=False)
+    validated_at = models.DateTimeField(null=True, blank=True)
+    validated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    class Meta:
+        unique_together = ('picklist', 'sku', 'order_number')
+        indexes = [
+            models.Index(fields=['picklist', 'sku']),
+            models.Index(fields=['picklist', 'validated']),
+            models.Index(fields=['order_number', 'validated']),
+        ]
+    
+    def __str__(self):
+        return f"SKU {self.sku} in {self.picklist.picklist_id} - Order: {self.order_number} - Validated: {self.validated}"

@@ -11,7 +11,8 @@ from .views.base import (
 )
 from .views.packing_views import (
     search_picklist, search_product, mark_picklist_completed,
-    mark_product_packed, get_picklist_barcode, get_product_image_by_sku,save_awb_and_dispatch
+    mark_product_packed, get_picklist_barcode, get_product_image_by_sku,save_awb_and_dispatch,
+    validate_sku, get_validation_status
 )
 from .views.printing_views import (
     get_printer_list, save_printer_preferences, get_printer_preferences,
@@ -68,6 +69,9 @@ urlpatterns = [
     # If you want to process a whole folder at once (optional)
     path('api/images/process-folder/', ImageUploadViewSet.as_view({'post': 'process_folder'}), name='process-folder'),
 
+    path('api/validate-sku/', validate_sku, name='validate_sku'),
+    path('api/validation-status/', get_validation_status, name='get_validation_status'),
+
     path('api/location-counts/', LocationOrdersViewSet.as_view({'get': 'location_counts'})),
     path('api/orders-by-location/', LocationOrdersViewSet.as_view({'get': 'orders_by_location'}), name='orders_by_location'),
     path('api/process-location-orders/', LocationOrdersViewSet.as_view({'post': 'process_location_orders'}), name='process_location_orders'),
@@ -116,6 +120,8 @@ urlpatterns = [
 
     path('api/orders/change-to-dispatch/', views.change_to_dispatch, name='change-to-dispatch'),
     path('api/orders/bulk-change-to-dispatch/', views.bulk_change_to_dispatch, name='bulk-change-to-dispatch'),
+    path('api/picklists/<str:picklist_id>/check-fully-dispatched/', views.check_picklist_fully_dispatched, name='check_picklist_fully_dispatched'),
+path('api/picklists/<str:picklist_id>/download-csv-and-cleanup/', views.download_dispatch_csv_and_cleanup, name='download_dispatch_csv_and_cleanup'),
 
     path('api/check-pdf-path/', check_pdf_path, name='check_pdf_path'),
     path('api/orders/<str:order_id>/download/', download_pdf, name='order_pdf_download'),

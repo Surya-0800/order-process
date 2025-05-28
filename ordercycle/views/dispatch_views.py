@@ -1,67 +1,76 @@
-# Updated API endpoints for the Dispatch Dashboard
-
-from django.http import JsonResponse
+import csv
+from django.http import JsonResponse, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.db.models import Count, Case, When, IntegerField, F, Q
 from django.utils import timezone
-import json,os
+import json, os
 import traceback
 from django.views.decorators.http import require_POST
-from ordercycle.models import Picklist, PicklistItem, AmazonOrders, FlipkarOrders, FirstcryOrders, MeeshoOrders,PicklistDispatchStatus
+from ordercycle.models import Picklist, PicklistItem, AmazonOrders, FlipkarOrders, FirstcryOrders, MeeshoOrders, PicklistDispatchStatus
 from django.views.decorators.csrf import csrf_exempt
+from datetime import datetime
+from django.db import transaction
 
 
 
 # Get picklists with orders in Complete status (changed from Dispatch)
 def get_dispatch_picklists(request):
     """
-    Get picklists with orders in Complete status
+    Get picklists with orders that are in Complete OR Dispatch status
+    - Complete orders: Ready to be dispatched via AWB processing
+    - Dispatch orders: Already dispatched
     """
     try:
-        # Try to get PicklistDispatchStatus records first
         picklists_data = []
         using_dispatch_model = False
         
         try:
-            # Check if PicklistDispatchStatus model is available
+            # Try to use PicklistDispatchStatus model first
             from django.apps import apps
             PicklistDispatchStatus = apps.get_model('ordercycle', 'PicklistDispatchStatus')
             
-            # Query using the PicklistDispatchStatus model
+            # Get all dispatch status records and update them
             dispatch_statuses = PicklistDispatchStatus.objects.select_related('picklist').all()
             
             if dispatch_statuses.exists():
                 using_dispatch_model = True
                 print(f"Found {dispatch_statuses.count()} dispatch status records")
                 
-                # Include picklists with at least one completed order
+                # Update all dispatch statuses to get latest data
                 for status in dispatch_statuses:
-                    percentage = 0
-                    if status.total_orders > 0:
-                        percentage = (status.dispatched_orders / status.total_orders) * 100
-                    
-                    picklist = status.picklist
-                    picklists_data.append({
-                        'picklist_id': picklist.picklist_id,
-                        'picklist_type': picklist.picklist_type,
-                        'platform': picklist.platform,
-                        'total_orders': status.total_orders,
-                        'dispatch_orders': status.dispatched_orders,
-                        'dispatch_percentage': round(percentage, 1),
-                        'status': picklist.status,
-                        'created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S')
-                    })
+                    status.update_status_with_complete_and_dispatch()
                 
-                print(f"Using dispatch model, found {len(picklists_data)} picklists with complete orders")
+                # Include picklists that have Complete OR Dispatch orders
+                for status in dispatch_statuses:
+                    if status.total_relevant_orders > 0:  # Has Complete or Dispatch orders
+                        percentage = 0
+                        if status.total_orders > 0:
+                            percentage = (status.dispatched_orders / status.total_orders) * 100
+                        
+                        picklist = status.picklist
+                        picklists_data.append({
+                            'picklist_id': picklist.picklist_id,
+                            'picklist_type': picklist.picklist_type,
+                            'platform': picklist.platform,
+                            'total_orders': status.total_orders,
+                            'dispatch_orders': status.dispatched_orders,
+                            'complete_orders': status.complete_orders,
+                            'total_relevant_orders': status.total_relevant_orders,
+                            'dispatch_percentage': round(percentage, 1),
+                            'status': picklist.status,
+                            'created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                        })
+                
+                print(f"Using dispatch model, found {len(picklists_data)} picklists with Complete/Dispatch orders")
         except Exception as e:
             print(f"Error using PicklistDispatchStatus model: {str(e)}")
             using_dispatch_model = False
         
-        # If no dispatch model or no records found, fall back to original implementation
-        if not using_dispatch_model or not picklists_data:
-            print("Falling back to original implementation")
+        # If no dispatch model available, fall back to direct checking
+        if not using_dispatch_model:
+            print("Falling back to direct order status checking")
             
-            # Get all picklists
+            # Get all picklists and check for Complete OR Dispatch orders
             picklists = Picklist.objects.all()
             print(f"Found {picklists.count()} picklists")
             
@@ -70,33 +79,38 @@ def get_dispatch_picklists(request):
                 total_orders = picklist_items.values('order_number').distinct().count()
                 
                 if total_orders == 0:
-                    continue  # Skip picklists with no orders
+                    continue
                 
-                # Count orders in Complete status for this picklist
+                # Count orders in Complete OR Dispatch status
                 dispatch_orders = 0
+                complete_orders = 0
                 platform = picklist.platform.upper()
                 order_numbers = picklist_items.values_list('order_number', flat=True).distinct()
                 
                 for order_number in order_numbers:
-                    dispatch_found = False
+                    order_status = None
                     
                     if platform == 'AMAZON':
-                        dispatch_found = AmazonOrders.objects.filter(order_number=order_number, status='Complete').exists()
+                        order = AmazonOrders.objects.filter(order_number=order_number).first()
                     elif platform == 'FLIPKART':
-                        dispatch_found = FlipkarOrders.objects.filter(order_number=order_number, status='Complete').exists()
+                        order = FlipkarOrders.objects.filter(order_number=order_number).first()
                     elif platform == 'FIRSTCRY':
-                        dispatch_found = FirstcryOrders.objects.filter(order_number=order_number, status='Complete').exists()
+                        order = FirstcryOrders.objects.filter(order_number=order_number).first()
                     elif platform == 'MEESHO':
-                        dispatch_found = MeeshoOrders.objects.filter(order_number=order_number, status='Complete').exists()
+                        order = MeeshoOrders.objects.filter(order_number=order_number).first()
+                    else:
+                        continue
                     
-                    if dispatch_found:
-                        dispatch_orders += 1
+                    if order:
+                        if order.status == 'Dispatch':
+                            dispatch_orders += 1
+                        elif order.status == 'Complete':
+                            complete_orders += 1
                 
-                # Only include picklists that have at least one order in Complete status
-                if dispatch_orders > 0:
-                    dispatch_percentage = 0
-                    if total_orders > 0:
-                        dispatch_percentage = (dispatch_orders / total_orders) * 100
+                # Only include picklists that have Complete OR Dispatch orders
+                total_relevant_orders = dispatch_orders + complete_orders
+                if total_relevant_orders > 0:
+                    dispatch_percentage = (dispatch_orders / total_orders) * 100 if total_orders > 0 else 0
                     
                     picklists_data.append({
                         'picklist_id': picklist.picklist_id,
@@ -104,15 +118,17 @@ def get_dispatch_picklists(request):
                         'platform': picklist.platform,
                         'total_orders': total_orders,
                         'dispatch_orders': dispatch_orders,
+                        'complete_orders': complete_orders,
+                        'total_relevant_orders': total_relevant_orders,
                         'dispatch_percentage': round(dispatch_percentage, 1),
                         'status': picklist.status,
                         'created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S')
                     })
         
-        # Sort by dispatch percentage (descending)
-        picklists_data.sort(key=lambda x: x['dispatch_percentage'], reverse=True)
+        # Sort by dispatch percentage (descending), then by total relevant orders
+        picklists_data.sort(key=lambda x: (x['dispatch_percentage'], x['total_relevant_orders']), reverse=True)
         
-        print(f"Returning {len(picklists_data)} picklists with complete orders")
+        print(f"Returning {len(picklists_data)} picklists with Complete/Dispatch orders")
         
         return JsonResponse({
             'status': 'success',
@@ -129,12 +145,13 @@ def get_dispatch_picklists(request):
             'status': 'error',
             'message': f'Error retrieving dispatch picklists: {str(e)}',
             'picklists': []
-        })  
+        })
 
 # Get dispatch orders for a specific picklist
 def get_dispatch_orders(request, picklist_id):
     """
-    Get completed orders for a specific picklist, making sure completed orders are returned first
+    Get Complete and Dispatch orders for a specific picklist
+    Shows both statuses to give full picture of dispatch workflow
     """
     try:
         picklist = get_object_or_404(Picklist, picklist_id=picklist_id)
@@ -142,6 +159,7 @@ def get_dispatch_orders(request, picklist_id):
         
         total_orders = picklist_items.values('order_number').distinct().count()
         dispatch_orders = 0
+        complete_orders = 0
         orders_data = []
         
         platform = picklist.platform.upper()
@@ -165,31 +183,37 @@ def get_dispatch_orders(request, picklist_id):
             
             order = orders.first()
             
-            # Count completed orders
-            is_dispatch = order.status == 'Complete'
+            # Count Complete and Dispatch orders
+            is_dispatch = order.status == 'Dispatch'
+            is_complete = order.status == 'Complete'
+            
             if is_dispatch:
                 dispatch_orders += 1
+            elif is_complete:
+                complete_orders += 1
             
-            # Find the associated picklist items
-            items = picklist_items.filter(order_number=order_number)
-            
-            # Add each item as a separate entry in orders_data
-            for item in items:
-                orders_data.append({
-                    'order_number': order.order_number,
-                    'sku': item.sku,
-                    'quantity': item.quantity,
-                    'status': order.status,
-                    'awb': order.AWB if hasattr(order, 'AWB') else None,
-                    'is_dispatch': is_dispatch  # Add this flag to help with sorting
-                })
+            # Only include Complete or Dispatch orders in the response
+            if is_dispatch or is_complete:
+                # Find the associated picklist items
+                items = picklist_items.filter(order_number=order_number)
+                
+                # Add each item as a separate entry in orders_data
+                for item in items:
+                    orders_data.append({
+                        'order_number': order.order_number,
+                        'sku': item.sku,
+                        'quantity': item.quantity,
+                        'status': order.status,
+                        'awb': order.AWB if hasattr(order, 'AWB') else None,
+                        'sort_priority': 1 if is_dispatch else 2  # Dispatch first, then Complete
+                    })
         
-        # Sort orders - Complete first, then others
-        orders_data.sort(key=lambda x: (not x['is_dispatch']))
+        # Sort orders - Dispatch first, then Complete
+        orders_data.sort(key=lambda x: x['sort_priority'])
         
-        # Remove the temporary sorting flag
+        # Remove the temporary sorting field
         for order in orders_data:
-            order.pop('is_dispatch', None)
+            order.pop('sort_priority', None)
         
         # Calculate dispatch percentage
         dispatch_percentage = 0
@@ -201,6 +225,8 @@ def get_dispatch_orders(request, picklist_id):
             'platform': picklist.platform,
             'total_orders': total_orders,
             'dispatch_orders': dispatch_orders,
+            'complete_orders': complete_orders,
+            'total_relevant_orders': dispatch_orders + complete_orders,
             'dispatch_percentage': dispatch_percentage,
             'created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             'orders': orders_data
@@ -217,7 +243,6 @@ def get_dispatch_orders(request, picklist_id):
             'status': 'error',
             'message': f'Error retrieving dispatch orders: {str(e)}'
         }, status=500)
-
 # Mark orders as dispatched (now completed)
 def mark_orders_as_dispatched(request, picklist_id):
     if request.method != 'POST':
@@ -347,7 +372,7 @@ def check_all_dispatched(picklist, platform):
 
 def search_by_awb(request):
     """
-    Search orders by AWB number
+    Search orders by AWB number - looks for Complete orders that can be dispatched
     """
     try:
         awb = request.GET.get('awb')
@@ -417,6 +442,7 @@ def search_by_awb(request):
         import traceback
         traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
+
     
 # API endpoints for changing order status from Complete to Dispatch
 
@@ -521,7 +547,7 @@ def change_to_dispatch(request):
 @require_POST
 def bulk_change_to_dispatch(request):
     """
-    Change multiple orders' status from Complete to Dispatch and delete PDF files
+    Change multiple orders' status from Complete to Dispatch and UPDATE dispatch tracking
     """
     try:
         data = json.loads(request.body)
@@ -533,10 +559,11 @@ def bulk_change_to_dispatch(request):
                 'error': 'No orders provided'
             }, status=400)
         
-        # Track updated orders and deleted files
+        # Track updated orders and failed orders
         updated_count = 0
         deleted_files = 0
         failed_orders = []
+        affected_picklists = set()  # Track which picklists need dispatch status update
         
         # Process each order
         for order_data in orders:
@@ -576,7 +603,7 @@ def bulk_change_to_dispatch(request):
             if awb:
                 query = query.filter(AWB=awb)
             
-            # Filter for Complete status
+            # Filter for Complete status orders
             complete_orders = query.filter(status='Complete')
             
             if not complete_orders.exists():
@@ -598,7 +625,7 @@ def bulk_change_to_dispatch(request):
                     except Exception as e:
                         print(f"Error deleting PDF file {pdf_path}: {str(e)}")
                 
-                # Optional: Clear the pdf_path field after deleting the file
+                # Clear the pdf_path field after deleting the file
                 if hasattr(order, 'pdf_path'):
                     order.pdf_path = ''
                     order.save()
@@ -606,12 +633,51 @@ def bulk_change_to_dispatch(request):
             # Update to Dispatch
             count = complete_orders.update(status='Dispatch')
             updated_count += count
+            
+            # Find which picklists contain this order to update dispatch status
+            try:
+                picklist_items = PicklistItem.objects.filter(order_number=order_number)
+                for item in picklist_items:
+                    affected_picklists.add(item.picklist.picklist_id)
+            except Exception as e:
+                print(f"Error finding picklists for order {order_number}: {str(e)}")
+        
+        # Update dispatch status for all affected picklists
+        updated_picklists = []
+        for picklist_id in affected_picklists:
+            try:
+                picklist = Picklist.objects.get(picklist_id=picklist_id)
+                
+                # Get or create dispatch status
+                dispatch_status, created = PicklistDispatchStatus.objects.get_or_create(
+                    picklist=picklist,
+                    defaults={
+                        'total_orders': 0,
+                        'dispatched_orders': 0,
+                        'is_fully_dispatched': False
+                    }
+                )
+                
+                # Update the dispatch status
+                was_fully_dispatched = dispatch_status.update_status()
+                updated_picklists.append({
+                    'picklist_id': picklist_id,
+                    'total_orders': dispatch_status.total_orders,
+                    'dispatched_orders': dispatch_status.dispatched_orders,
+                    'is_fully_dispatched': was_fully_dispatched,
+                    'percentage': round((dispatch_status.dispatched_orders / dispatch_status.total_orders * 100), 1) if dispatch_status.total_orders > 0 else 0
+                })
+                
+            except Exception as e:
+                print(f"Error updating dispatch status for picklist {picklist_id}: {str(e)}")
         
         return JsonResponse({
-            'message': f'Successfully changed order from Complete to Dispatch status',
+            'message': f'Successfully changed {updated_count} order(s) from Complete to Dispatch status',
             'updated_count': updated_count,
             'deleted_files': deleted_files,
-            'failed_orders': failed_orders
+            'failed_orders': failed_orders,
+            'updated_picklists': updated_picklists,
+            'affected_picklists_count': len(affected_picklists)
         })
     
     except Exception as e:
@@ -620,8 +686,294 @@ def bulk_change_to_dispatch(request):
         return JsonResponse({
             'error': str(e)
         }, status=500)
-    
 
+def download_dispatch_csv_and_cleanup(request, picklist_id):
+    """
+    Download CSV report for fully dispatched picklist and then cleanup all related records
+    FIXED: Now properly handles multi orders with multiple records per order number
+    """
+    try:
+        picklist = get_object_or_404(Picklist, picklist_id=picklist_id)
+        
+        # Verify that the picklist is fully dispatched
+        picklist_items = PicklistItem.objects.filter(picklist=picklist)
+        total_unique_orders = picklist_items.values('order_number').distinct().count()
+        
+        if total_unique_orders == 0:
+            return JsonResponse({
+                'error': 'No orders found in this picklist'
+            }, status=400)
+        
+        platform = picklist.platform.upper()
+        order_numbers = list(picklist_items.values_list('order_number', flat=True).distinct())
+        
+        # Count dispatched orders and collect all order data
+        dispatched_orders = 0
+        orders_data = []
+        all_order_records = []  # Store all individual records for deletion
+        
+        for order_number in order_numbers:
+            order_records = []
+            is_order_dispatched = False
+            
+            # Get ALL records for this order number (for multi orders)
+            if platform == 'AMAZON':
+                order_records = list(AmazonOrders.objects.filter(order_number=order_number))
+            elif platform == 'FLIPKART':
+                order_records = list(FlipkarOrders.objects.filter(order_number=order_number))
+            elif platform == 'FIRSTCRY':
+                order_records = list(FirstcryOrders.objects.filter(order_number=order_number))
+            elif platform == 'MEESHO':
+                order_records = list(MeeshoOrders.objects.filter(order_number=order_number))
+            
+            if order_records:
+                # Check if ALL records for this order are in Dispatch status
+                all_dispatched = all(record.status == 'Dispatch' for record in order_records)
+                
+                if all_dispatched:
+                    dispatched_orders += 1
+                    is_order_dispatched = True
+                
+                # Add all records to the deletion list
+                all_order_records.extend(order_records)
+                
+                # Add order data to CSV (group by order number but include all SKUs)
+                if is_order_dispatched:
+                    # Get picklist items for this order
+                    order_items = picklist_items.filter(order_number=order_number)
+                    
+                    # For each picklist item, find corresponding order record
+                    for item in order_items:
+                        # Find the order record that matches this SKU
+                        matching_record = None
+                        for record in order_records:
+                            if record.sku == item.sku:
+                                matching_record = record
+                                break
+                        
+                        if matching_record:
+                            orders_data.append({
+                                'order_number': matching_record.order_number,
+                                'sku': item.sku,
+                                'quantity': item.quantity,
+                                'platform': platform,
+                                'status': matching_record.status,
+                                'awb': getattr(matching_record, 'AWB', ''),
+                                'order_type': getattr(matching_record, 'order_type', ''),
+                                'pdf_url': getattr(matching_record, 'pdf_url', '')
+                            })
+        
+        # Check if all orders are dispatched
+        if dispatched_orders != total_unique_orders:
+            return JsonResponse({
+                'error': f'Cannot download CSV. Only {dispatched_orders} out of {total_unique_orders} orders are fully dispatched. All orders must be in Dispatch status to download CSV.',
+                'dispatched_orders': dispatched_orders,
+                'total_orders': total_unique_orders,
+                'total_records_found': len(all_order_records)
+            }, status=400)
+        
+        # Create CSV response
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="dispatch_report_{picklist_id}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+        
+        writer = csv.writer(response)
+        
+        # Write CSV header
+        writer.writerow([
+            'Picklist ID',
+            'Order Number', 
+            'SKU', 
+            'Quantity', 
+            'Platform', 
+            'Status', 
+            'AWB', 
+            'Order Type',
+            'PDF URL',
+            'Export Date'
+        ])
+        
+        # Write data rows
+        export_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        for order in orders_data:
+            writer.writerow([
+                picklist_id,
+                order['order_number'],
+                order['sku'],
+                order['quantity'],
+                order['platform'],
+                order['status'],
+                order['awb'],
+                order['order_type'],
+                order['pdf_url'],
+                export_date
+            ])
+        
+        # After successful CSV generation, cleanup all related records
+        try:
+            with transaction.atomic():
+                print(f"Starting cleanup for picklist {picklist_id}")
+                
+                # Delete orders from platform tables
+                deleted_counts = {
+                    'order_records': 0,
+                    'picklist_items': 0,
+                    'picklist': 0,
+                    'dispatch_status': 0
+                }
+                
+                # IMPROVED: Delete all order records by their IDs (handles multi orders properly)
+                if platform == 'AMAZON':
+                    order_ids = [record.id for record in all_order_records if hasattr(record, 'id')]
+                    deleted_count = AmazonOrders.objects.filter(id__in=order_ids).count()
+                    AmazonOrders.objects.filter(id__in=order_ids).delete()
+                    deleted_counts['order_records'] = deleted_count
+                    print(f"Deleted {deleted_count} Amazon order records")
+                    
+                elif platform == 'FLIPKART':
+                    order_ids = [record.id for record in all_order_records if hasattr(record, 'id')]
+                    deleted_count = FlipkarOrders.objects.filter(id__in=order_ids).count()
+                    FlipkarOrders.objects.filter(id__in=order_ids).delete()
+                    deleted_counts['order_records'] = deleted_count
+                    print(f"Deleted {deleted_count} Flipkart order records")
+                    
+                elif platform == 'FIRSTCRY':
+                    order_ids = [record.id for record in all_order_records if hasattr(record, 'id')]
+                    deleted_count = FirstcryOrders.objects.filter(id__in=order_ids).count()
+                    FirstcryOrders.objects.filter(id__in=order_ids).delete()
+                    deleted_counts['order_records'] = deleted_count
+                    print(f"Deleted {deleted_count} FirstCry order records")
+                    
+                elif platform == 'MEESHO':
+                    order_ids = [record.id for record in all_order_records if hasattr(record, 'id')]
+                    deleted_count = MeeshoOrders.objects.filter(id__in=order_ids).count()
+                    MeeshoOrders.objects.filter(id__in=order_ids).delete()
+                    deleted_counts['order_records'] = deleted_count
+                    print(f"Deleted {deleted_count} Meesho order records")
+                
+                # Delete picklist items
+                deleted_counts['picklist_items'] = picklist_items.count()
+                picklist_items.delete()
+                print(f"Deleted {deleted_counts['picklist_items']} picklist items")
+                
+                # Delete dispatch status if exists
+                try:
+                    dispatch_status = PicklistDispatchStatus.objects.get(picklist=picklist)
+                    dispatch_status.delete()
+                    deleted_counts['dispatch_status'] = 1
+                    print(f"Deleted dispatch status record")
+                except PicklistDispatchStatus.DoesNotExist:
+                    print(f"No dispatch status record found")
+                
+                # Delete the picklist itself
+                picklist.delete()
+                deleted_counts['picklist'] = 1
+                print(f"Deleted picklist {picklist_id}")
+                
+                print(f"Cleanup completed for picklist {picklist_id}:")
+                print(f"- Total unique orders: {total_unique_orders}")
+                print(f"- Total order records deleted: {deleted_counts['order_records']}")
+                print(f"- Picklist items deleted: {deleted_counts['picklist_items']}")
+                print(f"- Picklist deleted: {deleted_counts['picklist']}")
+                print(f"- Dispatch status deleted: {deleted_counts['dispatch_status']}")
+                
+        except Exception as cleanup_error:
+            print(f"Error during cleanup: {str(cleanup_error)}")
+            traceback.print_exc()
+            # Note: CSV will still be downloaded even if cleanup fails
+            # You might want to handle this differently based on your requirements
+        
+        return response
+        
+    except Exception as e:
+        print(f"Error in download_dispatch_csv_and_cleanup: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({
+            'error': f'Error generating CSV report: {str(e)}'
+        }, status=500)   
+def check_picklist_fully_dispatched(request, picklist_id):
+    """
+    Check if a picklist is fully dispatched (all orders in Dispatch status)
+    """
+    try:
+        picklist = get_object_or_404(Picklist, picklist_id=picklist_id)
+        
+        # Try to get from PicklistDispatchStatus first
+        try:
+            dispatch_status = PicklistDispatchStatus.objects.get(picklist=picklist)
+            # ✅ FIX: Use the enhanced method that checks both Complete and Dispatch
+            dispatch_status.update_status_with_complete_and_dispatch()
+            
+            return JsonResponse({
+                'fully_dispatched': dispatch_status.is_fully_dispatched,
+                'dispatched_orders': dispatch_status.dispatched_orders,
+                'total_orders': dispatch_status.total_orders,
+                'complete_orders': getattr(dispatch_status, 'complete_orders', 0),  # Add this
+                'percentage': round((dispatch_status.dispatched_orders / dispatch_status.total_orders * 100), 1) if dispatch_status.total_orders > 0 else 0
+            })
+            
+        except PicklistDispatchStatus.DoesNotExist:
+            # Fall back to direct checking - also needs to be fixed
+            picklist_items = PicklistItem.objects.filter(picklist=picklist)
+            total_orders = picklist_items.values('order_number').distinct().count()
+            
+            if total_orders == 0:
+                return JsonResponse({
+                    'fully_dispatched': False,
+                    'dispatched_orders': 0,
+                    'total_orders': 0,
+                    'complete_orders': 0,
+                    'percentage': 0,
+                    'reason': 'No orders found'
+                })
+            
+            platform = picklist.platform.upper()
+            order_numbers = picklist_items.values_list('order_number', flat=True).distinct()
+            
+            dispatched_orders = 0
+            complete_orders = 0
+            
+            for order_number in order_numbers:
+                order_status = None
+                
+                if platform == 'AMAZON':
+                    order = AmazonOrders.objects.filter(order_number=order_number).first()
+                elif platform == 'FLIPKART':
+                    order = FlipkarOrders.objects.filter(order_number=order_number).first()
+                elif platform == 'FIRSTCRY':
+                    order = FirstcryOrders.objects.filter(order_number=order_number).first()
+                elif platform == 'MEESHO':
+                    order = MeeshoOrders.objects.filter(order_number=order_number).first()
+                else:
+                    continue
+                
+                if order:
+                    if order.status == 'Dispatch':
+                        dispatched_orders += 1
+                    elif order.status == 'Complete':
+                        complete_orders += 1
+            
+            fully_dispatched = dispatched_orders == total_orders
+            
+            return JsonResponse({
+                'fully_dispatched': fully_dispatched,
+                'dispatched_orders': dispatched_orders,
+                'total_orders': total_orders,
+                'complete_orders': complete_orders,
+                'percentage': round((dispatched_orders / total_orders) * 100, 1) if total_orders > 0 else 0
+            })
+        
+    except Exception as e:
+        print(f"Error in check_picklist_fully_dispatched: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'fully_dispatched': False,
+            'dispatched_orders': 0,
+            'total_orders': 0,
+            'complete_orders': 0,
+            'percentage': 0,
+            'error': str(e)
+        })
 # Also update the complete-by-awb endpoint to exempt CSRF
 @csrf_exempt
 @require_POST
