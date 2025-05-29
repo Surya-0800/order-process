@@ -66,7 +66,6 @@ sleep 10
 
 # Run migrations
 echo "Running database migrations..."
-docker compose exec web python manage.py makemigrations
 docker compose exec web python manage.py migrate
 
 # Collect static files

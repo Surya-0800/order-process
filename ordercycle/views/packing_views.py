@@ -21,7 +21,7 @@ from ..models import (
 @require_http_methods(["GET"])
 def search_picklist(request):
     """
-    Enhanced: Search for a picklist by ID with quantity-based SKU validation status
+    Updated search for a picklist by ID with SKU validation status
     """
     picklist_id = request.GET.get('picklist_id', '')
     if not picklist_id:
@@ -63,22 +63,13 @@ def search_picklist(request):
             
             # Only include orders that are NOT in Dispatch status
             if order_status != 'Dispatch':
-                # Get or create SKU validation record with quantity tracking
+                # Get or create SKU validation record
                 sku_validation, created = PicklistSKUValidation.objects.get_or_create(
                     picklist=picklist,
                     sku=item.sku,
                     order_number=item.order_number,
-                    defaults={
-                        'validated': False,
-                        'required_quantity': item.quantity,
-                        'validated_quantity': 0
-                    }
+                    defaults={'validated': False}
                 )
-                
-                # Update required quantity if not set
-                if created or sku_validation.required_quantity == 0:
-                    sku_validation.required_quantity = item.quantity
-                    sku_validation.save()
                 
                 items_data.append({
                     'id': item.id,
@@ -90,13 +81,10 @@ def search_picklist(request):
                     'picker_id': picker_id,
                     'awb': awb,
                     'order_status': order_status,
-                    'validated': sku_validation.validated,
-                    'validated_quantity': getattr(sku_validation, 'validated_quantity', 0),
-                    'required_quantity': getattr(sku_validation, 'required_quantity', item.quantity),
-                    'validation_progress': f"{getattr(sku_validation, 'validated_quantity', 0)}/{getattr(sku_validation, 'required_quantity', item.quantity)}"
+                    'validated': sku_validation.validated
                 })
         
-        # Get validation status (this might need to be updated to handle quantity-based validation)
+        # Get validation status
         validation_status = picklist.get_validation_status()
         
         return JsonResponse({
@@ -118,15 +106,12 @@ def search_picklist(request):
             'status': 'error',
             'message': f'Picklist with ID {picklist_id} not found or not in PACKING status'
         }, status=404)
-
-# The issue is in your Django view - validate_sku function
-# Here's the corrected version:
-
+    
 @csrf_exempt
 @require_http_methods(["POST"])
 def validate_sku(request):
     """
-    FIXED: Mark a SKU as validated with proper quantity-based validation
+    Mark a SKU as validated for a specific picklist and order
     """
     try:
         data = json.loads(request.body)
@@ -143,68 +128,17 @@ def validate_sku(request):
         # Get picklist
         picklist = get_object_or_404(Picklist, picklist_id=picklist_id)
         
-        # Get the picklist item to know the required quantity
-        picklist_item = PicklistItem.objects.filter(
-            picklist=picklist,
-            sku=sku,
-            order_number=order_number
-        ).first()
-        
-        if not picklist_item:
-            return JsonResponse({
-                'status': 'error',
-                'message': f'SKU {sku} not found in order {order_number} for this picklist'
-            }, status=404)
-        
-        required_quantity = picklist_item.quantity
-        
-        # Get or create SKU validation record with quantity tracking
+        # Get or create SKU validation record
         sku_validation, created = PicklistSKUValidation.objects.get_or_create(
             picklist=picklist,
             sku=sku,
             order_number=order_number,
-            defaults={
-                'validated': False,
-                'required_quantity': required_quantity,
-                'validated_quantity': 0
-            }
+            defaults={'validated': False}
         )
         
-        # IMPORTANT: Update required_quantity if it was created before or is incorrect
-        if sku_validation.required_quantity != required_quantity:
-            sku_validation.required_quantity = required_quantity
-        
-        # CRITICAL FIX: Only increment if not already fully validated
-        if sku_validation.validated_quantity < sku_validation.required_quantity:
-            sku_validation.validated_quantity += 1
-        else:
-            # Already fully validated - don't increment further
-            return JsonResponse({
-                'status': 'warning',
-                'message': f'SKU {sku} is already fully validated ({sku_validation.validated_quantity}/{sku_validation.required_quantity})',
-                'validation_details': {
-                    'sku': sku,
-                    'order_number': order_number,
-                    'validated_quantity': sku_validation.validated_quantity,
-                    'required_quantity': sku_validation.required_quantity,
-                    'is_fully_validated': True,
-                    'remaining_quantity': 0
-                }
-            })
-        
-        # Check if all required quantity is NOW validated
-        if sku_validation.validated_quantity >= sku_validation.required_quantity:
-            sku_validation.validated = True
-            sku_validation.validated_at = timezone.now()
-            # Ensure we don't exceed required quantity
-            sku_validation.validated_quantity = sku_validation.required_quantity
-            message = f'SKU {sku} FULLY validated! All {sku_validation.required_quantity} pieces confirmed.'
-        else:
-            # IMPORTANT: Keep validated as False until all pieces are scanned
-            sku_validation.validated = False
-            remaining = sku_validation.required_quantity - sku_validation.validated_quantity
-            message = f'SKU {sku} progress: {sku_validation.validated_quantity}/{sku_validation.required_quantity} pieces validated. {remaining} remaining.'
-        
+        # Mark as validated
+        sku_validation.validated = True
+        sku_validation.validated_at = timezone.now()
         sku_validation.save()
         
         # Get updated validation status for the entire picklist
@@ -215,15 +149,7 @@ def validate_sku(request):
         
         return JsonResponse({
             'status': 'success',
-            'message': message,
-            'validation_details': {
-                'sku': sku,
-                'order_number': order_number,
-                'validated_quantity': sku_validation.validated_quantity,
-                'required_quantity': sku_validation.required_quantity,
-                'is_fully_validated': sku_validation.validated,  # This should be False until all pieces scanned
-                'remaining_quantity': sku_validation.required_quantity - sku_validation.validated_quantity
-            },
+            'message': f'SKU {sku} validated successfully',
             'validation_status': validation_status,
             'order_validation_status': order_validation_status,
             'all_validated': validation_status['all_validated'],
@@ -236,7 +162,6 @@ def validate_sku(request):
             'status': 'error',
             'message': f'Error validating SKU: {str(e)}'
         }, status=500)
-    
     
 @require_http_methods(["GET"])
 def get_validation_status(request):
@@ -273,12 +198,10 @@ def get_validation_status(request):
             'message': f'Error getting validation status: {str(e)}'
         }, status=500)
 
-# Enhanced search_product function with order count and total quantity stats
-
 @require_http_methods(["GET"])
 def search_product(request):
     """
-    Enhanced: Show number of orders and total quantity for the product in picklist
+    Sequential validation logic: Show first unvalidated order with this SKU
     """
     product_id = request.GET.get('product_id', '')
     picklist_id = request.GET.get('picklist_id', '')
@@ -299,7 +222,7 @@ def search_product(request):
                 'message': f'Product with ID {product_id} not found'
             }, status=404)
         
-        # Get product image
+        # Check if image exists in database
         image_upload = ImageUpload.objects.filter(file_name=f"{product_id}.jpg").first()
         
         if image_upload:
@@ -309,85 +232,40 @@ def search_product(request):
         else:
             image_url = "/static/images/no_image_found.jpg"
         
-        # Enhanced SKU matching logic with statistics
+        # Sequential validation logic
         validation_info = None
         in_current_picklist = False
-        matched_sku = None
-        match_type = None
-        picklist_stats = None  # NEW: Statistics for this product in picklist
         
         if picklist_id:
             try:
                 picklist = Picklist.objects.get(picklist_id=picklist_id)
-                master_sku = product.sku
                 
-                print(f"🔍 Searching for SKU: '{master_sku}' in picklist {picklist_id}")
-                
-                # STEP 1: Try exact match first
-                exact_match_items = PicklistItem.objects.filter(
+                # Find ALL orders with this SKU in the picklist
+                picklist_items = PicklistItem.objects.filter(
                     picklist=picklist, 
-                    sku=master_sku
-                )
+                    sku=product.sku
+                ).order_by('order_number')  # Consistent ordering
                 
-                if exact_match_items.exists():
-                    matched_items = exact_match_items
-                    matched_sku = master_sku
-                    match_type = "exact"
-                    print(f"✅ EXACT MATCH found: {master_sku}")
-                    
-                else:
-                    # STEP 2: Try normalized matching
-                    print(f"❌ No exact match for '{master_sku}', trying normalized matching...")
-                    
-                    matched_sku, match_type = find_normalized_match(master_sku, picklist)
-                    
-                    if matched_sku:
-                        matched_items = PicklistItem.objects.filter(
-                            picklist=picklist, 
-                            sku=matched_sku
-                        )
-                        print(f"✅ NORMALIZED MATCH found: '{matched_sku}'")
-                    else:
-                        matched_items = PicklistItem.objects.none()
-                        print(f"❌ No match found for '{master_sku}'")
-                
-                # Process matched items if found
-                if matched_items.exists():
+                if picklist_items.exists():
                     in_current_picklist = True
                     
-                    # NEW: Calculate picklist statistics
-                    picklist_stats = calculate_picklist_stats(matched_items, matched_sku)
-                    print(f"📊 Picklist stats: {picklist_stats}")
-                    
-                    # Build validation info using matched SKU
+                    # Create validation records for all orders with this SKU
                     all_orders_with_sku = []
                     unvalidated_orders = []
                     
-                    for item in matched_items.order_by('order_number'):
-                        # Get or create validation record using matched SKU
+                    for item in picklist_items:
+                        # Get or create validation record
                         sku_validation, created = PicklistSKUValidation.objects.get_or_create(
                             picklist=picklist,
-                            sku=matched_sku,
+                            sku=product.sku,
                             order_number=item.order_number,
-                            defaults={
-                                'validated': False,
-                                'required_quantity': item.quantity,
-                                'validated_quantity': 0
-                            }
+                            defaults={'validated': False}
                         )
-                        
-                        # Ensure correct quantity
-                        if sku_validation.required_quantity != item.quantity:
-                            sku_validation.required_quantity = item.quantity
-                            sku_validation.save()
                         
                         order_info = {
                             'order_number': item.order_number,
                             'validated': sku_validation.validated,
-                            'quantity': item.quantity,
-                            'validated_quantity': sku_validation.validated_quantity,
-                            'required_quantity': sku_validation.required_quantity,
-                            'validation_progress': f"{sku_validation.validated_quantity}/{sku_validation.required_quantity}"
+                            'quantity': item.quantity
                         }
                         
                         all_orders_with_sku.append(order_info)
@@ -395,47 +273,42 @@ def search_product(request):
                         if not sku_validation.validated:
                             unvalidated_orders.append(order_info)
                     
-                    # Build validation info with enhanced statistics
+                    # SEQUENTIAL LOGIC: Return the first unvalidated order
                     if unvalidated_orders:
+                        # Show first unvalidated order
                         current_order = unvalidated_orders[0]
                         validation_info = {
                             'order_number': current_order['order_number'],
                             'validated': False,
                             'can_validate': True,
                             'quantity': current_order['quantity'],
-                            'validated_quantity': current_order['validated_quantity'],
-                            'required_quantity': current_order['required_quantity'],
-                            'validation_progress': current_order['validation_progress'],
+                            # Statistics for display
                             'total_orders_with_sku': len(all_orders_with_sku),
                             'validated_orders_count': len(all_orders_with_sku) - len(unvalidated_orders),
                             'remaining_orders': len(unvalidated_orders),
-                            'progress_message': f"Order {current_order['order_number']} - Scan {current_order['validated_quantity']}/{current_order['required_quantity']} pieces ({len(unvalidated_orders)} orders remaining)"
+                            'progress_message': f"Order {current_order['order_number']} - {len(unvalidated_orders)} remaining to validate"
                         }
                     else:
-                        # All validated
+                        # All orders are validated
                         validation_info = {
-                            'order_number': all_orders_with_sku[0]['order_number'],
+                            'order_number': all_orders_with_sku[0]['order_number'],  # Show any order for print button
                             'validated': True,
                             'can_validate': False,
                             'quantity': all_orders_with_sku[0]['quantity'],
-                            'validated_quantity': all_orders_with_sku[0]['required_quantity'],
-                            'required_quantity': all_orders_with_sku[0]['required_quantity'],
-                            'validation_progress': f"{all_orders_with_sku[0]['required_quantity']}/{all_orders_with_sku[0]['required_quantity']}",
                             'total_orders_with_sku': len(all_orders_with_sku),
                             'validated_orders_count': len(all_orders_with_sku),
                             'remaining_orders': 0,
-                            'progress_message': f"All {len(all_orders_with_sku)} orders fully validated ✅"
+                            'progress_message': f"All {len(all_orders_with_sku)} orders validated ✅"
                         }
                     
             except Picklist.DoesNotExist:
                 pass
         
-        # Build response with enhanced statistics
+        # Return product details
         response_data = {
             'status': 'success',
             'product': {
-                'sku': matched_sku or product.sku,
-                'original_sku': product.sku,
+                'sku': product.sku,
                 'image_url': image_url,
                 'location': product.location,
                 'product_id': product.product_id,
@@ -445,13 +318,7 @@ def search_product(request):
                 'pack_check': product.pack_check or '',
                 'pack_remarks': product.pack_remarks or ''
             },
-            'in_current_picklist': in_current_picklist,
-            'match_info': {
-                'matched_sku': matched_sku,
-                'match_type': match_type,
-                'original_sku': product.sku
-            } if matched_sku else None,
-            'picklist_stats': picklist_stats  # NEW: Include picklist statistics
+            'in_current_picklist': in_current_picklist
         }
         
         if validation_info:
@@ -467,85 +334,6 @@ def search_product(request):
             'status': 'error',
             'message': f'Error searching for product: {str(e)}'
         }, status=500)
-
-
-def calculate_picklist_stats(matched_items, sku):
-    """
-    Calculate statistics for a product in the picklist
-    Returns: {
-        'total_orders': int,
-        'total_quantity': int,
-        'order_details': [{'order_number': str, 'quantity': int}, ...],
-        'unique_orders': int,
-        'avg_quantity_per_order': float
-    }
-    """
-    from django.db.models import Sum, Count
-    
-    if not matched_items.exists():
-        return None
-    
-    # Calculate basic stats
-    total_orders = matched_items.count()
-    unique_orders = matched_items.values('order_number').distinct().count()
-    total_quantity = matched_items.aggregate(total=Sum('quantity'))['total'] or 0
-    
-    # Get order details
-    order_details = []
-    for item in matched_items.order_by('order_number'):
-        order_details.append({
-            'order_number': item.order_number,
-            'quantity': item.quantity
-        })
-    
-    # Calculate average quantity per order
-    avg_quantity_per_order = round(total_quantity / unique_orders, 2) if unique_orders > 0 else 0
-    
-    return {
-        'total_orders': unique_orders,  # Number of unique orders
-        'total_quantity': total_quantity,  # Total quantity across all orders
-        'order_details': order_details,  # List of all orders with quantities
-        'total_line_items': total_orders,  # Total line items (could be > unique orders if same order has multiple lines)
-        'avg_quantity_per_order': avg_quantity_per_order
-    }
-
-
-# Keep the existing normalize functions
-def find_normalized_match(master_sku, picklist):
-    """
-    Simple normalized matching: lowercase + remove all special characters
-    """
-    import re
-    
-    master_normalized = normalize_sku_simple(master_sku)
-    print(f"🔄 Master SKU normalized: '{master_sku}' → '{master_normalized}'")
-    
-    all_picklist_skus = list(PicklistItem.objects.filter(
-        picklist=picklist
-    ).values_list('sku', flat=True).distinct())
-    
-    if not all_picklist_skus:
-        return None, None
-    
-    for picklist_sku in all_picklist_skus:
-        picklist_normalized = normalize_sku_simple(picklist_sku)
-        
-        if master_normalized == picklist_normalized:
-            print(f"✅ NORMALIZED MATCH: '{master_sku}' → '{picklist_sku}'")
-            return picklist_sku, "normalized"
-    
-    return None, None
-
-
-def normalize_sku_simple(sku):
-    """
-    Simple normalization: convert to lowercase and remove all special characters
-    """
-    import re
-    normalized = sku.lower()
-    normalized = re.sub(r'[^a-z0-9]', '', normalized)
-    return normalized
-
 @csrf_exempt
 @require_http_methods(["POST"])
 def mark_picklist_completed(request, picklist_id):

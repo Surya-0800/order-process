@@ -6,7 +6,6 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.core.files.base import ContentFile
 import base64
-from django.db.models import Sum
 
 class PDFUpload(models.Model):
     title = models.CharField(max_length=255, blank=True)
@@ -119,42 +118,66 @@ class Picklist(models.Model):
         return "111002"  # First picklist ID
     
     def get_validation_status(self):
-        """Get validation status with quantity info"""
-        validations = PicklistSKUValidation.objects.filter(picklist=self)
+        """
+        Get validation status for all SKUs in this picklist
+        """
+        # Get all unique SKU-Order combinations in this picklist
+        picklist_items = PicklistItem.objects.filter(picklist=self)
+        total_skus = picklist_items.values('sku', 'order_number').distinct().count()
         
-        total_skus = validations.count()
-        validated_skus = validations.filter(validated=True).count()
+        # Ensure validation records exist for all SKUs
+        for item in picklist_items.values('sku', 'order_number').distinct():
+            PicklistSKUValidation.objects.get_or_create(
+                picklist=self,
+                sku=item['sku'],
+                order_number=item['order_number'],
+                defaults={'validated': False}
+            )
         
-        # Calculate pieces
-        total_pieces = validations.aggregate(total=Sum('required_quantity'))['total'] or 0
-        validated_pieces = validations.aggregate(total=Sum('validated_quantity'))['total'] or 0
+        # Count validated SKUs
+        validated_count = PicklistSKUValidation.objects.filter(
+            picklist=self, 
+            validated=True
+        ).count()
         
         return {
-            'validated_count': validated_skus,
             'total_skus': total_skus,
-            'all_validated': validated_skus == total_skus and total_skus > 0,
-            'validated_pieces': validated_pieces,
-            'total_pieces': total_pieces,
-            'completion_percentage': round((validated_pieces / total_pieces * 100), 1) if total_pieces > 0 else 0
+            'validated_count': validated_count,
+            'all_validated': validated_count == total_skus and total_skus > 0
         }
 
     def get_order_validation_status(self, order_number):
-        """Get validation status for specific order"""
-        validations = PicklistSKUValidation.objects.filter(picklist=self, order_number=order_number)
+        """
+        Get validation status for a specific order in this picklist
+        """
+        # Get all SKUs for this order in this picklist
+        order_skus = PicklistItem.objects.filter(
+            picklist=self, 
+            order_number=order_number
+        ).values('sku').distinct()
         
-        total_skus = validations.count()
-        validated_skus = validations.filter(validated=True).count()
+        total_order_skus = order_skus.count()
         
-        total_pieces = validations.aggregate(total=Sum('required_quantity'))['total'] or 0
-        validated_pieces = validations.aggregate(total=Sum('validated_quantity'))['total'] or 0
+        # Ensure validation records exist for all SKUs in this order
+        for item in order_skus:
+            PicklistSKUValidation.objects.get_or_create(
+                picklist=self,
+                sku=item['sku'],
+                order_number=order_number,
+                defaults={'validated': False}
+            )
+        
+        # Count validated SKUs for this order
+        validated_order_skus = PicklistSKUValidation.objects.filter(
+            picklist=self,
+            order_number=order_number,
+            validated=True
+        ).count()
         
         return {
-            'validated_count': validated_skus,
-            'total_skus': total_skus,
-            'all_validated': validated_skus == total_skus and total_skus > 0,
-            'validated_pieces': validated_pieces,
-            'total_pieces': total_pieces,
-            'completion_percentage': round((validated_pieces / total_pieces * 100), 1) if total_pieces > 0 else 0
+            'total_skus': total_order_skus,
+            'validated_count': validated_order_skus,
+            'all_validated': validated_order_skus == total_order_skus and total_order_skus > 0
         }
 
 class PicklistItem(models.Model):
@@ -373,22 +396,23 @@ class OrderPDF(models.Model):
         ]
 
 class PicklistSKUValidation(models.Model):
-    picklist = models.ForeignKey('Picklist', on_delete=models.CASCADE)
-    sku = models.CharField(max_length=100)
-    order_number = models.CharField(max_length=100)
+    """
+    Model to track which SKUs have been validated for each picklist
+    """
+    picklist = models.ForeignKey(Picklist, on_delete=models.CASCADE, related_name='sku_validations')
+    sku = models.CharField(max_length=200, db_index=True)
+    order_number = models.CharField(max_length=200, db_index=True)
     validated = models.BooleanField(default=False)
     validated_at = models.DateTimeField(null=True, blank=True)
-    
-    # JUST THESE TWO NEW FIELDS FOR QUANTITY VALIDATION
-    required_quantity = models.IntegerField(default=1)
-    validated_quantity = models.IntegerField(default=0)
-    
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    validated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     
     class Meta:
-        unique_together = ['picklist', 'sku', 'order_number']
-        db_table = 'picklist_sku_validation'
+        unique_together = ('picklist', 'sku', 'order_number')
+        indexes = [
+            models.Index(fields=['picklist', 'sku']),
+            models.Index(fields=['picklist', 'validated']),
+            models.Index(fields=['order_number', 'validated']),
+        ]
     
     def __str__(self):
-        return f"{self.picklist.picklist_id} - {self.sku} - {self.order_number} ({self.validated_quantity}/{self.required_quantity})"
+        return f"SKU {self.sku} in {self.picklist.picklist_id} - Order: {self.order_number} - Validated: {self.validated}"

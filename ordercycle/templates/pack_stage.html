@@ -1413,19 +1413,16 @@
       function updateProductCard(sku, data, cardElement) {
         const imageContainer = cardElement.querySelector('.product-image-container');
         const detailsContainer = cardElement.querySelector('.product-details');
-      
+
         // Update image
         if (data.image_url) {
           imageContainer.innerHTML = `<img src="${data.image_url}" alt="${data.generic_name || sku}" onerror="this.parentNode.innerHTML='<div class=&quot;no-image-placeholder&quot;>No Image Available</div>'">`;
         } else {
           imageContainer.innerHTML = '<div class="no-image-placeholder">No Image Available</div>';
         }
-      
-        // Update details with quantity validation progress
+
+        // Update details
         const item = currentPicklistItems.find(item => item.sku === sku);
-        const validationProgress = item ? `${item.validated_quantity || 0}/${item.required_quantity || item.quantity}` : '0/0';
-        const isFullyValidated = item ? item.validated : false;
-        
         detailsContainer.innerHTML = `
           <h4>${data.generic_name || `Product (${sku})`}</h4>
           <p><strong>SKU:</strong> ${sku}</p>
@@ -1434,11 +1431,6 @@
           <p><strong>Box #:</strong> ${data.box_no || 'N/A'}</p>
           <p><strong>MRP:</strong> ${data.mrp ? '₹' + parseFloat(data.mrp).toFixed(2) : 'N/A'}</p>
           <p><strong>Quantity:</strong> ${item ? item.quantity : 'N/A'}</p>
-          <p><strong>Validation Progress:</strong> 
-            <span style="color: ${isFullyValidated ? '#28a745' : '#6c757d'}; font-weight: ${isFullyValidated ? 'bold' : 'normal'};">
-              ${validationProgress} ${isFullyValidated ? '✅' : ''}
-            </span>
-          </p>
         `;
       }
 
@@ -2190,19 +2182,20 @@
           .then(data => {
             showMessage(data.message, 'success');
             
-            // Update local data to reflect validation progress
+            // Update local data to reflect validation
             if (currentPicklistItems) {
               currentPicklistItems.forEach(item => {
                 if (item.sku === sku && item.order_number === orderNumber) {
-                  item.validated = data.validation_details.is_fully_validated;
-                  item.validated_quantity = data.validation_details.validated_quantity;
-                  item.required_quantity = data.validation_details.required_quantity;
+                  item.validated = true;
                 }
               });
             }
             
+            // Update the current validation status
+            currentValidationStatus = data.validation_status;
+            
             // Update the UI based on where the validation was triggered
-            updateValidationUIWithQuantity(sku, orderNumber, data);
+            updateValidationUI(sku, orderNumber, data);
             
             // Update the picklist validation status display
             updatePicklistValidationStatus(data.validation_status);
@@ -2221,65 +2214,6 @@
           .catch(error => {
             showMessage(error.message, 'error');
           });
-      }
-
-      function updateValidationUIWithQuantity(sku, orderNumber, data) {
-        const validationDetails = data.validation_details;
-        
-        // Update product card validation button if in order view
-        const productCard = document.getElementById(`product-card-${sku}`);
-        if (productCard) {
-          const validateBtn = productCard.querySelector('.validate-btn');
-          if (validateBtn) {
-            if (validationDetails.is_fully_validated) {
-              validateBtn.classList.add('validated');
-              validateBtn.textContent = `✓ Validated (${validationDetails.validated_quantity}/${validationDetails.required_quantity})`;
-              validateBtn.disabled = true;
-              productCard.classList.add('validated');
-            } else {
-              // Update button to show progress
-              const remaining = validationDetails.remaining_quantity;
-              validateBtn.textContent = `Validate (${validationDetails.validated_quantity}/${validationDetails.required_quantity}) - ${remaining} remaining`;
-              validateBtn.className = 'btn btn-warning validate-btn';
-              validateBtn.disabled = false;
-            }
-          }
-          
-          // Update product card details to show validation progress
-          const detailsContainer = productCard.querySelector('.product-details');
-          if (detailsContainer) {
-            const item = currentPicklistItems.find(item => item.sku === sku && item.order_number === orderNumber);
-            if (item) {
-              const existingProgress = detailsContainer.querySelector('.validation-progress');
-              if (existingProgress) {
-                existingProgress.remove();
-              }
-              
-              const progressElement = document.createElement('p');
-              progressElement.className = 'validation-progress';
-              progressElement.innerHTML = `<strong>Validation Progress:</strong> 
-                <span style="color: ${validationDetails.is_fully_validated ? '#28a745' : '#6c757d'}; font-weight: ${validationDetails.is_fully_validated ? 'bold' : 'normal'};">
-                  ${validationDetails.validated_quantity}/${validationDetails.required_quantity} ${validationDetails.is_fully_validated ? '✅' : ''}
-                </span>`;
-              detailsContainer.appendChild(progressElement);
-            }
-          }
-        }
-        
-        // Update product search validation button if visible
-        const productValidateBtn = document.getElementById('validate-product-btn');
-        if (productValidateBtn && currentProduct && currentProduct.sku === sku) {
-          if (validationDetails.is_fully_validated) {
-            productValidateBtn.classList.add('validated');
-            productValidateBtn.textContent = `✓ Validated (${validationDetails.validated_quantity}/${validationDetails.required_quantity})`;
-            productValidateBtn.disabled = true;
-          } else {
-            const remaining = validationDetails.remaining_quantity;
-            productValidateBtn.textContent = `Validate (${validationDetails.validated_quantity}/${validationDetails.required_quantity}) - ${remaining} remaining`;
-            productValidateBtn.className = 'btn btn-warning';
-            productValidateBtn.disabled = false;
-          }
-        }
       }
 
       function updateProductSearchPrintButton(orderNumber) {
@@ -2330,38 +2264,32 @@
       function updatePicklistValidationStatus(validationStatus) {
         const statusElement = document.getElementById('picklist-validation-status');
         if (statusElement) {
-          const { validated_count, total_skus, all_validated, validated_pieces, total_pieces, completion_percentage } = validationStatus;
-          
+          const { validated_count, total_skus, all_validated } = validationStatus;
           statusElement.innerHTML = `
-            <strong>Validation Status:</strong><br>
-            SKUs: ${validated_count}/${total_skus} validated<br>
-            Pieces: ${validated_pieces}/${total_pieces} validated (${completion_percentage}%)
-            ${all_validated ? '<br>✅ All Items Fully Validated!' : ''}
+            <strong>Validation Status:</strong> ${validated_count}/${total_skus} SKUs validated
+            ${all_validated ? ' ✓ All Validated!' : ''}
           `;
           
           if (all_validated) {
             statusElement.style.color = '#28a745';
             statusElement.style.fontWeight = 'bold';
-          } else {
-            statusElement.style.color = '#856404';
           }
         }
       }
-      
-      // Enhanced updateOrderValidationStatus to show piece-level progress
+
       function updateOrderValidationStatus(orderValidationStatus) {
         const statusElement = document.getElementById('validation-status');
         const countElement = document.getElementById('validation-count');
         const printBtn = document.getElementById('print-order-btn');
         
         if (statusElement && countElement) {
-          const { validated_count, total_skus, all_validated, validated_pieces, total_pieces, completion_percentage } = orderValidationStatus;
+          const { validated_count, total_skus, all_validated } = orderValidationStatus;
           
-          countElement.textContent = `${validated_count}/${total_skus} SKUs (${validated_pieces}/${total_pieces} pieces)`;
+          countElement.textContent = `${validated_count}/${total_skus}`;
           
           if (all_validated && total_skus > 0) {
             statusElement.className = 'validation-status validation-complete';
-            statusElement.innerHTML = `<span id="validation-count">${validated_count}/${total_skus} SKUs (${validated_pieces}/${total_pieces} pieces)</span> Validated ✅`;
+            statusElement.innerHTML = `<span id="validation-count">${validated_count}/${total_skus}</span> SKUs Validated ✓`;
             
             // Enable print button
             if (printBtn) {
@@ -2369,7 +2297,7 @@
             }
           } else {
             statusElement.className = 'validation-status validation-pending';
-            statusElement.innerHTML = `<span id="validation-count">${validated_count}/${total_skus} SKUs (${validated_pieces}/${total_pieces} pieces)</span> Validated (${completion_percentage}%)`;
+            statusElement.innerHTML = `<span id="validation-count">${validated_count}/${total_skus}</span> SKUs Validated`;
             
             // Keep print button disabled
             if (printBtn) {
@@ -2411,36 +2339,22 @@
                 order_number: item.order_number,
                 skus: [],
                 quantities: {},
-                validated_skus: [],
-                total_pieces: 0,
-                validated_pieces: 0,
-                validation_progress: {}
+                validated_skus: []
               };
             }
             if (!pendingOrders[orderKey].skus.includes(item.sku)) {
               pendingOrders[orderKey].skus.push(item.sku);
               pendingOrders[orderKey].quantities[item.sku] = item.quantity;
-              pendingOrders[orderKey].total_pieces += item.quantity;
               
-              // Track validated SKUs and pieces
+              // Track validated SKUs
               if (item.validated) {
                 pendingOrders[orderKey].validated_skus.push(item.sku);
-                pendingOrders[orderKey].validated_pieces += (item.validated_quantity || item.quantity);
-              } else {
-                pendingOrders[orderKey].validated_pieces += (item.validated_quantity || 0);
               }
-              
-              // Store validation progress for display
-              pendingOrders[orderKey].validation_progress[item.sku] = {
-                validated_quantity: item.validated_quantity || 0,
-                required_quantity: item.required_quantity || item.quantity,
-                progress: `${item.validated_quantity || 0}/${item.required_quantity || item.quantity}`
-              };
             }
           }
         });
       
-        // Populate pending orders table with enhanced validation counts
+        // Populate pending orders table with validation counts
         Object.values(pendingOrders).forEach(order => {
           const row = document.createElement('tr');
           row.setAttribute('data-order', order.order_number);
@@ -2448,8 +2362,8 @@
           const totalItems = Object.values(order.quantities).reduce((sum, qty) => sum + qty, 0);
           const totalSkus = order.skus.length;
           const validatedSkus = order.validated_skus.length;
-          const validationStatus = `${validatedSkus}/${totalSkus} SKUs (${order.validated_pieces}/${order.total_pieces} pieces)`;
-          const allValidated = validatedSkus === totalSkus && order.validated_pieces === order.total_pieces;
+          const validationStatus = `${validatedSkus}/${totalSkus} validated`;
+          const allValidated = validatedSkus === totalSkus;
       
           row.innerHTML = `
             <td>
@@ -2458,7 +2372,7 @@
               </a>
               <br>
               <small class="validation-count-display" style="color: ${allValidated ? '#28a745' : '#6c757d'}; font-weight: ${allValidated ? 'bold' : 'normal'};">
-                ${validationStatus} ${allValidated ? '✅' : ''}
+                ${validationStatus} ${allValidated ? '✓' : ''}
               </small>
             </td>
             <td>${totalItems} items (${totalSkus} SKUs)</td>
@@ -2467,7 +2381,7 @@
           pendingTableBody.appendChild(row);
         });
       
-        // Add event listeners to order ID links (existing code remains the same)
+        // Add event listeners to order ID links
         pendingTableBody.querySelectorAll('.order-id-link').forEach(link => {
           link.addEventListener('click', function (e) {
             e.preventDefault();
@@ -2525,29 +2439,6 @@
         }
       }
 
-      function debugCurrentPicklist() {
-        console.log('=== CURRENT PICKLIST DEBUG ===');
-        console.log('Current Picklist ID:', currentPicklistId);
-        console.log('Current Picklist Items Count:', currentPicklistItems ? currentPicklistItems.length : 0);
-        
-        if (currentPicklistItems && currentPicklistItems.length > 0) {
-          console.log('All SKUs in picklist:');
-          const allSkus = [...new Set(currentPicklistItems.map(item => item.sku))];
-          allSkus.forEach(sku => console.log(`- ${sku}`));
-          
-          console.log('Sample picklist item:', currentPicklistItems[0]);
-        }
-        console.log('===============================');
-      }
-      
-      // 3. Call this debug function after searching for picklist
-      // Add this to your searchPicklist success callback:
-      function debugPicklistLoad() {
-        setTimeout(() => {
-          debugCurrentPicklist();
-        }, 1000);
-      }
-
       // Placeholder functions for existing functionality
       function searchProduct() {
         const productId = productSearchInput.value.trim();
@@ -2577,41 +2468,16 @@
             productLoading.style.display = 'none';
             currentProduct = data.product;
       
-            // Enhanced debug logging
-            console.log('=== SEARCH RESULT WITH STATS ===');
-            console.log('Product ID searched:', productId);
-            console.log('Original SKU:', data.product.original_sku);
-            console.log('Matched SKU:', data.product.sku);
-            console.log('Match Info:', data.match_info);
-            console.log('Picklist Stats:', data.picklist_stats);
-            console.log('In Current Picklist:', data.in_current_picklist);
-            console.log('Validation Info:', data.validation_info);
-            console.log('================================');
-      
-            // Clear search bar
+            // CLEAR SEARCH BAR AFTER SUCCESSFUL SEARCH
             productSearchInput.value = '';
       
             // Update product details
             document.getElementById('product-name').textContent = data.product.generic_name || 'Product';
-            
-            // Enhanced SKU display with match info
-            const skuElement = document.getElementById('product-sku');
-            if (data.match_info && data.match_info.matched_sku !== data.product.original_sku) {
-              skuElement.innerHTML = `
-                <span style="color: #28a745; font-weight: bold;">${data.product.sku}</span>
-                <br><small style="color: #666;">Original: ${data.product.original_sku}</small>
-              `;
-            } else {
-              skuElement.textContent = data.product.sku;
-            }
-            
+            document.getElementById('product-sku').textContent = data.product.sku;
             document.getElementById('product-id').textContent = data.product.product_id;
             document.getElementById('product-location').textContent = data.product.location;
             document.getElementById('product-box').textContent = data.product.box_no || 'N/A';
             document.getElementById('product-mrp').textContent = data.product.mrp.toFixed(2);
-      
-            // NEW: Add picklist statistics display
-            updatePicklistStatsDisplay(data.picklist_stats);
       
             if (data.product.image_url) {
               document.getElementById('product-image').src = data.product.image_url;
@@ -2619,43 +2485,13 @@
               document.getElementById('product-image').src = "/static/images/placeholder.png";
             }
       
-            // Handle validation logic
+            // Handle sequential validation logic
             const productActions = document.querySelector('.product-actions');
             if (productActions) {
               productActions.innerHTML = ''; // Clear existing buttons
               
               if (data.in_current_picklist && data.validation_info) {
-                console.log('✅ SHOWING VALIDATION - Product found with validation info');
-                
                 const validationInfo = data.validation_info;
-                
-                // Show match information if it was a smart match
-                if (data.match_info && data.match_info.match_type !== 'exact') {
-                  const matchInfoDiv = document.createElement('div');
-                  matchInfoDiv.className = 'match-info';
-                  matchInfoDiv.style.marginBottom = '10px';
-                  matchInfoDiv.style.padding = '8px';
-                  matchInfoDiv.style.backgroundColor = '#e7f3ff';
-                  matchInfoDiv.style.border = '1px solid #bee5eb';
-                  matchInfoDiv.style.borderRadius = '4px';
-                  matchInfoDiv.style.fontSize = '13px';
-                  
-                  let matchTypeText = data.match_info.match_type === 'normalized' ? 
-                    'Smart Match (Normalized)' : 'Smart Match';
-                  
-                  matchInfoDiv.innerHTML = `
-                    <strong>🎯 ${matchTypeText}</strong><br>
-                    <small>Found "${data.match_info.matched_sku}" for "${data.match_info.original_sku}"</small>
-                  `;
-                  
-                  productActions.appendChild(matchInfoDiv);
-                }
-                
-                // NEW: Show picklist statistics
-                if (data.picklist_stats) {
-                  const statsDiv = createPicklistStatsDiv(data.picklist_stats);
-                  productActions.appendChild(statsDiv);
-                }
                 
                 // Create progress message
                 const progressDiv = document.createElement('div');
@@ -2667,30 +2503,26 @@
                 progressDiv.style.borderRadius = '4px';
                 progressDiv.style.fontSize = '14px';
                 
-                if (validationInfo.validated) {
-                  progressDiv.innerHTML = `<span style="color: #28a745;">✅ ${validationInfo.progress_message}</span>`;
-                } else {
+                if (validationInfo.total_orders_with_sku > 1) {
                   progressDiv.innerHTML = `
-                    <strong>Progress:</strong> ${validationInfo.validated_quantity || 0}/${validationInfo.required_quantity || validationInfo.quantity} pieces<br>
+                    <strong>Progress:</strong> ${validationInfo.validated_orders_count}/${validationInfo.total_orders_with_sku} orders validated<br>
                     <span style="color: #666;">${validationInfo.progress_message}</span>
                   `;
+                } else {
+                  progressDiv.innerHTML = `<span style="color: #666;">${validationInfo.progress_message}</span>`;
                 }
                 
                 productActions.appendChild(progressDiv);
                 
                 // Create validation button
                 const validateBtn = document.createElement('button');
-                validateBtn.id = 'validate-product-btn';
-                
                 if (validationInfo.validated) {
                   validateBtn.className = 'btn validated';
                   validateBtn.textContent = '✅ All Orders Validated';
                   validateBtn.disabled = true;
                 } else {
                   validateBtn.className = 'btn btn-warning';
-                  const progress = `${validationInfo.validated_quantity || 0}/${validationInfo.required_quantity || validationInfo.quantity}`;
-                  const remaining = (validationInfo.required_quantity || validationInfo.quantity) - (validationInfo.validated_quantity || 0);
-                  validateBtn.textContent = `Validate (${progress}) - ${remaining} remaining`;
+                  validateBtn.textContent = `Validate Order ${validationInfo.order_number}`;
                   validateBtn.disabled = false;
                   validateBtn.onclick = function() {
                     validateSKUSequential(data.product.sku, validationInfo.order_number, data.product.product_id);
@@ -2698,37 +2530,34 @@
                 }
                 
                 productActions.appendChild(validateBtn);
+                
+                // Create print button (only show if all orders are validated)
+                if (validationInfo.validated && validationInfo.remaining_orders === 0) {
+                  // Show print options for all validated orders
+                  createPrintOptionsForValidatedSKU(productActions, data.product.sku);
+                }
+                
                 productActions.style.display = 'block';
                 
-                // Enhanced success message with stats
-                let successMessage = 'SKU found and ready for validation.';
-                if (data.picklist_stats) {
-                  successMessage = `SKU found in ${data.picklist_stats.total_orders} orders (${data.picklist_stats.total_quantity} total pieces). Ready for validation.`;
+                // Show appropriate message
+                if (validationInfo.validated) {
+                  showMessage(`All orders with this SKU are validated! ✅`, 'success');
+                } else {
+                  showMessage(`Found SKU in ${validationInfo.total_orders_with_sku} order(s). Currently validating: ${validationInfo.order_number}`, 'info');
                 }
-                showMessage(successMessage, 'success');
                 
               } else if (data.in_current_picklist) {
-                console.log('⚠️ IN PICKLIST BUT NO VALIDATION INFO');
-                
-                // Still show stats even if no validation info
-                if (data.picklist_stats) {
-                  const statsDiv = createPicklistStatsDiv(data.picklist_stats);
-                  productActions.appendChild(statsDiv);
-                  productActions.style.display = 'block';
-                }
-                
-                showMessage('SKU found in current picklist but validation data missing.', 'warning');
-                
+                showMessage('SKU found in current picklist.', 'success');
+                productActions.style.display = 'none';
               } else {
-                console.log('❌ NOT IN PICKLIST');
-                showMessage('This SKU is not in the current picklist.', 'warning');
+                showMessage('Warning: This SKU is not in the current picklist!', 'warning');
                 productActions.style.display = 'none';
               }
             }
       
             productInfo.style.display = 'block';
             
-            // Focus back to search input
+            // Focus back to search input for next scan
             setTimeout(() => {
               productSearchInput.focus();
             }, 100);
@@ -2736,129 +2565,7 @@
           .catch(error => {
             productLoading.style.display = 'none';
             showMessage(error.message, 'error');
-            console.error('Product search error:', error);
           });
-      }
-
-      function updatePicklistStatsDisplay(stats) {
-        // Remove existing stats display if any
-        const existingStats = document.getElementById('product-picklist-stats');
-        if (existingStats) {
-          existingStats.remove();
-        }
-        
-        if (!stats) {
-          return;
-        }
-        
-        // Add stats to product details section
-        const productDetails = document.querySelector('.product-details');
-        if (productDetails) {
-          const statsElement = document.createElement('div');
-          statsElement.id = 'product-picklist-stats';
-          statsElement.style.marginTop = '10px';
-          statsElement.style.padding = '8px';
-          statsElement.style.backgroundColor = '#e8f4f8';
-          statsElement.style.border = '1px solid #bee5eb';
-          statsElement.style.borderRadius = '4px';
-          statsElement.style.fontSize = '13px';
-          
-          statsElement.innerHTML = `
-            <strong style="color: #0c5460;">📦 In this Picklist:</strong><br>
-            <span style="color: #495057;">
-              ${stats.total_orders} order${stats.total_orders > 1 ? 's' : ''} • 
-              ${stats.total_quantity} piece${stats.total_quantity > 1 ? 's' : ''} total
-            </span>
-          `;
-          
-          productDetails.appendChild(statsElement);
-        }
-      }
-
-      function createPicklistStatsDiv(stats) {
-        const statsDiv = document.createElement('div');
-        statsDiv.className = 'picklist-stats';
-        statsDiv.style.marginBottom = '15px';
-        statsDiv.style.padding = '12px';
-        statsDiv.style.backgroundColor = '#f8f9fa';
-        statsDiv.style.border = '1px solid #dee2e6';
-        statsDiv.style.borderRadius = '6px';
-        statsDiv.style.fontSize = '14px';
-        
-        // Create stats summary
-        const statsHeader = document.createElement('div');
-        statsHeader.style.fontWeight = 'bold';
-        statsHeader.style.marginBottom = '8px';
-        statsHeader.style.color = '#495057';
-        statsHeader.innerHTML = `📊 Picklist Statistics`;
-        
-        const statsContent = document.createElement('div');
-        statsContent.style.display = 'grid';
-        statsContent.style.gridTemplateColumns = '1fr 1fr';
-        statsContent.style.gap = '8px';
-        statsContent.style.marginBottom = '8px';
-        
-        statsContent.innerHTML = `
-          <div>
-            <strong style="color: #007bff;">${stats.total_orders}</strong>
-            <br><small style="color: #6c757d;">Orders</small>
-          </div>
-          <div>
-            <strong style="color: #28a745;">${stats.total_quantity}</strong>
-            <br><small style="color: #6c757d;">Total Pieces</small>
-          </div>
-        `;
-        
-        // Add order details if more than one order
-        if (stats.total_orders > 1) {
-          const orderDetailsDiv = document.createElement('div');
-          orderDetailsDiv.style.marginTop = '8px';
-          orderDetailsDiv.style.paddingTop = '8px';
-          orderDetailsDiv.style.borderTop = '1px solid #dee2e6';
-          orderDetailsDiv.style.fontSize = '12px';
-          
-          const orderDetailsHeader = document.createElement('div');
-          orderDetailsHeader.style.fontWeight = 'bold';
-          orderDetailsHeader.style.marginBottom = '4px';
-          orderDetailsHeader.style.color = '#495057';
-          orderDetailsHeader.textContent = 'Order Breakdown:';
-          
-          const ordersList = document.createElement('div');
-          ordersList.style.maxHeight = '100px';
-          ordersList.style.overflowY = 'auto';
-          
-          stats.order_details.forEach(order => {
-            const orderItem = document.createElement('div');
-            orderItem.style.display = 'flex';
-            orderItem.style.justifyContent = 'space-between';
-            orderItem.style.padding = '2px 0';
-            orderItem.innerHTML = `
-              <span style="color: #495057;">${order.order_number}</span>
-              <span style="color: #28a745; font-weight: 500;">${order.quantity} pcs</span>
-            `;
-            ordersList.appendChild(orderItem);
-          });
-          
-          orderDetailsDiv.appendChild(orderDetailsHeader);
-          orderDetailsDiv.appendChild(ordersList);
-          
-          // Add average if useful
-          if (stats.avg_quantity_per_order !== stats.total_quantity) {
-            const avgDiv = document.createElement('div');
-            avgDiv.style.marginTop = '4px';
-            avgDiv.style.fontSize = '11px';
-            avgDiv.style.color = '#6c757d';
-            avgDiv.textContent = `Avg: ${stats.avg_quantity_per_order} pieces per order`;
-            orderDetailsDiv.appendChild(avgDiv);
-          }
-          
-          statsContent.appendChild(orderDetailsDiv);
-        }
-        
-        statsDiv.appendChild(statsHeader);
-        statsDiv.appendChild(statsContent);
-        
-        return statsDiv;
       }
 
       function closeProductSearchResults() {
@@ -2979,11 +2686,9 @@
           return;
         }
       
-        console.log(`🔄 Validating SKU: ${sku} for order: ${orderNumber}`);
-      
         const requestBody = {
           picklist_id: currentPicklistId,
-          sku: sku, // This will be the matched SKU
+          sku: sku,
           order_number: orderNumber
         };
       
@@ -3012,324 +2717,51 @@
             return response.json();
           })
           .then(data => {
-            console.log('✅ Validation response:', data);
+            showMessage(`✅ Order ${orderNumber} validated successfully!`, 'success');
             
-            // Enhanced message showing quantity progress
-            showMessage(data.message, 'success');
-            
-            // Update local data with matched SKU
-            updateLocalDataAfterValidation(sku, orderNumber, data.validation_details);
-            
-            // Update all UI elements
-            updateAllUIElements(sku, orderNumber, data);
-            
-            // Check if this SKU is fully validated
-            if (data.validation_details.is_fully_validated) {
-              setTimeout(() => {
-                closeProductSearchResults();
-                showMessage('SKU fully validated! Ready for next product scan.', 'info');
-              }, 1500);
-            } else {
-              // Show progress and keep interface open
-              setTimeout(() => {
-                const productSearchInput = document.getElementById('product-search');
-                if (productSearchInput) {
-                  productSearchInput.focus();
+            // Update local data to reflect validation
+            if (currentPicklistItems) {
+              currentPicklistItems.forEach(item => {
+                if (item.sku === sku && item.order_number === orderNumber) {
+                  item.validated = true;
                 }
-              }, 500);
+              });
             }
+            
+            // Update validation counts in the table
+            updateOrderValidationCounts();
+            
+            // Update picklist validation status
+            if (data.validation_status) {
+              updatePicklistValidationStatus(data.validation_status);
+            }
+            
+            // CLOSE SEARCH RESULTS AFTER VALIDATION
+            setTimeout(() => {
+              closeProductSearchResults();
+              showMessage('Validation complete! Ready for next product scan.', 'info');
+            }); // Show success message for 1.5 seconds then close
             
           })
           .catch(error => {
-            console.error('❌ Validation error:', error);
             showMessage(error.message, 'error');
           });
       }
-
-      function updateLocalDataAfterValidation(sku, orderNumber, validationDetails) {
-        // Update currentPicklistItems data
-        if (currentPicklistItems) {
-          currentPicklistItems.forEach(item => {
-            if (item.sku === sku && item.order_number === orderNumber) {
-              item.validated = validationDetails.is_fully_validated;
-              item.validated_quantity = validationDetails.validated_quantity;
-              item.required_quantity = validationDetails.required_quantity;
-            }
-          });
-        }
-      }
-
-      function updateAllUIElements(sku, orderNumber, data) {
-        const validationDetails = data.validation_details;
-        
-        // 1. Update validation button progress
-        updateValidationButtonProgress(sku, orderNumber, 
-          `${validationDetails.validated_quantity}/${validationDetails.required_quantity}`, 
-          validationDetails.remaining_quantity
-        );
-        
-        // 2. Update product card if in order view
-        updateProductCardValidation(sku, validationDetails);
-        
-        // 3. Update product search area
-        updateProductSearchValidation(sku, validationDetails);
-        
-        // 4. Update progress message in validation info
-        updateValidationProgressMessage(sku, orderNumber, validationDetails);
-        
-        // 5. Update picklist validation status immediately
-        if (data.validation_status) {
-          updatePicklistValidationStatusImmediate(data.validation_status);
-        }
-        
-        // 6. Update order validation status if in order view
-        if (data.order_validation_status && currentOrderNumber === orderNumber) {
-          updateOrderValidationStatusImmediate(data.order_validation_status);
-        }
-        
-        // 7. Update validation counts in tables
-        updateOrderValidationCountsImmediate();
-      }
-
-      function updatePicklistValidationStatusImmediate(validationStatus) {
-        const statusElement = document.getElementById('picklist-validation-status');
-        if (statusElement) {
-          const { validated_count, total_skus, all_validated, validated_pieces, total_pieces, completion_percentage } = validationStatus;
-          
-          statusElement.innerHTML = `
-            <strong>Validation Status:</strong><br>
-            SKUs: ${validated_count}/${total_skus} validated<br>
-            Pieces: ${validated_pieces || 0}/${total_pieces || 0} validated (${completion_percentage || 0}%)
-            ${all_validated ? '<br>✅ All Items Fully Validated!' : ''}
-          `;
-          
-          statusElement.style.color = all_validated ? '#155724' : '#856404';
-          statusElement.style.fontWeight = all_validated ? 'bold' : 'normal';
-          statusElement.style.backgroundColor = all_validated ? '#d4edda' : '#fff3cd';
-          statusElement.style.borderColor = all_validated ? '#c3e6cb' : '#ffeeba';
-        }
-      }
-      
-      function updateOrderValidationStatusImmediate(orderValidationStatus) {
-        const statusElement = document.getElementById('validation-status');
-        const countElement = document.getElementById('validation-count');
-        const printBtn = document.getElementById('print-order-btn');
-        
-        if (statusElement && countElement) {
-          const { validated_count, total_skus, all_validated, validated_pieces, total_pieces, completion_percentage } = orderValidationStatus;
-          
-          countElement.textContent = `${validated_count}/${total_skus} SKUs (${validated_pieces}/${total_pieces} pieces)`;
-          
-          if (all_validated && total_skus > 0) {
-            statusElement.className = 'validation-status validation-complete';
-            statusElement.innerHTML = `<span id="validation-count">${validated_count}/${total_skus} SKUs (${validated_pieces}/${total_pieces} pieces)</span> Validated ✅`;
-            
-            if (printBtn) {
-              printBtn.disabled = false;
-            }
-          } else {
-            statusElement.className = 'validation-status validation-pending';
-            statusElement.innerHTML = `<span id="validation-count">${validated_count}/${total_skus} SKUs (${validated_pieces}/${total_pieces} pieces)</span> Validated (${completion_percentage}%)`;
-            
-            if (printBtn) {
-              printBtn.disabled = true;
-            }
-          }
-        }
-      }
-      
-      function updateOrderValidationCountsImmediate() {
-        if (!currentPicklistItems) return;
-        
-        // Group items by order to calculate validation counts
-        const orderValidationCounts = {};
-        
-        currentPicklistItems.forEach(item => {
-          if (!item.picked && item.order_status !== 'Dispatch') {
-            const orderKey = item.order_number;
-            
-            if (!orderValidationCounts[orderKey]) {
-              orderValidationCounts[orderKey] = {
-                total_skus: 0,
-                validated_skus: 0,
-                total_pieces: 0,
-                validated_pieces: 0,
-                skus: new Set()
-              };
-            }
-            
-            // Count unique SKUs and pieces
-            if (!orderValidationCounts[orderKey].skus.has(item.sku)) {
-              orderValidationCounts[orderKey].skus.add(item.sku);
-              orderValidationCounts[orderKey].total_skus++;
-              orderValidationCounts[orderKey].total_pieces += (item.required_quantity || item.quantity);
-              
-              if (item.validated) {
-                orderValidationCounts[orderKey].validated_skus++;
-              }
-              orderValidationCounts[orderKey].validated_pieces += (item.validated_quantity || 0);
-            }
-          }
-        });
-        
-        // Update the display for each order row immediately
-        Object.keys(orderValidationCounts).forEach(orderNumber => {
-          const orderRow = document.querySelector(`tr[data-order="${orderNumber}"]`);
-          if (orderRow) {
-            const validationDisplay = orderRow.querySelector('.validation-count-display');
-            if (validationDisplay) {
-              const counts = orderValidationCounts[orderNumber];
-              const allValidated = counts.validated_skus === counts.total_skus && counts.validated_pieces === counts.total_pieces;
-              const validationStatus = `${counts.validated_skus}/${counts.total_skus} SKUs (${counts.validated_pieces}/${counts.total_pieces} pieces)`;
-              
-              validationDisplay.innerHTML = `${validationStatus} ${allValidated ? '✅' : ''}`;
-              validationDisplay.style.color = allValidated ? '#28a745' : '#6c757d';
-              validationDisplay.style.fontWeight = allValidated ? 'bold' : 'normal';
-            }
-          }
-        });
-      }
-
-      function updateProductCardValidation(sku, validationDetails) {
-        const productCard = document.getElementById(`product-card-${sku}`);
-        if (productCard) {
-          // Update or add validation progress in product details
-          const detailsContainer = productCard.querySelector('.product-details');
-          if (detailsContainer) {
-            let progressElement = detailsContainer.querySelector('.validation-progress');
-            
-            if (!progressElement) {
-              progressElement = document.createElement('p');
-              progressElement.className = 'validation-progress';
-              detailsContainer.appendChild(progressElement);
-            }
-            
-            const isFullyValidated = validationDetails.is_fully_validated;
-            progressElement.innerHTML = `<strong>Validation Progress:</strong> 
-              <span style="color: ${isFullyValidated ? '#28a745' : '#6c757d'}; font-weight: ${isFullyValidated ? 'bold' : 'normal'};">
-                ${validationDetails.validated_quantity}/${validationDetails.required_quantity} ${isFullyValidated ? '✅' : ''}
-              </span>`;
-          }
-        }
-      }
-      
-      // NEW FUNCTION: Update product search validation area
-      function updateProductSearchValidation(sku, validationDetails) {
-        if (currentProduct && currentProduct.sku === sku) {
-          // Update the validation info in product actions area
-          const productActions = document.querySelector('.product-actions');
-          if (productActions) {
-            const progressDiv = productActions.querySelector('.validation-progress');
-            if (progressDiv) {
-              const isFullyValidated = validationDetails.is_fully_validated;
-              const remaining = validationDetails.remaining_quantity;
-              
-              if (isFullyValidated) {
-                progressDiv.innerHTML = `<span style="color: #28a745;">✅ All ${validationDetails.required_quantity} pieces validated!</span>`;
-                progressDiv.style.backgroundColor = '#d4edda';
-                progressDiv.style.borderColor = '#c3e6cb';
-              } else {
-                progressDiv.innerHTML = `
-                  <strong>Progress:</strong> ${validationDetails.validated_quantity}/${validationDetails.required_quantity} pieces validated<br>
-                  <span style="color: #666;">${remaining} pieces remaining</span>
-                `;
-                progressDiv.style.backgroundColor = '#fff3cd';
-                progressDiv.style.borderColor = '#ffeeba';
-              }
-            }
-          }
-        }
-      }
-      
-      // NEW FUNCTION: Update validation progress message
-      function updateValidationProgressMessage(sku, orderNumber, validationDetails) {
-        // Find and update progress message in validation info
-        const validationInfo = document.querySelector('.validation-progress');
-        if (validationInfo && currentProduct && currentProduct.sku === sku) {
-          const remaining = validationDetails.remaining_quantity;
-          const isFullyValidated = validationDetails.is_fully_validated;
-          
-          if (isFullyValidated) {
-            validationInfo.innerHTML = `<span style="color: #28a745;">✅ All pieces validated for this order!</span>`;
-          } else {
-            validationInfo.innerHTML = `
-              <strong>Progress:</strong> ${validationDetails.validated_quantity}/${validationDetails.required_quantity} pieces<br>
-              <span style="color: #666;">Scan ${remaining} more pieces to complete validation</span>
-            `;
-          }
-        }
-      }
-
-      function updateValidationButtonProgress(sku, orderNumber, progress, remaining) {
-        // Update product search validation button if visible
-        const productValidateBtn = document.getElementById('validate-product-btn');
-        if (productValidateBtn && currentProduct && currentProduct.sku === sku) {
-          if (remaining === 0) {
-            productValidateBtn.classList.add('validated');
-            productValidateBtn.textContent = `✓ Validated (${progress})`;
-            productValidateBtn.disabled = true;
-          } else {
-            productValidateBtn.textContent = `Validate (${progress}) - ${remaining} remaining`;
-            productValidateBtn.className = 'btn btn-warning';
-            productValidateBtn.disabled = false;
-          }
-        }
-        
-        // Update product card validation button if in order view
-        const productCard = document.getElementById(`product-card-${sku}`);
-        if (productCard) {
-          const validateBtn = productCard.querySelector('.validate-btn');
-          if (validateBtn) {
-            if (remaining === 0) {
-              validateBtn.classList.add('validated');
-              validateBtn.textContent = `✓ Validated (${progress})`;
-              validateBtn.disabled = true;
-              productCard.classList.add('validated');
-            } else {
-              validateBtn.textContent = `Validate (${progress}) - ${remaining} remaining`;
-              validateBtn.className = 'btn btn-warning validate-btn';
-              validateBtn.disabled = false;
-            }
-          }
-        }
-      }
       
       function createSingleOrderButtons(container, orderInfo, sku) {
-        // Create validation button with quantity progress
+        // Create validation button
         const validateBtn = document.createElement('button');
+        validateBtn.className = orderInfo.validated ? 'btn validated' : 'btn btn-warning';
+        validateBtn.textContent = orderInfo.validated ? '✓ SKU Validated' : 'Validate SKU';
+        validateBtn.disabled = orderInfo.validated;
         
-        if (orderInfo.validated) {
-          validateBtn.className = 'btn validated';
-          validateBtn.textContent = `✓ SKU Validated (${orderInfo.validation_progress})`;
-          validateBtn.disabled = true;
-        } else {
-          validateBtn.className = 'btn btn-warning';
-          const remaining = orderInfo.required_quantity - orderInfo.validated_quantity;
-          validateBtn.textContent = `Validate (${orderInfo.validation_progress}) - ${remaining} remaining`;
-          validateBtn.disabled = false;
-          
+        if (!orderInfo.validated) {
           validateBtn.onclick = function() {
-            validateSKUSequential(sku, orderInfo.order_number, currentProduct.product_id);
+            validateSKU(sku, orderInfo.order_number);
           };
         }
         
         container.appendChild(validateBtn);
-        
-        // Add quantity progress info
-        const progressInfo = document.createElement('div');
-        progressInfo.style.fontSize = '12px';
-        progressInfo.style.color = '#666';
-        progressInfo.style.marginTop = '5px';
-        
-        if (orderInfo.validated) {
-          progressInfo.textContent = `All ${orderInfo.required_quantity} pieces validated ✅`;
-          progressInfo.style.color = '#28a745';
-        } else {
-          const remaining = orderInfo.required_quantity - orderInfo.validated_quantity;
-          progressInfo.textContent = `Progress: ${orderInfo.validated_quantity}/${orderInfo.required_quantity} pieces (${remaining} remaining)`;
-        }
-        
-        container.appendChild(progressInfo);
         
         // Create print button
         const printBtn = document.createElement('button');
@@ -3341,7 +2773,6 @@
         updateSinglePrintButton(printBtn, orderInfo.order_number);
         container.appendChild(printBtn);
       }
-      
       
       // Create buttons for multiple orders
       function createMultipleOrderButtons(container, ordersInfo, sku) {
@@ -3449,12 +2880,10 @@
           statusDiv.style.border = `1px solid ${validationStatus.all_validated ? '#c3e6cb' : '#ffeeba'}`;
           statusDiv.style.borderRadius = '4px';
           
-          const { validated_count, total_skus, all_validated, validated_pieces, total_pieces, completion_percentage } = validationStatus;
+          const { validated_count, total_skus, all_validated } = validationStatus;
           statusDiv.innerHTML = `
-            <strong>Validation Status:</strong><br>
-            SKUs: ${validated_count}/${total_skus} validated<br>
-            Pieces: ${validated_pieces || 0}/${total_pieces || 0} validated (${completion_percentage || 0}%)
-            ${all_validated ? '<br>✅ All Items Fully Validated!' : ''}
+            <strong>Validation Status:</strong> ${validated_count}/${total_skus} SKUs validated
+            ${all_validated ? ' ✅ All SKUs Validated!' : ''}
           `;
           
           if (all_validated) {
