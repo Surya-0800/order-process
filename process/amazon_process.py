@@ -9,7 +9,7 @@ from datetime import datetime
 import pandas as pd
 from ordercycle.models import OrderPDF
 from .db_utils import save_pdf_to_database
-
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 ##made
 def extract_table_with_camelot(pdf_path, page_number):
     """ Try extracting table using Camelot (works for structured PDFs). """
@@ -70,7 +70,8 @@ def extract_text_from_page(page,pdf_path, ocr=False):
     if not text.strip() and ocr:
         # Convert page to image and apply OCR
         pix = page.get_pixmap()
-        image = convert_from_path(pdf_path, first_page=page.number+1, last_page=page.number+1)[0]
+        poppler_path = r"C:\poppler\poppler-24.08.0\Library\bin"
+        image = convert_from_path(pdf_path, first_page=page.number+1, last_page=page.number+1,poppler_path=poppler_path)[0]
         custom_config = r'--oem 3 --psm 6'
         text = pytesseract.image_to_string(image, config = custom_config)
     return clean_text(text)

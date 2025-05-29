@@ -5,7 +5,7 @@ import fitz  # PyMuPDF
 from pdf2image import convert_from_path
 import pytesseract
 import re
-
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 def clean_text(text):
     """Clean text by removing extra spaces, newlines, etc."""
     text = re.sub(r'[^\x00-\x7F]+', ' ', text)  # Remove non-ASCII characters
@@ -21,7 +21,8 @@ def extract_text_from_first_page(pdf_path, ocr=False):
     
     if not text.strip():
         # Convert first page to image and apply OCR
-        image = convert_from_path(pdf_path, first_page=1, last_page=1)[0]
+        poppler_path = r"C:\poppler\poppler-24.08.0\Library\bin"
+        image = convert_from_path(pdf_path, first_page=1, last_page=1,poppler_path=poppler_path)[0]
         custom_config = r'--oem 3 --psm 6'
         text = pytesseract.image_to_string(image, config=custom_config)
     
