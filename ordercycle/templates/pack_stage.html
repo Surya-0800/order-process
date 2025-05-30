@@ -955,6 +955,356 @@
         margin-bottom: 5px;
       }
     }
+    .order-product-image,
+    .order-product-image-placeholder {
+      width: 60px; /* Reduced from 50px to fit more images */
+      height: 60px; /* Reduced from 50px to fit more images */
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      transition: all 0.2s ease;
+      flex-shrink: 0; /* Prevent images from shrinking */
+    }
+    
+    .order-product-image:hover,
+.order-product-image-placeholder:hover {
+  transform: scale(1.1);
+  border-color: #007bff;
+  box-shadow: 0 2px 8px rgba(0,123,255,0.3);
+  z-index: 10; /* Ensure hovered image appears on top */
+  position: relative;
+}
+
+
+.images-toggle-btn {
+  font-size: 10px;
+  padding: 2px 6px;
+  margin-left: 5px;
+  background: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  cursor: pointer;
+  color: #666;
+}
+
+.images-toggle-btn:hover {
+  background: #e9ecef;
+  color: #333;
+}
+    .clickable-image {
+      cursor: pointer !important;
+    }
+    
+    .clickable-image:active {
+      transform: scale(0.95);
+    }
+    
+    /* Inline order details styles */
+    .order-details-row {
+      background-color: #f8f9fa;
+      border-top: 2px solid #007bff;
+      animation: slideDown 0.3s ease;
+    }
+    
+    .order-details-cell {
+      padding: 0 !important;
+    }
+    
+    .inline-order-details {
+      padding: 20px;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border-radius: 8px;
+      margin: 10px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .inline-order-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #dee2e6;
+    }
+    
+    .inline-order-header h4 {
+      margin: 0;
+      color: #333;
+      font-size: 18px;
+    }
+    
+    .inline-order-stats {
+      display: flex;
+      gap: 15px;
+    }
+    
+    .stat-item {
+      background: white;
+      padding: 5px 10px;
+      border-radius: 15px;
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid #dee2e6;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .close-details-btn {
+      background: #dc3545;
+      color: white;
+      border: none;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    
+    .close-details-btn:hover {
+      background: #c82333;
+      transform: scale(1.1);
+    }
+    
+    /* Inline products grid */
+    .inline-products-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .inline-product-card {
+      background: white;
+      border: 2px solid #e9ecef;
+      border-radius: 10px;
+      padding: 15px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    
+    .inline-product-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .inline-product-card.highlighted {
+      border-color: #007bff;
+      background: linear-gradient(135deg, #fff 0%, #f0f8ff 100%);
+      animation: highlightPulse 2s ease-in-out;
+    }
+    
+    .inline-product-card.validated {
+      border-color: #28a745;
+      background: linear-gradient(135deg, #fff 0%, #f8fff9 100%);
+    }
+    
+    /* Larger product image in inline view */
+    .inline-product-image {
+      width: 80px; /* Much larger than table images */
+      height: 80px;
+      border-radius: 8px;
+      border: 2px solid #dee2e6;
+      background-color: #f8f9fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    
+    .loading-placeholder {
+      font-size: 12px;
+      color: #666;
+      text-align: center;
+    }
+    
+    .no-image-text {
+      font-size: 10px;
+      color: #666;
+      text-align: center;
+      line-height: 1.2;
+    }
+    
+    .inline-product-info {
+      flex: 1;
+    }
+    
+    .inline-product-info h5 {
+      margin: 0 0 8px 0;
+      color: #333;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    
+    .inline-product-info p {
+      margin: 4px 0;
+      font-size: 13px;
+      color: #666;
+    }
+    
+    .validation-badge {
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: bold;
+    }
+    
+    .validation-badge.pending {
+      background: #fff3cd;
+      color: #856404;
+    }
+    
+    .validation-badge.validated {
+      background: #d4edda;
+      color: #155724;
+    }
+    
+    /* Inline product actions */
+    .inline-product-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    
+    .validate-inline-btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 90px;
+    }
+    
+    .validate-inline-btn:not(.validated) {
+      background: #ffc107;
+      color: #333;
+    }
+    
+    .validate-inline-btn:not(.validated):hover {
+      background: #e0a800;
+      transform: translateY(-1px);
+    }
+    
+    .validate-inline-btn.validated {
+      background: #28a745;
+      color: white;
+      cursor: default;
+    }
+    
+    /* Inline order actions */
+    .inline-order-actions {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #dee2e6;
+    }
+    
+    .print-order-inline-btn {
+      padding: 10px 20px;
+      font-weight: bold;
+      border-radius: 6px;
+    }
+    
+    .print-order-inline-btn:disabled {
+      background-color: #6c757d !important;
+      cursor: not-allowed !important;
+    }
+    
+    /* Animations */
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    @keyframes slideUp {
+      from {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      to {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+    }
+    
+    @keyframes highlightPulse {
+      0%, 100% { box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+      50% { box-shadow: 0 4px 15px rgba(0,123,255,0.3); }
+    }
+    
+    /* Responsive design for inline details */
+    @media (max-width: 768px) {
+      .inline-products-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .inline-order-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+      }
+      
+      .inline-order-stats {
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      
+      .inline-product-card {
+        flex-direction: column;
+        text-align: center;
+        padding: 10px;
+      }
+      
+      .inline-product-image {
+        width: 60px;
+        height: 60px;
+      }
+    }
+    
+    /* Update container max-height for larger images */
+    .order-images-container {
+      max-height: none; /* Remove height restriction */
+      overflow: visible; /* Allow all images to be visible */
+      transition: max-height 0.3s ease;
+      margin-top: 5px;
+    }
+    .order-product-images {
+      display: flex;
+      flex-wrap: wrap; /* Allow images to wrap to new lines */
+      gap: 2px;
+      max-width: 100%;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    
+    @keyframes successGlow {
+      0% { box-shadow: 0 0 5px rgba(40, 167, 69, 0.3); }
+      50% { box-shadow: 0 0 20px rgba(40, 167, 69, 0.6); }
+      100% { box-shadow: 0 0 5px rgba(40, 167, 69, 0.3); }
+    }
+    
+    .validation-success-animation {
+      animation: successGlow 1s ease-in-out;
+    }
   </style>
 </head>
 
@@ -1413,15 +1763,21 @@
       function updateProductCard(sku, data, cardElement) {
         const imageContainer = cardElement.querySelector('.product-image-container');
         const detailsContainer = cardElement.querySelector('.product-details');
-
-        // Update image
+      
+        // Update image - handle both base64 and regular URLs
         if (data.image_url) {
-          imageContainer.innerHTML = `<img src="${data.image_url}" alt="${data.generic_name || sku}" onerror="this.parentNode.innerHTML='<div class=&quot;no-image-placeholder&quot;>No Image Available</div>'">`;
+          if (data.image_url.startsWith('data:image/')) {
+            // Base64 image - use directly
+            imageContainer.innerHTML = `<img src="${data.image_url}" alt="${data.generic_name || sku}" style="max-width: 100%; max-height: 100%; object-fit: contain;">`;
+          } else {
+            // Regular URL - use with error handling
+            imageContainer.innerHTML = `<img src="${data.image_url}" alt="${data.generic_name || sku}" onerror="this.parentNode.innerHTML='<div class=&quot;no-image-placeholder&quot;>No Image Available</div>'" style="max-width: 100%; max-height: 100%; object-fit: contain;">`;
+          }
         } else {
           imageContainer.innerHTML = '<div class="no-image-placeholder">No Image Available</div>';
         }
-
-        // Update details
+      
+        // Update details (keep the same)
         const item = currentPicklistItems.find(item => item.sku === sku);
         detailsContainer.innerHTML = `
           <h4>${data.generic_name || `Product (${sku})`}</h4>
@@ -1432,6 +1788,36 @@
           <p><strong>MRP:</strong> ${data.mrp ? '₹' + parseFloat(data.mrp).toFixed(2) : 'N/A'}</p>
           <p><strong>Quantity:</strong> ${item ? item.quantity : 'N/A'}</p>
         `;
+      }
+
+      function debugSKUImageAPI(sku) {
+        console.log(`🔍 Testing API for SKU: ${sku}`);
+        
+        fetch(`/api/products/image-by-sku/?sku=${sku}`)
+          .then(response => {
+            console.log(`Response status: ${response.status}`);
+            return response.json();
+          })
+          .then(data => {
+            console.log(`✅ API Response for ${sku}:`, data);
+            console.log(`Available fields:`, Object.keys(data));
+            
+            // Check for image fields
+            const imageFields = ['image_url', 'image', 'product_image', 'image_path'];
+            imageFields.forEach(field => {
+              if (data[field]) {
+                console.log(`📸 Found ${field}:`, data[field].substring(0, 100) + '...');
+                if (data[field].startsWith('data:image/')) {
+                  console.log(`✅ This is a base64 image`);
+                } else {
+                  console.log(`ℹ️ This is a regular URL`);
+                }
+              }
+            });
+          })
+          .catch(error => {
+            console.error(`❌ API Error for ${sku}:`, error);
+          });
       }
 
       // Function to update product card with fallback data
@@ -2097,7 +2483,17 @@
         itemsSection.style.display = 'none';
         orderProductsSection.style.display = 'none';
       
-        fetch(`/api/picklists/search/?picklist_id=${picklistId}`)
+        // Add cache-busting parameter to force fresh data
+        const timestamp = new Date().getTime();
+        const fetchUrl = `/api/picklists/search/?picklist_id=${picklistId}&_t=${timestamp}`;
+      
+        fetch(fetchUrl, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        })
           .then(response => {
             if (!response.ok) {
               return response.json().then(data => {
@@ -2109,13 +2505,14 @@
           .then(data => {
             picklistLoading.style.display = 'none';
       
-            const activeItems = data.picklist.items.filter(item => item.order_status !== 'Dispatch');
+            // Filter out both Dispatch and Complete orders for fresh data
+            const activeItems = data.picklist.items.filter(item => 
+              item.order_status !== 'Dispatch' && item.order_status !== 'Complete'
+            );
       
             currentPicklistId = data.picklist.picklist_id;
             currentPicklistPlatform = data.picklist.platform;
-            currentPicklistItems = activeItems;
-      
-            // Store validation status
+            currentPicklistItems = activeItems; // Always use fresh data from server
             currentValidationStatus = data.picklist.validation_status;
       
             document.getElementById('picklist-id').textContent = data.picklist.picklist_id;
@@ -2128,13 +2525,10 @@
             productSearchSection.style.display = 'block';
             itemsSection.style.display = 'block';
       
-            // Display validation status
             displayPicklistValidationStatus(data.picklist.validation_status);
-      
             populateItemsTable(activeItems);
       
-            showMessage('Picklist found! Click on Order IDs to view and validate SKUs.', 'success');
-      
+            showMessage('Picklist data refreshed! Click on Order IDs to view and validate SKUs.', 'success');
             productSearchInput.focus();
           })
           .catch(error => {
@@ -2143,8 +2537,32 @@
           });
       }
 
-      function validateSKU(sku, orderNumber) {
-        if (!currentPicklistId || !sku || !orderNumber) {
+      function addRefreshButton() {
+        const itemsHeader = document.querySelector('.items-header');
+        if (itemsHeader && !document.getElementById('manual-refresh-btn')) {
+          const refreshBtn = document.createElement('button');
+          refreshBtn.id = 'manual-refresh-btn';
+          refreshBtn.className = 'btn btn-info';
+          refreshBtn.innerHTML = '🔄 Refresh Data';
+          refreshBtn.style.marginLeft = '15px';
+          refreshBtn.onclick = function() {
+            if (currentPicklistId) {
+              picklistSearchInput.value = currentPicklistId;
+              searchPicklist();
+            }
+          };
+          
+          // Make header flex to accommodate button
+          itemsHeader.style.display = 'flex';
+          itemsHeader.style.justifyContent = 'space-between';
+          itemsHeader.style.alignItems = 'center';
+          
+          itemsHeader.appendChild(refreshBtn);
+        }
+      }
+
+      function validateSKU(sku, orderNumber, validationMode = 'order_specific') {
+        if (!currentPicklistId || !sku) {
           showMessage('Missing required information for validation', 'error');
           return;
         }
@@ -2152,8 +2570,12 @@
         const requestBody = {
           picklist_id: currentPicklistId,
           sku: sku,
-          order_number: orderNumber
+          validation_mode: validationMode
         };
+        
+        if (validationMode === 'order_specific' && orderNumber) {
+          requestBody.order_number = orderNumber;
+        }
       
         const csrfToken = getCSRFToken();
         if (!csrfToken) {
@@ -2180,47 +2602,220 @@
             return response.json();
           })
           .then(data => {
-            showMessage(data.message, 'success');
+            const details = data.validation_details;
+            let message = data.message;
             
-            // Update local data to reflect validation
-            if (currentPicklistItems) {
-              currentPicklistItems.forEach(item => {
-                if (item.sku === sku && item.order_number === orderNumber) {
-                  item.validated = true;
-                }
-              });
+            if (details && details.validated_count !== undefined && details.required_quantity !== undefined) {
+              const progress = `${details.validated_count}/${details.required_quantity}`;
+              message += ` (${progress})`;
             }
             
-            // Update the current validation status
+            showMessage(message, 'success');
+            
+            // AUTO-UPDATE: Update local data immediately
+            updateLocalValidationData(sku, orderNumber || details.current_order, data);
+            
+            // AUTO-UPDATE: Update all UI components
+            updateAllUIAfterValidation(sku, orderNumber || details.current_order, data);
+            
+            // AUTO-UPDATE: Update validation status displays
             currentValidationStatus = data.validation_status;
-            
-            // Update the UI based on where the validation was triggered
-            updateValidationUI(sku, orderNumber, data);
-            
-            // Update the picklist validation status display
             updatePicklistValidationStatus(data.validation_status);
             
-            // If validating from order view, update order-specific status
-            if (currentOrderNumber === orderNumber) {
+            // AUTO-UPDATE: If validating from order view, update order-specific status
+            if (currentOrderNumber && data.order_validation_status) {
               updateOrderValidationStatus(data.order_validation_status);
             }
             
-            // Auto-refresh validation counts in the table
-            updateOrderValidationCounts();
-            
-            // Check if product search print button should be enabled
-            updateProductSearchPrintButton(orderNumber);
+            // AUTO-UPDATE: Check if print buttons should be enabled
+            updatePrintButtonsAfterValidation(orderNumber || details.current_order, data);
           })
           .catch(error => {
             showMessage(error.message, 'error');
           });
       }
 
+      function updateOrderValidationStatus(orderValidationStatus) {
+        if (!currentOrderNumber) return;
+        
+        const totalSkus = document.querySelectorAll('.product-card').length;
+        const validatedCount = orderValidationStatus.validated_count;
+        
+        // Update validation status display
+        updateValidationStatus(validatedCount, totalSkus);
+        
+        // Enable/disable print button
+        const printBtn = document.getElementById('print-order-btn');
+        if (printBtn) {
+          if (orderValidationStatus.all_validated) {
+            printBtn.disabled = false;
+            printBtn.className = 'btn btn-success print-order-btn';
+            
+            // Add celebration animation
+            printBtn.style.animation = 'pulse 0.5s ease-in-out';
+            setTimeout(() => {
+              printBtn.style.animation = '';
+            }, 500);
+          } else {
+            printBtn.disabled = true;
+            printBtn.textContent = `Print (${validatedCount}/${totalSkus} validated)`;
+          }
+        }
+      }
+
+      function updateLocalValidationData(sku, orderNumber, validationData) {
+        if (!currentPicklistItems) return;
+        
+        const details = validationData.validation_details;
+        
+        // Update local picklist items data
+        currentPicklistItems.forEach(item => {
+          if (item.sku === sku) {
+            if (orderNumber && item.order_number === orderNumber) {
+              // Order-specific validation
+              if (details && details.is_complete) {
+                item.validated = true;
+              }
+            } else if (!orderNumber && details && details.current_order === item.order_number) {
+              // Product search validation - update current order being validated
+              if (details.is_complete) {
+                item.validated = true;
+              }
+            }
+          }
+        });
+      }
+
+      function updateAllUIAfterValidation(sku, orderNumber, data) {
+        const details = data.validation_details;
+        
+        // Update product card validation button if in order view
+        updateProductCardValidation(sku, details);
+        
+        // Update inline product validation elements
+        updateInlineProductValidation(sku, orderNumber, details);
+        
+        // Update product search validation button if visible
+        updateProductSearchValidation(sku, details);
+        
+        // Update order validation counts in the table
+        updateOrderValidationCounts();
+        
+        // Update any progress displays
+        updateValidationProgressDisplays(data);
+      }
+
+      function updateValidationProgressDisplays(data) {
+        // Update order validation counts in the pending orders table
+        if (data.validation_details && data.validation_details.current_order) {
+          const orderNumber = data.validation_details.current_order;
+          const orderRow = document.querySelector(`tr[data-order="${orderNumber}"]`);
+          
+          if (orderRow) {
+            const validationDisplay = orderRow.querySelector('.validation-count-display');
+            if (validationDisplay) {
+              // Get updated validation status for this order
+              fetch(`/api/validation-status/?picklist_id=${currentPicklistId}&order_number=${orderNumber}`)
+                .then(response => response.json())
+                .then(statusData => {
+                  if (statusData.status === 'success') {
+                    const validation = statusData.validation_status;
+                    const allValidated = validation.all_validated;
+                    const validationStatus = `${validation.validated_count}/${validation.total_skus} validated`;
+                    
+                    validationDisplay.innerHTML = `${validationStatus} ${allValidated ? '✓' : ''}`;
+                    validationDisplay.style.color = allValidated ? '#28a745' : '#6c757d';
+                    validationDisplay.style.fontWeight = allValidated ? 'bold' : 'normal';
+                    
+                    // Add animation for completed validation
+                    if (allValidated) {
+                      validationDisplay.style.backgroundColor = '#d4edda';
+                      validationDisplay.style.padding = '2px 5px';
+                      validationDisplay.style.borderRadius = '3px';
+                      setTimeout(() => {
+                        validationDisplay.style.backgroundColor = '';
+                      }, 3000);
+                    }
+                  }
+                });
+            }
+          }
+        }
+      }
+
+      function updateProductCardValidation(sku, details) {
+        const productCard = document.getElementById(`product-card-${sku}`);
+        if (productCard) {
+          const validateBtn = productCard.querySelector('.validate-btn');
+          if (validateBtn && details) {
+            if (details.is_complete) {
+              validateBtn.classList.add('validated');
+              validateBtn.textContent = '✓ Validated';
+              validateBtn.disabled = true;
+              productCard.classList.add('validated');
+              
+              // Add success animation
+              productCard.style.border = '2px solid #28a745';
+              setTimeout(() => {
+                productCard.style.border = '';
+              }, 2000);
+            } else {
+              // Show progress for incomplete validation
+              validateBtn.textContent = `Validate (${details.validated_count}/${details.required_quantity})`;
+            }
+          }
+        }
+      }
+      
+      function updateInlineProductValidation(sku, orderNumber, details) {
+        const inlineButton = document.getElementById(`btn-${orderNumber}-${sku}`);
+        const inlineBadge = document.getElementById(`badge-${orderNumber}-${sku}`);
+        const inlineCard = document.getElementById(`inline-product-${orderNumber}-${sku}`);
+        
+        if (inlineButton && inlineBadge && inlineCard && details) {
+          if (details.is_complete) {
+            inlineButton.className = 'validate-inline-btn validated';
+            inlineButton.textContent = '✅ Validated';
+            inlineButton.disabled = true;
+            
+            inlineBadge.className = 'validation-badge validated';
+            inlineBadge.textContent = '✅ Validated';
+            
+            inlineCard.classList.add('validated');
+            
+            // Add success animation
+            inlineCard.style.transform = 'scale(1.02)';
+            inlineCard.style.boxShadow = '0 4px 12px rgba(40, 167, 69, 0.3)';
+            setTimeout(() => {
+              inlineCard.style.transform = '';
+              inlineCard.style.boxShadow = '';
+            }, 1000);
+          } else {
+            // Show progress for incomplete validation
+            inlineButton.textContent = `Validate (${details.validated_count}/${details.required_quantity})`;
+            inlineBadge.textContent = `⏳ ${details.validated_count}/${details.required_quantity}`;
+          }
+        }
+      }
+      
+      function updateProductSearchValidation(sku, details) {
+        const productValidateBtn = document.getElementById('validate-product-btn');
+        if (productValidateBtn && currentProduct && currentProduct.sku === sku && details) {
+          if (details.is_complete && details.remaining_orders === 0) {
+            productValidateBtn.classList.add('validated');
+            productValidateBtn.textContent = '✅ All Validated';
+            productValidateBtn.disabled = true;
+          } else if (details.current_order) {
+            productValidateBtn.textContent = `Validate Order ${details.current_order} (${details.validated_count}/${details.required_quantity})`;
+          }
+        }
+      }
+
       function updateProductSearchPrintButton(orderNumber) {
         const printBtn = document.getElementById('print-product-order-btn');
         if (!printBtn || !currentProduct) return;
         
-        // Check if all SKUs in this order are validated
+        // Check if all SKUs in this order are validated using the new API
         fetch(`/api/validation-status/?picklist_id=${currentPicklistId}&order_number=${orderNumber}`)
           .then(response => response.json())
           .then(data => {
@@ -2277,32 +2872,67 @@
         }
       }
 
-      function updateOrderValidationStatus(orderValidationStatus) {
-        const statusElement = document.getElementById('validation-status');
-        const countElement = document.getElementById('validation-count');
-        const printBtn = document.getElementById('print-order-btn');
+      function updateValidationUI(sku, orderNumber, data) {
+        const details = data.validation_details;
         
-        if (statusElement && countElement) {
-          const { validated_count, total_skus, all_validated } = orderValidationStatus;
-          
-          countElement.textContent = `${validated_count}/${total_skus}`;
-          
-          if (all_validated && total_skus > 0) {
-            statusElement.className = 'validation-status validation-complete';
-            statusElement.innerHTML = `<span id="validation-count">${validated_count}/${total_skus}</span> SKUs Validated ✓`;
-            
-            // Enable print button
-            if (printBtn) {
-              printBtn.disabled = false;
+        // Update product card validation button if in order view
+        const productCard = document.getElementById(`product-card-${sku}`);
+        if (productCard) {
+          const validateBtn = productCard.querySelector('.validate-btn');
+          if (validateBtn) {
+            if (details && details.is_complete) {
+              validateBtn.classList.add('validated');
+              validateBtn.textContent = '✓ Validated';
+              validateBtn.disabled = true;
+              productCard.classList.add('validated');
+            } else if (details) {
+              // Show progress for incomplete validation
+              validateBtn.textContent = `Validate (${details.validated_count}/${details.required_quantity})`;
+              validateBtn.disabled = false;
             }
-          } else {
-            statusElement.className = 'validation-status validation-pending';
-            statusElement.innerHTML = `<span id="validation-count">${validated_count}/${total_skus}</span> SKUs Validated`;
+          }
+        }
+        
+        // Update inline product validation elements
+        const inlineButton = document.getElementById(`btn-${orderNumber}-${sku}`);
+        const inlineBadge = document.getElementById(`badge-${orderNumber}-${sku}`);
+        const inlineCard = document.getElementById(`inline-product-${orderNumber}-${sku}`);
+        
+        if (inlineButton && inlineBadge && inlineCard) {
+          if (details && details.is_complete) {
+            inlineButton.className = 'validate-inline-btn validated';
+            inlineButton.textContent = '✅ Validated';
+            inlineButton.disabled = true;
             
-            // Keep print button disabled
-            if (printBtn) {
-              printBtn.disabled = true;
+            inlineBadge.className = 'validation-badge validated';
+            inlineBadge.textContent = '✅ Validated';
+            
+            inlineCard.classList.add('validated');
+          } else if (details) {
+            // Show progress for incomplete validation
+            inlineButton.textContent = `Validate (${details.validated_count}/${details.required_quantity})`;
+            inlineButton.disabled = false;
+            inlineButton.style.background = '#ffc107';
+            
+            inlineBadge.textContent = `⏳ ${details.validated_count}/${details.required_quantity}`;
+          }
+        }
+        
+        // Update product search validation button if visible
+        const productValidateBtn = document.getElementById('validate-product-btn');
+        if (productValidateBtn && currentProduct && currentProduct.sku === sku) {
+          if (details && details.is_complete && details.remaining_orders === 0) {
+            productValidateBtn.classList.add('validated');
+            productValidateBtn.textContent = '✅ All Validated';
+            productValidateBtn.disabled = true;
+          } else if (details) {
+            // Show current progress
+            if (details.current_order) {
+              productValidateBtn.textContent = `Validate Order ${details.current_order} (${details.validated_count}/${details.required_quantity})`;
+            } else {
+              productValidateBtn.textContent = `Continue Validation`;
             }
+            productValidateBtn.disabled = false;
           }
         }
       }
@@ -2339,22 +2969,23 @@
                 order_number: item.order_number,
                 skus: [],
                 quantities: {},
-                validated_skus: []
+                validated_skus: [],
+                items: []
               };
             }
             if (!pendingOrders[orderKey].skus.includes(item.sku)) {
               pendingOrders[orderKey].skus.push(item.sku);
               pendingOrders[orderKey].quantities[item.sku] = item.quantity;
               
-              // Track validated SKUs
               if (item.validated) {
                 pendingOrders[orderKey].validated_skus.push(item.sku);
               }
             }
+            pendingOrders[orderKey].items.push(item);
           }
         });
       
-        // Populate pending orders table with validation counts
+        // Populate pending orders table
         Object.values(pendingOrders).forEach(order => {
           const row = document.createElement('tr');
           row.setAttribute('data-order', order.order_number);
@@ -2365,6 +2996,8 @@
           const validationStatus = `${validatedSkus}/${totalSkus} validated`;
           const allValidated = validatedSkus === totalSkus;
       
+          const productImagesHtml = createOrderProductImagesHtml(order.skus, order.order_number);
+      
           row.innerHTML = `
             <td>
               <a href="#" class="order-id-link" data-order="${order.order_number}" title="Click to view and validate SKUs">
@@ -2374,11 +3007,13 @@
               <small class="validation-count-display" style="color: ${allValidated ? '#28a745' : '#6c757d'}; font-weight: ${allValidated ? 'bold' : 'normal'};">
                 ${validationStatus} ${allValidated ? '✓' : ''}
               </small>
+              ${productImagesHtml}
             </td>
             <td>${totalItems} items (${totalSkus} SKUs)</td>
           `;
       
           pendingTableBody.appendChild(row);
+          loadOrderProductImages(order.order_number, order.skus);
         });
       
         // Add event listeners to order ID links
@@ -2386,24 +3021,19 @@
           link.addEventListener('click', function (e) {
             e.preventDefault();
             const orderNumber = this.getAttribute('data-order');
-            
-            // Mark as viewed
             this.classList.add('viewed');
-            
-            // Show order products
             showOrderProducts(orderNumber);
           });
         });
       
-        // Handle empty pending orders table
         if (Object.keys(pendingOrders).length === 0) {
           pendingTableBody.innerHTML = '<tr><td colspan="2" class="no-items-message">No pending orders</td></tr>';
         }
       
-        // Processed orders table (existing logic remains the same)
+        // Populate processed orders table
         let processedCount = 0;
         Object.values(processedOrders).forEach(order => {
-          if (order.order_status === 'Dispatch') return;
+          if (order.order_status === 'Dispatch' || order.order_status === 'Complete') return;
       
           processedCount++;
           const row = document.createElement('tr');
@@ -2437,8 +3067,798 @@
         if (processedCount === 0) {
           processedTableBody.innerHTML = '<tr><td colspan="3" class="no-items-message">No processed orders</td></tr>';
         }
+      
+        // Add refresh button after populating table
+        addRefreshButton();
       }
 
+      function createOrderProductImagesHtml(skus, orderNumber) {
+        // REMOVED: const maxVisibleImages = 100; // Show max 4 images initially
+        
+        return `
+          <div class="order-images-container" id="images-container-${orderNumber}">
+            <div class="order-product-images" id="product-images-${orderNumber}">
+              ${skus.map((sku, index) => 
+                `<div class="order-product-image-placeholder" data-sku="${sku}" data-order="${orderNumber}" data-index="${index}" title="Loading image for ${sku}">
+                  <span style="font-size: 8px;">...</span>
+                </div>`
+              ).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      function loadOrderProductImages(orderNumber, skus) {
+        const skusToLoad = skus; // Load all SKUs
+        
+        console.log(`Loading images for order ${orderNumber}, ALL SKUs:`, skusToLoad);
+        
+        skusToLoad.forEach((sku, index) => {
+          // Find the specific placeholder for this order and index
+          const placeholder = document.querySelector(`[data-sku="${sku}"][data-order="${orderNumber}"][data-index="${index}"]`);
+          if (!placeholder) {
+            console.warn(`Placeholder not found for SKU: ${sku}, Order: ${orderNumber}, Index: ${index}`);
+            return;
+          }
+          
+          // Add loading indicator
+          placeholder.innerHTML = '<span style="font-size: 8px; color: #007bff;">⏳</span>';
+          placeholder.title = `Loading ${sku}...`;
+          
+          // Check if we already have this SKU loaded in cache
+          if (window.skuImageCache && window.skuImageCache[sku]) {
+            console.log(`Using cached image for SKU ${sku} in order ${orderNumber}`);
+            // FIXED: Always apply to THIS specific placeholder, regardless of cache
+            applyImageToPlaceholder(placeholder, window.skuImageCache[sku], sku);
+            return;
+          }
+          
+          // Fetch product image - using your existing API endpoint
+          fetch(`/api/products/image-by-sku/?sku=${sku}`)
+            .then(response => {
+              console.log(`Response status for SKU ${sku}:`, response.status);
+              if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: Failed to fetch product data`);
+              }
+              return response.json();
+            })
+            .then(data => {
+              console.log(`API response for SKU ${sku}:`, data);
+              
+              // Cache the response for this SKU
+              if (!window.skuImageCache) {
+                window.skuImageCache = {};
+              }
+              window.skuImageCache[sku] = data;
+              
+              // FIXED: Apply image to ALL placeholders with this SKU, ensuring each gets its own handler
+              const allPlaceholdersWithSku = document.querySelectorAll(`[data-sku="${sku}"]`);
+              allPlaceholdersWithSku.forEach(skuPlaceholder => {
+                if (skuPlaceholder.innerHTML.includes('⏳') || skuPlaceholder.innerHTML.includes('...')) {
+                  applyImageToPlaceholder(skuPlaceholder, data, sku);
+                }
+              });
+            })
+            .catch(error => {
+              console.error(`Error loading image for SKU ${sku}:`, error);
+              
+              // FIXED: Apply fallback to ALL placeholders with this SKU
+              const allPlaceholdersWithSku = document.querySelectorAll(`[data-sku="${sku}"]`);
+              allPlaceholdersWithSku.forEach(skuPlaceholder => {
+                if (skuPlaceholder.innerHTML.includes('⏳') || skuPlaceholder.innerHTML.includes('...')) {
+                  showImageFallback(skuPlaceholder, sku, 'Unknown Product');
+                }
+              });
+            });
+        });
+      }
+
+      window.validateInlineProduct = validateInlineProduct;
+      window.printOrderFromInline = printOrderFromInline;
+      window.closeInlineDetails = closeInlineDetails;
+
+      function showImageFallback(placeholder, sku, productName) {
+        placeholder.innerHTML = '<span style="font-size: 8px; color: #666;">📦</span>';
+        placeholder.className = 'order-product-image-placeholder clickable-image';
+        placeholder.style.backgroundColor = '#f8f9fa';
+        placeholder.style.border = '1px solid #dee2e6';
+        placeholder.style.backgroundImage = 'none';
+        placeholder.style.cursor = 'pointer';
+        placeholder.title = `Click to view ${productName || sku} details`;
+        
+        // FIXED: Get the order number from THIS specific placeholder
+        const orderNumber = placeholder.getAttribute('data-order');
+        
+        // FIXED: Add click handler to THIS specific placeholder
+        placeholder.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleInlineProductDetails(orderNumber, sku, { generic_name: productName });
+        });
+      }
+      
+      // Make the validation function globally accessible
+      window.validateSKUFromPopup = validateSKUFromPopup;
+
+      function applyImageToPlaceholder(placeholder, data, sku) {
+        let imageUrl = null;
+        const possibleImageFields = ['image_url', 'image', 'product_image', 'image_path'];
+        
+        for (const field of possibleImageFields) {
+          if (data[field] && data[field].trim() !== '') {
+            imageUrl = data[field];
+            break;
+          }
+        }
+        
+        // FIXED: Get the order number from THIS placeholder's data attribute
+        const orderNumber = placeholder.getAttribute('data-order');
+        
+        // FIXED: Remove any existing event listeners by cloning the element
+        const newPlaceholder = placeholder.cloneNode(true);
+        placeholder.parentNode.replaceChild(newPlaceholder, placeholder);
+        
+        if (imageUrl) {
+          if (imageUrl.startsWith('data:image/')) {
+            newPlaceholder.innerHTML = '';
+            newPlaceholder.className = 'order-product-image clickable-image';
+            newPlaceholder.style.backgroundImage = `url(${imageUrl})`;
+            newPlaceholder.style.backgroundSize = 'cover';
+            newPlaceholder.style.backgroundPosition = 'center';
+            newPlaceholder.style.backgroundColor = '#fff';
+            newPlaceholder.style.cursor = 'pointer';
+            newPlaceholder.title = `Click to view ${data.generic_name || data.product_name || sku} details`;
+            
+            // Add click handler with the correct order number
+            newPlaceholder.addEventListener('click', function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log(`Clicked SKU ${sku} in order ${orderNumber}`);
+              toggleInlineProductDetails(orderNumber, sku, data);
+            });
+            
+          } else {
+            const img = new Image();
+            
+            img.onload = function() {
+              newPlaceholder.innerHTML = '';
+              newPlaceholder.className = 'order-product-image clickable-image';
+              newPlaceholder.style.backgroundImage = `url(${imageUrl})`;
+              newPlaceholder.style.backgroundSize = 'cover';
+              newPlaceholder.style.backgroundPosition = 'center';
+              newPlaceholder.style.backgroundColor = '#fff';
+              newPlaceholder.style.cursor = 'pointer';
+              newPlaceholder.title = `Click to view ${data.generic_name || data.product_name || sku} details`;
+              
+              // Add click handler with the correct order number
+              newPlaceholder.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log(`Clicked SKU ${sku} in order ${orderNumber}`);
+                toggleInlineProductDetails(orderNumber, sku, data);
+              });
+            };
+            
+            img.onerror = function() {
+              showImageFallback(newPlaceholder, sku, data.generic_name || data.product_name);
+            };
+            
+            if (imageUrl.startsWith('/')) {
+              img.src = window.location.origin + imageUrl;
+            } else if (!imageUrl.startsWith('http')) {
+              img.src = '/media/' + imageUrl;
+            } else {
+              img.src = imageUrl;
+            }
+          }
+        } else {
+          showImageFallback(newPlaceholder, sku, data.generic_name || data.product_name);
+        }
+      }
+
+      function showOrderDetailsFromImage(orderNumber, clickedSku, skuData) {
+        console.log(`Opening order details for ${orderNumber}, clicked SKU: ${clickedSku}`);
+        
+        // First, show the order products view
+        showOrderProducts(orderNumber);
+        
+        // Wait a moment for the order view to load, then highlight the clicked SKU
+        setTimeout(() => {
+          highlightClickedSku(clickedSku, skuData);
+        }, 300);
+      }
+
+      function toggleInlineProductDetails(orderNumber, clickedSku, skuData) {
+        const orderRow = document.querySelector(`tr[data-order="${orderNumber}"]`);
+        const existingDetailsRow = document.querySelector(`tr[data-details-for="${orderNumber}"]`);
+        
+        // If details are already open for this order, close them
+        if (existingDetailsRow) {
+          existingDetailsRow.remove();
+          return;
+        }
+        
+        // Close any other open details
+        const otherDetailsRows = document.querySelectorAll('tr[data-details-for]');
+        otherDetailsRows.forEach(row => row.remove());
+        
+        // Get order data - FIXED: get ALL unique SKUs for this order
+        const orderItems = currentPicklistItems.filter(item => item.order_number === orderNumber && !item.picked);
+        const uniqueSkus = [...new Set(orderItems.map(item => item.sku))];
+        
+        console.log(`Order ${orderNumber} items:`, orderItems);
+        console.log(`Unique SKUs:`, uniqueSkus);
+        
+        // Create details row
+        const detailsRow = document.createElement('tr');
+        detailsRow.setAttribute('data-details-for', orderNumber);
+        detailsRow.className = 'order-details-row';
+        
+        // Create the expanded content
+        const detailsCell = document.createElement('td');
+        detailsCell.colSpan = 2;
+        detailsCell.className = 'order-details-cell';
+        
+        detailsCell.innerHTML = createInlineOrderDetails(orderNumber, uniqueSkus, clickedSku);
+        detailsRow.appendChild(detailsCell);
+        
+        // Insert after the order row
+        orderRow.parentNode.insertBefore(detailsRow, orderRow.nextSibling);
+        
+        // Load product details for all SKUs
+        loadInlineProductDetails(orderNumber, uniqueSkus, clickedSku);
+        
+        // Scroll the details into view
+        setTimeout(() => {
+          detailsRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 100);
+      }
+
+      function loadInlineProductDetails(orderNumber, skus, clickedSku) {
+        console.log(`Loading details for order ${orderNumber}, SKUs:`, skus);
+        
+        skus.forEach(sku => {
+          // Check cache first
+          if (window.skuImageCache && window.skuImageCache[sku]) {
+            console.log(`Using cached data for SKU ${sku}`);
+            updateInlineProductCard(sku, window.skuImageCache[sku], orderNumber);
+            return;
+          }
+          
+          console.log(`Fetching data for SKU ${sku}`);
+          fetch(`/api/products/image-by-sku/?sku=${sku}`)
+            .then(response => response.json())
+            .then(data => {
+              console.log(`Received data for SKU ${sku}:`, data);
+              // Cache the response
+              if (!window.skuImageCache) {
+                window.skuImageCache = {};
+              }
+              window.skuImageCache[sku] = data;
+              
+              updateInlineProductCard(sku, data, orderNumber);
+            })
+            .catch(error => {
+              console.error(`Error loading details for SKU ${sku}:`, error);
+              updateInlineProductCard(sku, { generic_name: `Product ${sku}`, sku: sku }, orderNumber);
+            });
+        });
+      }
+
+      function updateInlineProductCard(sku, data, orderNumber) {
+        const imageContainer = document.getElementById(`inline-image-${orderNumber}-${sku}`);
+        const nameElement = document.getElementById(`inline-name-${orderNumber}-${sku}`);
+        
+        if (!imageContainer || !nameElement) {
+          console.warn(`Could not find elements for SKU ${sku} in order ${orderNumber}`);
+          return;
+        }
+        
+        // Update product name
+        nameElement.textContent = data.generic_name || data.product_name || `Product ${sku}`;
+        
+        // Update image
+        let imageUrl = null;
+        const possibleImageFields = ['image_url', 'image', 'product_image', 'image_path'];
+        
+        for (const field of possibleImageFields) {
+          if (data[field] && data[field].trim() !== '') {
+            imageUrl = data[field];
+            break;
+          }
+        }
+        
+        if (imageUrl) {
+          if (imageUrl.startsWith('data:image/')) {
+            imageContainer.style.backgroundImage = `url(${imageUrl})`;
+            imageContainer.style.backgroundSize = 'cover';
+            imageContainer.style.backgroundPosition = 'center';
+            imageContainer.innerHTML = '';
+          } else {
+            const img = new Image();
+            img.onload = function() {
+              imageContainer.style.backgroundImage = `url(${imageUrl})`;
+              imageContainer.style.backgroundSize = 'cover';
+              imageContainer.style.backgroundPosition = 'center';
+              imageContainer.innerHTML = '';
+            };
+            img.onerror = function() {
+              imageContainer.innerHTML = '<div class="no-image-text">📦<br>No Image</div>';
+            };
+            
+            if (imageUrl.startsWith('/')) {
+              img.src = window.location.origin + imageUrl;
+            } else if (!imageUrl.startsWith('http')) {
+              img.src = '/media/' + imageUrl;
+            } else {
+              img.src = imageUrl;
+            }
+          }
+        } else {
+          imageContainer.innerHTML = '<div class="no-image-text">📦<br>No Image</div>';
+        }
+      }
+
+      function updateSingleInlineCard(imageContainer, nameElement, sku, data) {
+        // Update product name
+        nameElement.textContent = data.generic_name || data.product_name || `Product ${sku}`;
+        
+        // Update image
+        let imageUrl = null;
+        const possibleImageFields = ['image_url', 'image', 'product_image', 'image_path'];
+        
+        for (const field of possibleImageFields) {
+          if (data[field] && data[field].trim() !== '') {
+            imageUrl = data[field];
+            break;
+          }
+        }
+        
+        if (imageUrl) {
+          if (imageUrl.startsWith('data:image/')) {
+            imageContainer.style.backgroundImage = `url(${imageUrl})`;
+            imageContainer.style.backgroundSize = 'cover';
+            imageContainer.style.backgroundPosition = 'center';
+            imageContainer.innerHTML = '';
+          } else {
+            const img = new Image();
+            img.onload = function() {
+              imageContainer.style.backgroundImage = `url(${imageUrl})`;
+              imageContainer.style.backgroundSize = 'cover';
+              imageContainer.style.backgroundPosition = 'center';
+              imageContainer.innerHTML = '';
+            };
+            img.onerror = function() {
+              imageContainer.innerHTML = '<div class="no-image-text">📦<br>No Image</div>';
+            };
+            
+            if (imageUrl.startsWith('/')) {
+              img.src = window.location.origin + imageUrl;
+            } else if (!imageUrl.startsWith('http')) {
+              img.src = '/media/' + imageUrl;
+            } else {
+              img.src = imageUrl;
+            }
+          }
+        } else {
+          imageContainer.innerHTML = '<div class="no-image-text">📦<br>No Image</div>';
+        }
+      }
+
+      function createInlineOrderDetails(orderNumber, skus, clickedSku) {
+        const orderItems = currentPicklistItems.filter(item => item.order_number === orderNumber && !item.picked);
+        const totalItems = orderItems.reduce((sum, item) => sum + item.quantity, 0);
+        const validatedSkus = skus.filter(sku => {
+          const skuItems = orderItems.filter(item => item.sku === sku);
+          return skuItems.length > 0 && skuItems[0].validated;
+        });
+        
+        console.log(`Creating inline details for order ${orderNumber} with ${skus.length} SKUs`);
+        
+        return `
+          <div class="inline-order-details">
+            <div class="inline-order-header">
+              <h4>Order ${orderNumber} Details</h4>
+              <div class="inline-order-stats">
+                <span class="stat-item">📦 ${totalItems} items</span>
+                <span class="stat-item">🏷️ ${skus.length} SKUs</span>
+                <span class="stat-item">✅ ${validatedSkus.length}/${skus.length} validated</span>
+              </div>
+              <button class="close-details-btn" onclick="closeInlineDetails('${orderNumber}')">&times;</button>
+            </div>
+            
+            <div class="inline-products-grid">
+              ${skus.map(sku => {
+                const item = orderItems.find(item => item.sku === sku);
+                const isValidated = item ? item.validated : false;
+                const isClicked = sku === clickedSku;
+                
+                return `
+                  <div class="inline-product-card ${isValidated ? 'validated' : ''} ${isClicked ? 'highlighted' : ''}" 
+                       id="inline-product-${orderNumber}-${sku}">
+                    <div class="inline-product-image" id="inline-image-${orderNumber}-${sku}">
+                      <div class="loading-placeholder">Loading...</div>
+                    </div>
+                    <div class="inline-product-info">
+                      <h5 id="inline-name-${orderNumber}-${sku}">Loading...</h5>
+                      <p><strong>SKU:</strong> ${sku}</p>
+                      <p><strong>Qty:</strong> ${item ? item.quantity : 'N/A'}</p>
+                      <p><strong>Status:</strong> 
+                        <span class="validation-badge ${isValidated ? 'validated' : 'pending'}" 
+                              id="badge-${orderNumber}-${sku}">
+                          ${isValidated ? '✅ Validated' : '⏳ Pending'}
+                        </span>
+                      </p>
+                    </div>
+                    <div class="inline-product-actions">
+                      <button class="validate-inline-btn ${isValidated ? 'validated' : ''}" 
+                              id="btn-${orderNumber}-${sku}"
+                              onclick="validateInlineProduct('${sku}', '${orderNumber}')"
+                              ${isValidated ? 'disabled' : ''}>
+                        ${isValidated ? '✅ Validated' : 'Validate'}
+                      </button>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+            
+            <div class="inline-order-actions">
+              <button class="btn btn-success print-order-inline-btn" 
+                      id="print-btn-${orderNumber}"
+                      ${validatedSkus.length === skus.length ? '' : 'disabled'}
+                      onclick="printOrderFromInline('${orderNumber}')">
+                ${validatedSkus.length === skus.length ? 'Print Order Label' : `Print (${validatedSkus.length}/${skus.length} validated)`}
+              </button>
+              <button class="btn btn-secondary" onclick="closeInlineDetails('${orderNumber}')">
+                Close Details
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      function showImageFallback(placeholder, sku, productName) {
+        // FIXED: Get the order number from THIS placeholder
+        const orderNumber = placeholder.getAttribute('data-order');
+        
+        placeholder.innerHTML = '<span style="font-size: 8px; color: #666;">📦</span>';
+        placeholder.className = 'order-product-image-placeholder clickable-image';
+        placeholder.style.backgroundColor = '#f8f9fa';
+        placeholder.style.border = '1px solid #dee2e6';
+        placeholder.style.backgroundImage = 'none';
+        placeholder.style.cursor = 'pointer';
+        placeholder.title = `Click to view ${productName || sku} details`;
+        
+        // Remove any existing event listeners and add new one
+        const newPlaceholder = placeholder.cloneNode(true);
+        placeholder.parentNode.replaceChild(newPlaceholder, placeholder);
+        
+        newPlaceholder.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log(`Clicked fallback SKU ${sku} in order ${orderNumber}`);
+          toggleInlineProductDetails(orderNumber, sku, { generic_name: productName });
+        });
+      }
+
+      function validateInlineProduct(sku, orderNumber) {
+        const button = document.getElementById(`btn-${orderNumber}-${sku}`);
+        const badge = document.getElementById(`badge-${orderNumber}-${sku}`);
+        const card = document.getElementById(`inline-product-${orderNumber}-${sku}`);
+        
+        if (!button || !badge || !card) {
+          console.error(`Could not find elements for SKU ${sku} in order ${orderNumber}`);
+          return;
+        }
+        
+        // Update UI immediately
+        button.disabled = true;
+        button.textContent = 'Validating...';
+        button.style.background = '#6c757d';
+        
+        // Call validation with order_specific mode
+        validateSKU(sku, orderNumber, 'order_specific');
+        
+        // Update UI will be handled by the response
+      }
+
+      function updatePrintButtonsAfterValidation(orderNumber, data) {
+        if (!orderNumber) return;
+        
+        // Update order view print button
+        updateOrderViewPrintButton(data);
+        
+        // Update inline print button
+        updateInlinePrintButton(orderNumber);
+        
+        // Update product search print button
+        updateProductSearchPrintButton(orderNumber);
+      }
+      
+      function updateOrderViewPrintButton(data) {
+        const printBtn = document.getElementById('print-order-btn');
+        if (printBtn && currentOrderNumber && data.order_validation_status) {
+          const orderValidation = data.order_validation_status;
+          
+          if (orderValidation.all_validated) {
+            printBtn.disabled = false;
+            printBtn.className = 'btn btn-success print-order-btn';
+            printBtn.textContent = 'Print Order Label';
+            
+            // Add success animation
+            printBtn.style.transform = 'scale(1.05)';
+            printBtn.style.boxShadow = '0 4px 12px rgba(40, 167, 69, 0.4)';
+            setTimeout(() => {
+              printBtn.style.transform = '';
+              printBtn.style.boxShadow = '';
+            }, 1500);
+            
+            showMessage('🎉 All SKUs validated! You can now print the order label.', 'success');
+          } else {
+            printBtn.disabled = true;
+            printBtn.textContent = `Print (${orderValidation.validated_count}/${orderValidation.total_skus} validated)`;
+          }
+        }
+      }
+
+      function updateInlinePrintButton(orderNumber) {
+        const printBtn = document.getElementById(`print-btn-${orderNumber}`);
+        if (!printBtn) return;
+        
+        // Get validation status for this order
+        fetch(`/api/validation-status/?picklist_id=${currentPicklistId}&order_number=${orderNumber}`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success') {
+              const orderValidation = data.validation_status;
+              
+              if (orderValidation.all_validated) {
+                printBtn.disabled = false;
+                printBtn.textContent = 'Print Order Label';
+                printBtn.className = 'btn btn-success print-order-inline-btn';
+                
+                // Add success animation
+                printBtn.style.backgroundColor = '#28a745';
+                printBtn.style.transform = 'scale(1.05)';
+                setTimeout(() => {
+                  printBtn.style.transform = '';
+                }, 1000);
+              } else {
+                printBtn.disabled = true;
+                printBtn.textContent = `Print (${orderValidation.validated_count}/${orderValidation.total_skus} validated)`;
+              }
+            }
+          })
+          .catch(error => {
+            console.error('Error updating inline print button:', error);
+          });
+      }
+
+      function printOrderFromInline(orderNumber) {
+        printOrderLabel(currentPicklistPlatform, orderNumber);
+        // Close the inline details after printing
+        setTimeout(() => {
+          closeInlineDetails(orderNumber);
+        }, 1000);
+      }
+      
+      // Restored function to close inline details
+      function closeInlineDetails(orderNumber) {
+        const detailsRow = document.querySelector(`tr[data-details-for="${orderNumber}"]`);
+        if (detailsRow) {
+          detailsRow.style.animation = 'slideUp 0.3s ease';
+          setTimeout(() => {
+            detailsRow.remove();
+          }, 300);
+        }
+      }
+
+      function highlightClickedSku(clickedSku, skuData) {
+        const productCard = document.getElementById(`product-card-${clickedSku}`);
+        
+        if (productCard) {
+          // Scroll to the product card
+          productCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Add highlighting effect
+          productCard.style.border = '3px solid #007bff';
+          productCard.style.boxShadow = '0 4px 12px rgba(0, 123, 255, 0.3)';
+          productCard.style.backgroundColor = '#f0f8ff';
+          
+          // Show a temporary indicator
+          const indicator = document.createElement('div');
+          indicator.className = 'clicked-indicator';
+          indicator.innerHTML = '👆 You clicked this product image';
+          indicator.style.cssText = `
+            position: absolute;
+            top: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #007bff;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            z-index: 1000;
+            animation: fadeInOut 3s ease-in-out;
+          `;
+          
+          productCard.style.position = 'relative';
+          productCard.appendChild(indicator);
+          
+          // Add CSS animation for the indicator
+          if (!document.getElementById('clicked-indicator-styles')) {
+            const style = document.createElement('style');
+            style.id = 'clicked-indicator-styles';
+            style.textContent = `
+              @keyframes fadeInOut {
+                0% { opacity: 0; transform: translateX(-50%) translateY(10px); }
+                20% { opacity: 1; transform: translateX(-50%) translateY(0px); }
+                80% { opacity: 1; transform: translateX(-50%) translateY(0px); }
+                100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+              }
+              
+              .clickable-image {
+                transition: all 0.2s ease;
+              }
+              
+              .clickable-image:hover {
+                transform: scale(1.1);
+                border-color: #007bff !important;
+                box-shadow: 0 2px 8px rgba(0,123,255,0.3) !important;
+              }
+              
+              .clickable-image:active {
+                transform: scale(0.95);
+              }
+            `;
+            document.head.appendChild(style);
+          }
+          
+          // Remove highlighting after 4 seconds
+          setTimeout(() => {
+            productCard.style.border = '';
+            productCard.style.boxShadow = '';
+            productCard.style.backgroundColor = '';
+            if (indicator.parentNode) {
+              indicator.remove();
+            }
+          }, 4000);
+          
+          // Show validation info popup
+          showQuickValidationInfo(clickedSku, skuData);
+        }
+      }
+      function showQuickValidationInfo(sku, skuData) {
+        // Check if this SKU is already validated for the current order
+        const orderItems = currentPicklistItems.filter(item => 
+          item.order_number === currentOrderNumber && item.sku === sku
+        );
+        
+        const isValidated = orderItems.length > 0 && orderItems[0].validated;
+        
+        // Create a small popup with validation info
+        const popup = document.createElement('div');
+        popup.className = 'validation-popup';
+        popup.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: white;
+          border: 2px solid ${isValidated ? '#28a745' : '#ffc107'};
+          border-radius: 8px;
+          padding: 15px;
+          max-width: 300px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          z-index: 1001;
+          animation: slideInRight 0.3s ease;
+        `;
+        
+        popup.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h4 style="margin: 0; color: #333;">${skuData.generic_name || sku}</h4>
+            <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #666;">&times;</button>
+          </div>
+          <p style="margin: 5px 0; font-size: 14px;"><strong>SKU:</strong> ${sku}</p>
+          <p style="margin: 5px 0; font-size: 14px;"><strong>Order:</strong> ${currentOrderNumber}</p>
+          <p style="margin: 5px 0; font-size: 14px;">
+            <strong>Status:</strong> 
+            <span style="color: ${isValidated ? '#28a745' : '#856404'}; font-weight: bold;">
+              ${isValidated ? '✅ Validated' : '⚠️ Pending Validation'}
+            </span>
+          </p>
+          ${!isValidated ? `
+            <button onclick="validateSKUFromPopup('${sku}', '${currentOrderNumber}', this)" 
+                    style="background: #ffc107; color: #333; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 10px; width: 100%;">
+              Validate Now
+            </button>
+          ` : `
+            <div style="background: #d4edda; color: #155724; padding: 8px; border-radius: 4px; margin-top: 10px; text-align: center; font-size: 12px;">
+              This product is already validated ✅
+            </div>
+          `}
+        `;
+        
+        // Add animation styles if not already added
+        if (!document.getElementById('popup-animation-styles')) {
+          const style = document.createElement('style');
+          style.id = 'popup-animation-styles';
+          style.textContent = `
+            @keyframes slideInRight {
+              from { transform: translateX(100%); opacity: 0; }
+              to { transform: translateX(0); opacity: 1; }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(popup);
+        
+        // Auto-remove after 8 seconds
+        setTimeout(() => {
+          if (popup.parentNode) {
+            popup.remove();
+          }
+        }, 8000);
+      }
+
+      function validateSKUFromPopup(sku, orderNumber, buttonElement) {
+        // Disable the button
+        buttonElement.disabled = true;
+        buttonElement.textContent = 'Validating...';
+        buttonElement.style.background = '#6c757d';
+        
+        // Call the existing validation function
+        validateSKU(sku, orderNumber);
+        
+        // Update popup after validation
+        setTimeout(() => {
+          const popup = buttonElement.closest('.validation-popup');
+          if (popup) {
+            popup.querySelector('p:nth-child(4) span').innerHTML = '✅ Validated';
+            popup.querySelector('p:nth-child(4) span').style.color = '#28a745';
+            buttonElement.parentElement.innerHTML = `
+              <div style="background: #d4edda; color: #155724; padding: 8px; border-radius: 4px; text-align: center; font-size: 12px;">
+                Validation completed! ✅
+              </div>
+            `;
+            popup.style.borderColor = '#28a745';
+          }
+        }, 1000);
+      }
+
+      function showValidationProgress(container, validationDetails) {
+        if (!validationDetails) return;
+        
+        const progressDiv = document.createElement('div');
+        progressDiv.className = 'validation-progress-indicator';
+        progressDiv.style.cssText = `
+          background: linear-gradient(90deg, #28a745 ${validationDetails.percentage}%, #e9ecef ${validationDetails.percentage}%);
+          height: 20px;
+          border-radius: 10px;
+          margin: 5px 0;
+          position: relative;
+          overflow: hidden;
+        `;
+        
+        const progressText = document.createElement('div');
+        progressText.style.cssText = `
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          font-size: 12px;
+          font-weight: bold;
+          color: white;
+          text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+        `;
+        progressText.textContent = `${validationDetails.validated_count}/${validationDetails.required_quantity}`;
+        
+        progressDiv.appendChild(progressText);
+        container.appendChild(progressDiv);
+      }
+      
       // Placeholder functions for existing functionality
       function searchProduct() {
         const productId = productSearchInput.value.trim();
@@ -2485,7 +3905,7 @@
               document.getElementById('product-image').src = "/static/images/placeholder.png";
             }
       
-            // Handle sequential validation logic
+            // Handle enhanced validation logic with auto-update support
             const productActions = document.querySelector('.product-actions');
             if (productActions) {
               productActions.innerHTML = ''; // Clear existing buttons
@@ -2493,57 +3913,88 @@
               if (data.in_current_picklist && data.validation_info) {
                 const validationInfo = data.validation_info;
                 
-                // Create progress message
+                // Create progress message with enhanced details and auto-update support
                 const progressDiv = document.createElement('div');
                 progressDiv.className = 'validation-progress';
+                progressDiv.id = 'product-search-progress'; // Add ID for auto-updates
                 progressDiv.style.marginBottom = '10px';
                 progressDiv.style.padding = '8px';
-                progressDiv.style.backgroundColor = validationInfo.validated ? '#d4edda' : '#fff3cd';
-                progressDiv.style.border = `1px solid ${validationInfo.validated ? '#c3e6cb' : '#ffeeba'}`;
                 progressDiv.style.borderRadius = '4px';
                 progressDiv.style.fontSize = '14px';
                 
-                if (validationInfo.total_orders_with_sku > 1) {
-                  progressDiv.innerHTML = `
-                    <strong>Progress:</strong> ${validationInfo.validated_orders_count}/${validationInfo.total_orders_with_sku} orders validated<br>
-                    <span style="color: #666;">${validationInfo.progress_message}</span>
-                  `;
-                } else {
-                  progressDiv.innerHTML = `<span style="color: #666;">${validationInfo.progress_message}</span>`;
-                }
+                // Set initial progress display
+                updateProductSearchProgressDisplay({
+                  validation_details: {
+                    total_orders_with_sku: validationInfo.total_orders_with_sku,
+                    validated_orders_count: validationInfo.validated_orders_count,
+                    remaining_orders: validationInfo.remaining_orders,
+                    current_order: validationInfo.order_number,
+                    validated_count: validationInfo.validated_count || 0,
+                    required_quantity: validationInfo.quantity || 1,
+                    is_complete: validationInfo.validated && validationInfo.remaining_orders === 0
+                  }
+                });
                 
                 productActions.appendChild(progressDiv);
                 
-                // Create validation button
+                // Create validation button with enhanced logic and auto-update support
                 const validateBtn = document.createElement('button');
-                if (validationInfo.validated) {
+                validateBtn.id = 'validate-product-btn'; // Add ID for auto-updates
+                
+                if (validationInfo.validated && validationInfo.remaining_orders === 0) {
                   validateBtn.className = 'btn validated';
                   validateBtn.textContent = '✅ All Orders Validated';
                   validateBtn.disabled = true;
                 } else {
                   validateBtn.className = 'btn btn-warning';
-                  validateBtn.textContent = `Validate Order ${validationInfo.order_number}`;
+                  
+                  if (validationInfo.order_number) {
+                    const progress = validationInfo.validated_count || 0;
+                    const total = validationInfo.quantity || 1;
+                    validateBtn.textContent = `Validate Order ${validationInfo.order_number} (${progress}/${total})`;
+                  } else {
+                    validateBtn.textContent = `Continue Validation`;
+                  }
                   validateBtn.disabled = false;
+                  
+                  // Use product_search validation mode with auto-update
                   validateBtn.onclick = function() {
-                    validateSKUSequential(data.product.sku, validationInfo.order_number, data.product.product_id);
+                    console.log('=== Product Search Validation Debug ===');
+                    console.log('SKU:', data.product.sku);
+                    console.log('Current Picklist ID:', currentPicklistId);
+                    console.log('Validation Info:', validationInfo);
+                    
+                    // Disable button during validation
+                    this.disabled = true;
+                    this.textContent = 'Validating...';
+                    this.style.background = '#6c757d';
+                    
+                    // Call validation with product_search mode
+                    validateSKUForProductSearch(data.product.sku, data.product.product_id);
                   };
                 }
                 
                 productActions.appendChild(validateBtn);
                 
-                // Create print button (only show if all orders are validated)
+                // Create print options if all orders are validated
                 if (validationInfo.validated && validationInfo.remaining_orders === 0) {
-                  // Show print options for all validated orders
                   createPrintOptionsForValidatedSKU(productActions, data.product.sku);
+                } else {
+                  // Create placeholder for print button that will be enabled after validation
+                  const printPlaceholder = document.createElement('div');
+                  printPlaceholder.id = 'product-print-placeholder';
+                  printPlaceholder.style.marginTop = '10px';
+                  productActions.appendChild(printPlaceholder);
                 }
                 
                 productActions.style.display = 'block';
                 
-                // Show appropriate message
-                if (validationInfo.validated) {
-                  showMessage(`All orders with this SKU are validated! ✅`, 'success');
+                // Show appropriate message with progress info
+                if (validationInfo.validated && validationInfo.remaining_orders === 0) {
+                  showMessage(`✅ All ${validationInfo.total_orders_with_sku} orders with this SKU are validated!`, 'success');
                 } else {
-                  showMessage(`Found SKU in ${validationInfo.total_orders_with_sku} order(s). Currently validating: ${validationInfo.order_number}`, 'info');
+                  const progressMsg = `Found SKU in ${validationInfo.total_orders_with_sku} order(s). ${validationInfo.validated_orders_count} validated, ${validationInfo.remaining_orders} remaining.`;
+                  showMessage(progressMsg, 'info');
                 }
                 
               } else if (data.in_current_picklist) {
@@ -2568,6 +4019,98 @@
           });
       }
 
+      function validateSKUForProductSearch(sku, productId) {
+        if (!currentPicklistId || !sku) {
+          showMessage('Missing required information for validation', 'error');
+          return;
+        }
+      
+        const requestBody = {
+          picklist_id: currentPicklistId,
+          sku: sku,
+          validation_mode: 'product_search'
+          // Note: Don't include order_number for product_search mode
+        };
+      
+        const csrfToken = getCSRFToken();
+        if (!csrfToken) {
+          showMessage('CSRF token not available. Please refresh the page.', 'error');
+          return;
+        }
+      
+        console.log('Product search validation request:', requestBody);
+      
+        fetch('/api/validate-sku/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify(requestBody)
+        })
+          .then(response => {
+            if (!response.ok) {
+              return response.json().then(data => {
+                throw new Error(data.message || 'Error validating SKU');
+              });
+            }
+            return response.json();
+          })
+          .then(data => {
+            console.log('Product search validation response:', data);
+            
+            const details = data.validation_details;
+            let message = data.message;
+            
+            showMessage(message, 'success');
+            
+            // AUTO-UPDATE: Update local data
+            updateLocalValidationData(sku, details?.current_order, data);
+            
+            // AUTO-UPDATE: Update product search UI
+            updateProductSearchValidationUI(sku, data);
+            
+            // AUTO-UPDATE: Update validation status displays
+            currentValidationStatus = data.validation_status;
+            updatePicklistValidationStatus(data.validation_status);
+            
+            // AUTO-UPDATE: Update order validation counts in the table
+            updateOrderValidationCounts();
+            
+            // AUTO-UPDATE: Check if print buttons should be enabled
+            if (details?.current_order) {
+              updateProductSearchPrintButton(details.current_order);
+            }
+            
+            // AUTO-UPDATE: Check if all orders are now validated
+            if (details && details.remaining_orders === 0) {
+              // All orders validated - show print options
+              const printPlaceholder = document.getElementById('product-print-placeholder');
+              if (printPlaceholder) {
+                printPlaceholder.innerHTML = '';
+                createPrintOptionsForValidatedSKU(printPlaceholder, sku);
+              }
+              
+              showMessage('🎉 All orders with this SKU are now fully validated! Print options are now available.', 'success');
+            }
+            
+          })
+          .catch(error => {
+            console.error('Product search validation error:', error);
+            showMessage(error.message, 'error');
+            
+            // Re-enable validation button on error
+            const validateBtn = document.getElementById('validate-product-btn');
+            if (validateBtn) {
+              validateBtn.disabled = false;
+              validateBtn.textContent = 'Retry Validation';
+              validateBtn.style.background = '#ffc107';
+            }
+          });
+      }
+
       function closeProductSearchResults() {
         const productInfo = document.getElementById('product-info');
         if (productInfo) {
@@ -2585,63 +4128,15 @@
       }
 
       function createPrintOptionsForValidatedSKU(container, sku) {
-        // Get all orders with this SKU that are validated
-        const ordersWithSku = currentPicklistItems.filter(item => 
+        // Get all orders with this SKU that are fully validated
+        const fullyValidatedOrders = currentPicklistItems.filter(item => 
           item.sku === sku && item.validated && !item.picked
         );
         
-        if (ordersWithSku.length === 0) return;
+        if (fullyValidatedOrders.length === 0) return;
         
         // Get unique orders
-        const uniqueOrders = [...new Set(ordersWithSku.map(item => item.order_number))];
-        
-        if (uniqueOrders.length === 1) {
-          // Single order - simple print button
-          const printBtn = document.createElement('button');
-          printBtn.className = 'btn btn-success';
-          printBtn.textContent = `Print Order ${uniqueOrders[0]}`;
-          printBtn.onclick = function() {
-            printOrderLabelWithAutoClose(currentPicklistPlatform, uniqueOrders[0]);
-          };
-          
-          // Check if this order can be printed (all SKUs validated)
-          updateSinglePrintButton(printBtn, uniqueOrders[0]);
-          container.appendChild(printBtn);
-          
-        } else {
-          // Multiple orders - show dropdown or buttons for each
-          const printDiv = document.createElement('div');
-          printDiv.innerHTML = '<strong>Print Options:</strong>';
-          printDiv.style.marginTop = '10px';
-          container.appendChild(printDiv);
-          
-          uniqueOrders.forEach(orderNumber => {
-            const printBtn = document.createElement('button');
-            printBtn.className = 'btn btn-success';
-            printBtn.textContent = `Print ${orderNumber}`;
-            printBtn.style.margin = '2px';
-            printBtn.style.fontSize = '12px';
-            printBtn.onclick = function() {
-              printOrderLabelWithAutoClose(currentPicklistPlatform, orderNumber);
-            };
-            
-            // Check if this order can be printed
-            updateSinglePrintButton(printBtn, orderNumber);
-            container.appendChild(printBtn);
-          });
-        }
-      }
-
-      function createPrintOptionsForValidatedSKU(container, sku) {
-        // Get all orders with this SKU that are validated
-        const ordersWithSku = currentPicklistItems.filter(item => 
-          item.sku === sku && item.validated && !item.picked
-        );
-        
-        if (ordersWithSku.length === 0) return;
-        
-        // Get unique orders
-        const uniqueOrders = [...new Set(ordersWithSku.map(item => item.order_number))];
+        const uniqueOrders = [...new Set(fullyValidatedOrders.map(item => item.order_number))];
         
         if (uniqueOrders.length === 1) {
           // Single order - simple print button
@@ -2657,7 +4152,7 @@
           container.appendChild(printBtn);
           
         } else {
-          // Multiple orders - show dropdown or buttons for each
+          // Multiple orders - show buttons for each
           const printDiv = document.createElement('div');
           printDiv.innerHTML = '<strong>Print Options:</strong>';
           printDiv.style.marginTop = '10px';
@@ -2681,15 +4176,17 @@
       }
 
       function validateSKUSequential(sku, orderNumber, productId) {
-        if (!currentPicklistId || !sku || !orderNumber) {
+        if (!currentPicklistId || !sku) {
           showMessage('Missing required information for validation', 'error');
           return;
         }
       
+        // Use product_search mode for sequential validation
         const requestBody = {
           picklist_id: currentPicklistId,
           sku: sku,
-          order_number: orderNumber
+          validation_mode: 'product_search'
+          // Note: Don't include order_number for product_search mode
         };
       
         const csrfToken = getCSRFToken();
@@ -2697,6 +4194,8 @@
           showMessage('CSRF token not available. Please refresh the page.', 'error');
           return;
         }
+      
+        console.log('Product search validation request:', requestBody); // Debug log
       
         fetch('/api/validate-sku/', {
           method: 'POST',
@@ -2717,35 +4216,87 @@
             return response.json();
           })
           .then(data => {
-            showMessage(`✅ Order ${orderNumber} validated successfully!`, 'success');
+            console.log('Product search validation response:', data); // Debug log
             
-            // Update local data to reflect validation
-            if (currentPicklistItems) {
-              currentPicklistItems.forEach(item => {
-                if (item.sku === sku && item.order_number === orderNumber) {
-                  item.validated = true;
-                }
-              });
-            }
+            const details = data.validation_details;
+            let message = data.message;
             
-            // Update validation counts in the table
+            showMessage(message, 'success');
+            
+            // Update local data
+            updateLocalValidationData(sku, details?.current_order, data);
+            
+            // Update UI components
+            updateProductSearchValidationUI(sku, data);
+            
+            // Update validation status displays
+            currentValidationStatus = data.validation_status;
+            updatePicklistValidationStatus(data.validation_status);
+            
+            // Update order validation counts in the table
             updateOrderValidationCounts();
             
-            // Update picklist validation status
-            if (data.validation_status) {
-              updatePicklistValidationStatus(data.validation_status);
+            // Check if product search print button should be enabled
+            if (details?.current_order) {
+              updateProductSearchPrintButton(details.current_order);
             }
-            
-            // CLOSE SEARCH RESULTS AFTER VALIDATION
-            setTimeout(() => {
-              closeProductSearchResults();
-              showMessage('Validation complete! Ready for next product scan.', 'info');
-            }); // Show success message for 1.5 seconds then close
-            
           })
           .catch(error => {
+            console.error('Product search validation error:', error);
             showMessage(error.message, 'error');
           });
+      }
+
+      function updateProductSearchValidationUI(sku, data) {
+        const details = data.validation_details;
+        
+        // Update validation button
+        const productValidateBtn = document.getElementById('validate-product-btn');
+        if (productValidateBtn && currentProduct && currentProduct.sku === sku) {
+          if (details && details.remaining_orders === 0) {
+            productValidateBtn.classList.add('validated');
+            productValidateBtn.textContent = '✅ All Orders Validated';
+            productValidateBtn.disabled = true;
+            productValidateBtn.style.background = '#28a745';
+          } else if (details) {
+            // Show next order to validate
+            if (details.current_order) {
+              productValidateBtn.textContent = `Validate Order ${details.current_order} (${details.validated_count}/${details.required_quantity})`;
+            } else {
+              productValidateBtn.textContent = `Continue Validation`;
+            }
+            productValidateBtn.disabled = false;
+            productValidateBtn.style.background = '#ffc107';
+          }
+        }
+        
+        // Update progress display
+        updateProductSearchProgressDisplay(data);
+      }
+
+      function updateProductSearchProgressDisplay(data) {
+        const details = data.validation_details;
+        if (!details) return;
+        
+        const progressDiv = document.getElementById('product-search-progress');
+        if (!progressDiv) return;
+        
+        if (details.remaining_orders === 0 || details.is_complete) {
+          progressDiv.style.backgroundColor = '#d4edda';
+          progressDiv.style.border = '1px solid #c3e6cb';
+          progressDiv.innerHTML = `
+            <strong>✅ All Orders Validated!</strong><br>
+            <span style="color: #155724;">All ${details.total_orders_with_sku} orders with this SKU are fully validated</span>
+          `;
+        } else {
+          progressDiv.style.backgroundColor = '#fff3cd';
+          progressDiv.style.border = '1px solid #ffeeba';
+          const currentOrderText = details.current_order ? `Order ${details.current_order}` : 'Next order';
+          progressDiv.innerHTML = `
+            <strong>Progress:</strong> ${details.validated_orders_count}/${details.total_orders_with_sku} orders validated<br>
+            <span style="color: #856404;">Current: ${currentOrderText} - ${details.validated_count}/${details.required_quantity} validated</span>
+          `;
+        }
       }
       
       function createSingleOrderButtons(container, orderInfo, sku) {
@@ -2861,6 +4412,10 @@
             printBtn.className = 'btn btn-secondary';
           });
       }
+
+      window.validateSKU = validateSKU;
+      window.validateSKUSequential = validateSKUSequential;
+      window.validateInlineProduct = validateInlineProduct;
 
       function displayPicklistValidationStatus(validationStatus) {
         const picklistInfo = document.getElementById('picklist-info');
@@ -4120,26 +5675,43 @@ function printInvoiceAfterLabel(platform, orderNumber, canPrint) {
             return response.json();
           })
           .then(data => {
-            showMessage(data.message || 'AWB saved and order moved to Dispatch successfully', 'success');
-      
-            // Update local data
-            currentPicklistItems.forEach(item => {
-              if (item.order_number === orderNumber) {
-                item.awb = awbNumber;
-                item.order_status = 'Dispatch';
-              }
-            });
-      
-            // Refresh the table to show updated status
-            populateItemsTable(currentPicklistItems);
+            showMessage(data.message || 'AWB saved and order moved to Complete successfully', 'success');
             
-            showMessage(`Order ${orderNumber} has been moved to Dispatch status with AWB: ${awbNumber}`, 'success');
+            // Auto-refresh the picklist data to show updated status
+            setTimeout(() => {
+              if (currentPicklistId) {
+                showMessage('Refreshing data to reflect changes...', 'info');
+                searchPicklist(); // This will fetch fresh data from server
+              }
+            }, 1000);
+            
+            showMessage(`Order ${orderNumber} has been moved to Complete status with AWB: ${awbNumber}`, 'success');
           })
           .catch(error => {
             console.error("API error:", error);
             showMessage(`Error: ${error.message}`, 'error');
           });
       }
+      
+      // Auto-refresh on page focus (when user switches back to tab)
+      document.addEventListener('visibilitychange', function() {
+        if (!document.hidden && currentPicklistId) {
+          // User came back to the tab, refresh data
+          console.log('Page became visible, refreshing data...');
+          setTimeout(() => {
+            searchPicklist();
+          }, 500);
+        }
+      });
+      
+      // Add keyboard shortcut for manual refresh (F5 or Ctrl+R)
+      document.addEventListener('keydown', function(e) {
+        if ((e.key === 'F5' || (e.ctrlKey && e.key === 'r')) && currentPicklistId) {
+          e.preventDefault();
+          showMessage('Refreshing picklist data...', 'info');
+          searchPicklist();
+        }
+      });
 
       // Function to print invoice pages (placeholder)
       function printInvoicePages(orderNumber, awbNumber, platform, downloadOnly = false) {

@@ -21,7 +21,8 @@ from ..models import (
 @require_http_methods(["GET"])
 def search_picklist(request):
     """
-    Updated search for a picklist by ID with SKU validation status
+    Enhanced search for a picklist by ID with quantity-based validation status
+    Now properly filters out Complete orders to prevent caching issues
     """
     picklist_id = request.GET.get('picklist_id', '')
     if not picklist_id:
@@ -48,7 +49,7 @@ def search_picklist(request):
                 location = item.location_info.location
                 picker_id = item.location_info.picker.picker_id if item.location_info.picker else None
             
-            # Check order status across platforms to exclude Dispatch orders
+            # Check order status across platforms to exclude Dispatch AND Complete orders
             order_number = item.order_number
             order_status = None
             awb = None
@@ -61,15 +62,47 @@ def search_picklist(request):
                     awb = order.AWB
                     break
             
-            # Only include orders that are NOT in Dispatch status
-            if order_status != 'Dispatch':
-                # Get or create SKU validation record
+            # UPDATED: Only include orders that are NOT in Dispatch OR Complete status
+            # This fixes the caching issue by excluding completed orders from the response
+            if order_status not in ['Dispatch', 'Complete']:
+                # Get product_id from master table
+                product = MasterTable.objects.filter(sku=item.sku).first()
+                product_id = product.product_id if product else None
+                
+                # Get or create enhanced SKU validation record
                 sku_validation, created = PicklistSKUValidation.objects.get_or_create(
                     picklist=picklist,
                     sku=item.sku,
                     order_number=item.order_number,
-                    defaults={'validated': False}
+                    defaults={
+                        'validated': False,
+                        'quantity': item.quantity,
+                        'validated_count': 0,
+                        'product_id': product_id
+                    }
                 )
+                
+                # Update existing record if needed
+                if not created:
+                    update_needed = False
+                    if sku_validation.quantity != item.quantity:
+                        sku_validation.quantity = item.quantity
+                        update_needed = True
+                    if not sku_validation.product_id and product_id:
+                        sku_validation.product_id = product_id
+                        update_needed = True
+                    
+                    # Recalculate validated status based on count vs quantity
+                    new_validated_status = sku_validation.validated_count >= sku_validation.quantity
+                    if sku_validation.validated != new_validated_status:
+                        sku_validation.validated = new_validated_status
+                        update_needed = True
+                    
+                    if update_needed:
+                        sku_validation.save()
+                
+                # Get validation progress details
+                validation_progress = sku_validation.get_validation_progress()
                 
                 items_data.append({
                     'id': item.id,
@@ -81,13 +114,16 @@ def search_picklist(request):
                     'picker_id': picker_id,
                     'awb': awb,
                     'order_status': order_status,
-                    'validated': sku_validation.validated
+                    'validated': sku_validation.validated,
+                    'product_id': sku_validation.product_id,
+                    'validation_progress': validation_progress
                 })
         
-        # Get validation status
+        # Get enhanced validation status
         validation_status = picklist.get_validation_status()
         
-        return JsonResponse({
+        # Add no-cache headers to prevent browser caching
+        response = JsonResponse({
             'status': 'success',
             'picklist': {
                 'picklist_id': picklist.picklist_id,
@@ -97,79 +133,359 @@ def search_picklist(request):
                 'platform': picklist.platform,
                 'created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'items': items_data,
-                'validation_status': validation_status
+                'validation_status': validation_status,
+                'last_updated': timezone.now().isoformat()  # Add timestamp for debugging
             }
         })
+        
+        # Prevent caching to ensure fresh data
+        response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response['Pragma'] = 'no-cache'
+        response['Expires'] = '0'
+        
+        return response
     
     except Picklist.DoesNotExist:
         return JsonResponse({
             'status': 'error',
             'message': f'Picklist with ID {picklist_id} not found or not in PACKING status'
         }, status=404)
-    
+    except Exception as e:
+        print(f"Error in search_picklist: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error searching picklist: {str(e)}'
+        }, status=500)
 @csrf_exempt
 @require_http_methods(["POST"])
 def validate_sku(request):
     """
-    Mark a SKU as validated for a specific picklist and order
+    Enhanced SKU validation with quantity-based validation counting
     """
     try:
         data = json.loads(request.body)
         picklist_id = data.get('picklist_id')
         sku = data.get('sku')
         order_number = data.get('order_number')
+        validation_mode = data.get('validation_mode', 'order_specific')  # 'order_specific' or 'product_search'
         
-        if not all([picklist_id, sku, order_number]):
+        if not all([picklist_id, sku]):
             return JsonResponse({
                 'status': 'error',
-                'message': 'Picklist ID, SKU, and Order Number are required'
+                'message': 'Picklist ID and SKU are required'
             }, status=400)
         
         # Get picklist
         picklist = get_object_or_404(Picklist, picklist_id=picklist_id)
         
-        # Get or create SKU validation record
-        sku_validation, created = PicklistSKUValidation.objects.get_or_create(
-            picklist=picklist,
-            sku=sku,
-            order_number=order_number,
-            defaults={'validated': False}
-        )
+        # Get user if authenticated
+        user = request.user if request.user.is_authenticated else None
         
-        # Mark as validated
-        sku_validation.validated = True
-        sku_validation.validated_at = timezone.now()
-        sku_validation.save()
+        if validation_mode == 'order_specific' and order_number:
+            # SCENARIO A: Order-specific validation (from image click or order view)
+            result = _validate_sku_for_specific_order(picklist, sku, order_number, user)
+        else:
+            # SCENARIO B: Product search validation (find any unvalidated order)
+            result = _validate_sku_any_order(picklist, sku, user)
         
-        # Get updated validation status for the entire picklist
+        if result['status'] == 'error':
+            return JsonResponse(result, status=400)
+        
+        # Get updated validation statuses
         validation_status = picklist.get_validation_status()
         
-        # Get validation status for this specific order
-        order_validation_status = picklist.get_order_validation_status(order_number)
-        
-        return JsonResponse({
+        response_data = {
             'status': 'success',
-            'message': f'SKU {sku} validated successfully',
+            'message': result['message'],
+            'validation_details': result['validation_details'],
             'validation_status': validation_status,
-            'order_validation_status': order_validation_status,
-            'all_validated': validation_status['all_validated'],
-            'order_all_validated': order_validation_status['all_validated']
-        })
+            'all_validated': validation_status['all_validated']
+        }
+        
+        # Add order validation status if order_number is provided
+        if order_number:
+            order_validation_status = picklist.get_order_validation_status(order_number)
+            response_data['order_validation_status'] = order_validation_status
+            response_data['order_all_validated'] = order_validation_status['all_validated']
+        
+        return JsonResponse(response_data)
     
     except Exception as e:
         print(f"Error in validate_sku: {str(e)}")
+        traceback.print_exc()
         return JsonResponse({
             'status': 'error',
             'message': f'Error validating SKU: {str(e)}'
-        }, status=500)
+        }, status=500)  
+    
+def _validate_sku_for_specific_order(picklist, sku, order_number, user=None):
+    """
+    Enhanced validation with automatic creation of missing validation records
+    """
+    try:
+        print(f"🔍 Looking for PicklistItem: picklist={picklist.picklist_id}, sku={sku}, order={order_number}")
+        
+        # Get the picklist item to ensure it exists
+        picklist_item = PicklistItem.objects.filter(
+            picklist=picklist,
+            sku=sku,
+            order_number=order_number
+        ).first()
+        
+        if not picklist_item:
+            # Enhanced debugging info
+            all_skus_in_picklist = list(PicklistItem.objects.filter(picklist=picklist).values_list('sku', flat=True).distinct())
+            all_orders_in_picklist = list(PicklistItem.objects.filter(picklist=picklist).values_list('order_number', flat=True).distinct())
+            items_with_sku = list(PicklistItem.objects.filter(picklist=picklist, sku=sku).values_list('order_number', flat=True))
+            items_with_order = list(PicklistItem.objects.filter(picklist=picklist, order_number=order_number).values_list('sku', flat=True))
+            
+            error_details = {
+                'message': f'SKU {sku} not found in order {order_number} for picklist {picklist.picklist_id}',
+                'debug_info': {
+                    'total_skus_in_picklist': len(all_skus_in_picklist),
+                    'total_orders_in_picklist': len(all_orders_in_picklist),
+                    'orders_with_this_sku': items_with_sku[:5],  # Limit to first 5
+                    'skus_in_this_order': items_with_order[:5],  # Limit to first 5
+                    'requested_sku': sku,
+                    'requested_order': order_number
+                }
+            }
+            
+            print(f"❌ PicklistItem not found. Debug info: {error_details['debug_info']}")
+            
+            return {
+                'status': 'error',
+                'message': error_details['message'],
+                'debug_info': error_details['debug_info']
+            }
+        
+        print(f"✅ PicklistItem found: qty={picklist_item.quantity}, picked={picklist_item.picked}")
+        
+        # Get product_id from master table
+        product = MasterTable.objects.filter(sku=sku).first()
+        product_id = product.product_id if product else None
+        
+        # ENHANCED: Always try to get or create validation record
+        # This handles cases where the signal didn't fire or records are missing
+        validation_record, created = PicklistSKUValidation.objects.get_or_create(
+            picklist=picklist,
+            sku=sku,
+            order_number=order_number,
+            defaults={
+                'validated': False,
+                'quantity': picklist_item.quantity,
+                'validated_count': 0,
+                'product_id': product_id
+            }
+        )
+        
+        if created:
+            print(f"🆕 Created missing validation record for {sku} in order {order_number}")
+        else:
+            print(f"📝 Found existing validation record: count={validation_record.validated_count}, qty={validation_record.quantity}")
+        
+        # Update record if needed (ensure data consistency)
+        update_needed = False
+        if validation_record.quantity != picklist_item.quantity:
+            print(f"🔄 Updating quantity from {validation_record.quantity} to {picklist_item.quantity}")
+            validation_record.quantity = picklist_item.quantity
+            update_needed = True
+            
+        if not validation_record.product_id and product_id:
+            print(f"🔄 Adding missing product_id: {product_id}")
+            validation_record.product_id = product_id
+            update_needed = True
+            
+        # Recalculate validated status based on count vs quantity
+        new_validated_status = validation_record.validated_count >= validation_record.quantity
+        if validation_record.validated != new_validated_status:
+            print(f"🔄 Updating validated status from {validation_record.validated} to {new_validated_status}")
+            validation_record.validated = new_validated_status
+            update_needed = True
+        
+        if update_needed:
+            validation_record.save()
+            print(f"💾 Saved updates to validation record")
+        
+        # Check if already fully validated
+        if validation_record.is_fully_validated():
+            return {
+                'status': 'error',
+                'message': f'SKU {sku} is already fully validated for order {order_number} ({validation_record.validated_count}/{validation_record.quantity})',
+                'validation_details': validation_record.get_validation_progress()
+            }
+        
+        # Increment validation count
+        success = validation_record.increment_validation(user)
+        
+        if not success:
+            return {
+                'status': 'error',
+                'message': f'Failed to validate SKU {sku} (already at max count)',
+                'validation_details': validation_record.get_validation_progress()
+            }
+        
+        # Prepare response message
+        progress = validation_record.get_validation_progress()
+        if validation_record.is_fully_validated():
+            message = f'SKU {sku} fully validated for order {order_number}! ({progress["validated_count"]}/{progress["required_quantity"]})'
+        else:
+            message = f'SKU {sku} validation progress: {progress["validated_count"]}/{progress["required_quantity"]} for order {order_number}'
+        
+        print(f"✅ Validation successful: {message}")
+        
+        return {
+            'status': 'success',
+            'message': message,
+            'validation_details': progress
+        }
+        
+    except Exception as e:
+        print(f"💥 Error in _validate_sku_for_specific_order: {str(e)}")
+        traceback.print_exc()
+        return {
+            'status': 'error',
+            'message': f'Error validating SKU for specific order: {str(e)}'
+        }
+    
+def _validate_sku_any_order(picklist, sku, user=None):
+    """
+    Enhanced product search validation with automatic record creation
+    """
+    try:
+        print(f"🔍 Looking for any unvalidated orders with SKU {sku} in picklist {picklist.picklist_id}")
+        
+        # First, ensure all PicklistItems for this SKU have validation records
+        picklist_items = PicklistItem.objects.filter(picklist=picklist, sku=sku)
+        
+        if not picklist_items.exists():
+            return {
+                'status': 'error',
+                'message': f'SKU {sku} not found in picklist {picklist.picklist_id}'
+            }
+        
+        # Create missing validation records for this SKU
+        created_records = 0
+        for item in picklist_items:
+            product = MasterTable.objects.filter(sku=sku).first()
+            product_id = product.product_id if product else None
+            
+            validation_record, created = PicklistSKUValidation.objects.get_or_create(
+                picklist=picklist,
+                sku=sku,
+                order_number=item.order_number,
+                defaults={
+                    'validated': False,
+                    'quantity': item.quantity,
+                    'validated_count': 0,
+                    'product_id': product_id
+                }
+            )
+            
+            if created:
+                created_records += 1
+                print(f"🆕 Created validation record for {sku} in order {item.order_number}")
+            else:
+                # Ensure data consistency
+                update_needed = False
+                if validation_record.quantity != item.quantity:
+                    validation_record.quantity = item.quantity
+                    update_needed = True
+                if not validation_record.product_id and product_id:
+                    validation_record.product_id = product_id
+                    update_needed = True
+                    
+                new_validated_status = validation_record.validated_count >= validation_record.quantity
+                if validation_record.validated != new_validated_status:
+                    validation_record.validated = new_validated_status
+                    update_needed = True
+                    
+                if update_needed:
+                    validation_record.save()
+        
+        if created_records > 0:
+            print(f"🆕 Created {created_records} missing validation records")
+        
+        # Now find unvalidated records
+        unvalidated_records = PicklistSKUValidation.objects.filter(
+            picklist=picklist,
+            sku=sku,
+            validated=False
+        ).order_by('order_number')
+        
+        if not unvalidated_records.exists():
+            return {
+                'status': 'error',
+                'message': f'All orders with SKU {sku} are already fully validated',
+                'validation_details': {'all_orders_validated': True}
+            }
+        
+        # Get the first unvalidated record (sequential processing)
+        target_record = unvalidated_records.first()
+        
+        # Increment validation count
+        success = target_record.increment_validation(user)
+        
+        if not success:
+            return {
+                'status': 'error',
+                'message': f'Failed to validate SKU {sku} (already at max count)',
+                'validation_details': target_record.get_validation_progress()
+            }
+        
+        # Prepare response message with progress info
+        progress = target_record.get_validation_progress()
+        total_orders_with_sku = PicklistSKUValidation.objects.filter(
+            picklist=picklist, 
+            sku=sku
+        ).count()
+        validated_orders_count = PicklistSKUValidation.objects.filter(
+            picklist=picklist, 
+            sku=sku, 
+            validated=True
+        ).count()
+        remaining_orders = total_orders_with_sku - validated_orders_count
+        
+        if target_record.is_fully_validated():
+            if remaining_orders > 0:
+                message = f'Order {target_record.order_number} completed! SKU {sku} validation: {validated_orders_count}/{total_orders_with_sku} orders done'
+            else:
+                message = f'All orders with SKU {sku} are now fully validated! ✅'
+        else:
+            message = f'SKU {sku} progress in order {target_record.order_number}: {progress["validated_count"]}/{progress["required_quantity"]} (Order {validated_orders_count + 1}/{total_orders_with_sku})'
+        
+        print(f"✅ Product search validation successful: {message}")
+        
+        return {
+            'status': 'success',
+            'message': message,
+            'validation_details': {
+                **progress,
+                'current_order': target_record.order_number,
+                'total_orders_with_sku': total_orders_with_sku,
+                'validated_orders_count': validated_orders_count,
+                'remaining_orders': remaining_orders
+            }
+        }
+        
+    except Exception as e:
+        print(f"💥 Error in _validate_sku_any_order: {str(e)}")
+        traceback.print_exc()
+        return {
+            'status': 'error',
+            'message': f'Error validating SKU for any order: {str(e)}'
+        }
+    
     
 @require_http_methods(["GET"])
 def get_validation_status(request):
     """
-    Get validation status for a picklist or specific order
+    Enhanced validation status endpoint
     """
     picklist_id = request.GET.get('picklist_id', '')
     order_number = request.GET.get('order_number', '')
+    sku = request.GET.get('sku', '')
     
     if not picklist_id:
         return JsonResponse({
@@ -180,28 +496,47 @@ def get_validation_status(request):
     try:
         picklist = get_object_or_404(Picklist, picklist_id=picklist_id)
         
+        response_data = {'status': 'success'}
+        
+        if sku and order_number:
+            # Get validation status for specific SKU in specific order
+            validation_record = PicklistSKUValidation.objects.filter(
+                picklist=picklist,
+                sku=sku,
+                order_number=order_number
+            ).first()
+            
+            if validation_record:
+                response_data['validation_details'] = validation_record.get_validation_progress()
+            else:
+                response_data['validation_details'] = {
+                    'validated_count': 0,
+                    'required_quantity': 1,
+                    'is_complete': False,
+                    'percentage': 0
+                }
+        
         if order_number:
             # Get validation status for specific order
             validation_status = picklist.get_order_validation_status(order_number)
+            response_data['validation_status'] = validation_status
         else:
             # Get validation status for entire picklist
             validation_status = picklist.get_validation_status()
+            response_data['validation_status'] = validation_status
         
-        return JsonResponse({
-            'status': 'success',
-            'validation_status': validation_status
-        })
+        return JsonResponse(response_data)
     
     except Exception as e:
         return JsonResponse({
             'status': 'error',
             'message': f'Error getting validation status: {str(e)}'
         }, status=500)
-
+    
 @require_http_methods(["GET"])
 def search_product(request):
     """
-    Sequential validation logic: Show first unvalidated order with this SKU
+    Enhanced sequential validation logic with quantity-based validation
     """
     product_id = request.GET.get('product_id', '')
     picklist_id = request.GET.get('picklist_id', '')
@@ -232,7 +567,7 @@ def search_product(request):
         else:
             image_url = "/static/images/no_image_found.jpg"
         
-        # Sequential validation logic
+        # Enhanced sequential validation logic
         validation_info = None
         in_current_picklist = False
         
@@ -244,67 +579,97 @@ def search_product(request):
                 picklist_items = PicklistItem.objects.filter(
                     picklist=picklist, 
                     sku=product.sku
-                ).order_by('order_number')  # Consistent ordering
+                ).order_by('order_number')
                 
                 if picklist_items.exists():
                     in_current_picklist = True
                     
-                    # Create validation records for all orders with this SKU
+                    # Create/update validation records for all orders with this SKU
                     all_orders_with_sku = []
-                    unvalidated_orders = []
+                    orders_needing_validation = []
                     
                     for item in picklist_items:
-                        # Get or create validation record
+                        # Get or create validation record with enhanced fields
                         sku_validation, created = PicklistSKUValidation.objects.get_or_create(
                             picklist=picklist,
                             sku=product.sku,
                             order_number=item.order_number,
-                            defaults={'validated': False}
+                            defaults={
+                                'validated': False,
+                                'quantity': item.quantity,
+                                'validated_count': 0,
+                                'product_id': product.product_id
+                            }
                         )
+                        
+                        # Update existing record if needed
+                        if not created:
+                            update_needed = False
+                            if sku_validation.quantity != item.quantity:
+                                sku_validation.quantity = item.quantity
+                                update_needed = True
+                            if not sku_validation.product_id:
+                                sku_validation.product_id = product.product_id
+                                update_needed = True
+                            
+                            # Recalculate validated status
+                            new_validated_status = sku_validation.validated_count >= sku_validation.quantity
+                            if sku_validation.validated != new_validated_status:
+                                sku_validation.validated = new_validated_status
+                                update_needed = True
+                                
+                            if update_needed:
+                                sku_validation.save()
                         
                         order_info = {
                             'order_number': item.order_number,
                             'validated': sku_validation.validated,
-                            'quantity': item.quantity
+                            'quantity': sku_validation.quantity,
+                            'validated_count': sku_validation.validated_count,
+                            'validation_progress': sku_validation.get_validation_progress()
                         }
                         
                         all_orders_with_sku.append(order_info)
                         
                         if not sku_validation.validated:
-                            unvalidated_orders.append(order_info)
+                            orders_needing_validation.append(order_info)
                     
-                    # SEQUENTIAL LOGIC: Return the first unvalidated order
-                    if unvalidated_orders:
-                        # Show first unvalidated order
-                        current_order = unvalidated_orders[0]
+                    # ENHANCED SEQUENTIAL LOGIC: Return the first order needing validation
+                    if orders_needing_validation:
+                        # Show first order needing validation
+                        current_order = orders_needing_validation[0]
                         validation_info = {
                             'order_number': current_order['order_number'],
                             'validated': False,
                             'can_validate': True,
                             'quantity': current_order['quantity'],
+                            'validated_count': current_order['validated_count'],
+                            'validation_progress': current_order['validation_progress'],
                             # Statistics for display
                             'total_orders_with_sku': len(all_orders_with_sku),
-                            'validated_orders_count': len(all_orders_with_sku) - len(unvalidated_orders),
-                            'remaining_orders': len(unvalidated_orders),
-                            'progress_message': f"Order {current_order['order_number']} - {len(unvalidated_orders)} remaining to validate"
+                            'validated_orders_count': len(all_orders_with_sku) - len(orders_needing_validation),
+                            'remaining_orders': len(orders_needing_validation),
+                            'progress_message': f"Order {current_order['order_number']} - {current_order['validated_count']}/{current_order['quantity']} validated ({len(orders_needing_validation)} orders remaining)"
                         }
                     else:
-                        # All orders are validated
+                        # All orders are fully validated
                         validation_info = {
-                            'order_number': all_orders_with_sku[0]['order_number'],  # Show any order for print button
+                            'order_number': all_orders_with_sku[0]['order_number'],
                             'validated': True,
                             'can_validate': False,
                             'quantity': all_orders_with_sku[0]['quantity'],
+                            'validated_count': all_orders_with_sku[0]['validated_count'],
+                            'validation_progress': all_orders_with_sku[0]['validation_progress'],
                             'total_orders_with_sku': len(all_orders_with_sku),
                             'validated_orders_count': len(all_orders_with_sku),
                             'remaining_orders': 0,
-                            'progress_message': f"All {len(all_orders_with_sku)} orders validated ✅"
+                            'progress_message': f"All {len(all_orders_with_sku)} orders fully validated ✅"
                         }
                     
             except Picklist.DoesNotExist:
                 pass
         
-        # Return product details
+        # Return enhanced product details
         response_data = {
             'status': 'success',
             'product': {
@@ -328,12 +693,13 @@ def search_product(request):
     
     except Exception as e:
         print(f"Error in search_product: {str(e)}")
-        import traceback
         traceback.print_exc()
         return JsonResponse({
             'status': 'error',
             'message': f'Error searching for product: {str(e)}'
         }, status=500)
+    
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def mark_picklist_completed(request, picklist_id):

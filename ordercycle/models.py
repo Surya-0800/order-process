@@ -6,6 +6,9 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.core.files.base import ContentFile
 import base64
+from django.utils import timezone
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 class PDFUpload(models.Model):
     title = models.CharField(max_length=255, blank=True)
@@ -119,26 +122,41 @@ class Picklist(models.Model):
     
     def get_validation_status(self):
         """
-        Get validation status for all SKUs in this picklist
+        Enhanced validation status that considers quantity vs validated count
         """
         # Get all unique SKU-Order combinations in this picklist
         picklist_items = PicklistItem.objects.filter(picklist=self)
-        total_skus = picklist_items.values('sku', 'order_number').distinct().count()
         
-        # Ensure validation records exist for all SKUs
-        for item in picklist_items.values('sku', 'order_number').distinct():
-            PicklistSKUValidation.objects.get_or_create(
+        # Ensure validation records exist for all SKUs with correct quantities and product_ids
+        for item in picklist_items.values('sku', 'order_number', 'quantity').distinct():
+            # Get product_id from master table
+            product = MasterTable.objects.filter(sku=item['sku']).first()
+            product_id = product.product_id if product else None
+            
+            validation_record, created = PicklistSKUValidation.objects.get_or_create(
                 picklist=self,
                 sku=item['sku'],
                 order_number=item['order_number'],
-                defaults={'validated': False}
+                defaults={
+                    'validated': False,
+                    'quantity': item['quantity'],
+                    'validated_count': 0,
+                    'product_id': product_id
+                }
             )
+            
+            # Update existing records that might not have quantity/product_id
+            if not created and (validation_record.quantity != item['quantity'] or not validation_record.product_id):
+                validation_record.quantity = item['quantity']
+                validation_record.product_id = product_id
+                # Recalculate validated status based on count vs quantity
+                validation_record.validated = validation_record.validated_count >= validation_record.quantity
+                validation_record.save()
         
-        # Count validated SKUs
-        validated_count = PicklistSKUValidation.objects.filter(
-            picklist=self, 
-            validated=True
-        ).count()
+        # Count total and validated SKUs
+        all_validations = PicklistSKUValidation.objects.filter(picklist=self)
+        total_skus = all_validations.count()
+        validated_count = all_validations.filter(validated=True).count()
         
         return {
             'total_skus': total_skus,
@@ -148,24 +166,40 @@ class Picklist(models.Model):
 
     def get_order_validation_status(self, order_number):
         """
-        Get validation status for a specific order in this picklist
+        Enhanced order validation status that considers quantity vs validated count
         """
         # Get all SKUs for this order in this picklist
-        order_skus = PicklistItem.objects.filter(
+        order_items = PicklistItem.objects.filter(
             picklist=self, 
             order_number=order_number
-        ).values('sku').distinct()
+        ).values('sku', 'quantity').distinct()
         
-        total_order_skus = order_skus.count()
+        total_order_skus = order_items.count()
         
         # Ensure validation records exist for all SKUs in this order
-        for item in order_skus:
-            PicklistSKUValidation.objects.get_or_create(
+        for item in order_items:
+            # Get product_id from master table
+            product = MasterTable.objects.filter(sku=item['sku']).first()
+            product_id = product.product_id if product else None
+            
+            validation_record, created = PicklistSKUValidation.objects.get_or_create(
                 picklist=self,
                 sku=item['sku'],
                 order_number=order_number,
-                defaults={'validated': False}
+                defaults={
+                    'validated': False,
+                    'quantity': item['quantity'],
+                    'validated_count': 0,
+                    'product_id': product_id
+                }
             )
+            
+            # Update existing records
+            if not created and (validation_record.quantity != item['quantity'] or not validation_record.product_id):
+                validation_record.quantity = item['quantity']
+                validation_record.product_id = product_id
+                validation_record.validated = validation_record.validated_count >= validation_record.quantity
+                validation_record.save()
         
         # Count validated SKUs for this order
         validated_order_skus = PicklistSKUValidation.objects.filter(
@@ -179,7 +213,6 @@ class Picklist(models.Model):
             'validated_count': validated_order_skus,
             'all_validated': validated_order_skus == total_order_skus and total_order_skus > 0
         }
-
 class PicklistItem(models.Model):
     picklist = models.ForeignKey(Picklist, on_delete=models.CASCADE, related_name='items')
     order_number = models.CharField(max_length=200)
@@ -397,12 +430,15 @@ class OrderPDF(models.Model):
 
 class PicklistSKUValidation(models.Model):
     """
-    Model to track which SKUs have been validated for each picklist
+    Enhanced model to track validation count vs required quantity for each SKU
     """
     picklist = models.ForeignKey(Picklist, on_delete=models.CASCADE, related_name='sku_validations')
     sku = models.CharField(max_length=200, db_index=True)
     order_number = models.CharField(max_length=200, db_index=True)
-    validated = models.BooleanField(default=False)
+    product_id = models.CharField(max_length=100, blank=True, null=True)  # NEW: Product ID from master table
+    quantity = models.IntegerField(default=1)  # NEW: Required quantity for this SKU in this order
+    validated_count = models.IntegerField(default=0)  # NEW: How many times user has validated this SKU
+    validated = models.BooleanField(default=False)  # True only when validated_count == quantity
     validated_at = models.DateTimeField(null=True, blank=True)
     validated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     
@@ -412,7 +448,105 @@ class PicklistSKUValidation(models.Model):
             models.Index(fields=['picklist', 'sku']),
             models.Index(fields=['picklist', 'validated']),
             models.Index(fields=['order_number', 'validated']),
+            models.Index(fields=['validated_count', 'quantity']),
         ]
     
     def __str__(self):
-        return f"SKU {self.sku} in {self.picklist.picklist_id} - Order: {self.order_number} - Validated: {self.validated}"
+        return f"SKU {self.sku} in {self.picklist.picklist_id} - Order: {self.order_number} - Validated: {self.validated_count}/{self.quantity}"
+    
+    def is_fully_validated(self):
+        """Check if this SKU is fully validated for this order"""
+        return self.validated_count >= self.quantity
+    
+    def get_validation_progress(self):
+        """Get validation progress as a dictionary"""
+        return {
+            'validated_count': self.validated_count,
+            'required_quantity': self.quantity,
+            'is_complete': self.is_fully_validated(),
+            'percentage': (self.validated_count / self.quantity * 100) if self.quantity > 0 else 0
+        }
+    
+    def increment_validation(self, user=None):
+        """Increment validation count and update status"""
+        if self.validated_count < self.quantity:
+            self.validated_count += 1
+            
+            # Mark as validated only when count reaches quantity
+            if self.validated_count >= self.quantity:
+                self.validated = True
+                self.validated_at = timezone.now()
+                if user:
+                    self.validated_by = user
+            
+            self.save()
+            return True
+        return False
+    
+@receiver(post_save, sender=PicklistItem)
+def create_sku_validation_record(sender, instance, created, **kwargs):
+    """
+    Automatically create PicklistSKUValidation record when a PicklistItem is created
+    """
+    if created:  # Only run when a new PicklistItem is created
+        try:
+            # Get product_id from master table
+            product = MasterTable.objects.filter(sku=instance.sku).first()
+            product_id = product.product_id if product else None
+            
+            # Create or get validation record
+            validation_record, validation_created = PicklistSKUValidation.objects.get_or_create(
+                picklist=instance.picklist,
+                sku=instance.sku,
+                order_number=instance.order_number,
+                defaults={
+                    'validated': False,
+                    'quantity': instance.quantity,
+                    'validated_count': 0,
+                    'product_id': product_id
+                }
+            )
+            
+            if validation_created:
+                print(f"✅ Auto-created validation record for SKU {instance.sku} in order {instance.order_number}")
+            else:
+                # Update existing record if needed
+                update_needed = False
+                if validation_record.quantity != instance.quantity:
+                    validation_record.quantity = instance.quantity
+                    update_needed = True
+                if not validation_record.product_id and product_id:
+                    validation_record.product_id = product_id
+                    update_needed = True
+                    
+                if update_needed:
+                    validation_record.save()
+                    print(f"🔄 Updated existing validation record for SKU {instance.sku}")
+                    
+        except Exception as e:
+            print(f"❌ Error creating validation record for {instance.sku}: {str(e)}")
+            # Don't raise the exception to avoid breaking picklist creation
+
+
+@receiver(post_save, sender=PicklistItem)
+def update_sku_validation_on_change(sender, instance, created, **kwargs):
+    """
+    Update validation record when PicklistItem quantity changes
+    """
+    if not created:  # Only run for updates, not creation
+        try:
+            validation_record = PicklistSKUValidation.objects.filter(
+                picklist=instance.picklist,
+                sku=instance.sku,
+                order_number=instance.order_number
+            ).first()
+            
+            if validation_record and validation_record.quantity != instance.quantity:
+                validation_record.quantity = instance.quantity
+                # Recalculate validated status based on new quantity
+                validation_record.validated = validation_record.validated_count >= validation_record.quantity
+                validation_record.save()
+                print(f"🔄 Updated validation quantity for SKU {instance.sku}")
+                
+        except Exception as e:
+            print(f"❌ Error updating validation record for {instance.sku}: {str(e)}")
