@@ -17,6 +17,8 @@ from ..models import (
     AmazonOrders, FlipkarOrders, FirstcryOrders, MeeshoOrders,
     OrderPDF
 )
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
 @require_http_methods(["GET"])
 def get_printer_list(request):
@@ -77,6 +79,22 @@ def save_printer_preferences(request):
             'message': f'Error saving printer preferences: {str(e)}'
         }, status=500)
 
+@api_view(['GET'])
+def get_pending_print_jobs(request):
+    """
+    Get pending print jobs for a specific client
+    """
+    client_id = request.GET.get('client_id')
+    
+    # TODO: Add your actual logic here to fetch pending print jobs
+    # For now, returning empty to stop the 404 errors
+    
+    return Response({
+        'success': True,
+        'pending_jobs': [],
+        'client_id': client_id,
+        'message': 'No pending print jobs'
+    })
 
 @require_http_methods(["GET"])
 def get_printer_preferences(request):
@@ -405,6 +423,136 @@ def mark_order_as_printed(request):
             'message': f'Error processing request: {str(e)}'
         }, status=500)
     
+@csrf_exempt
+@require_http_methods(["POST"])
+def mark_multiple_orders_printed(request):
+    """
+    Mark multiple orders as printed/processed in the database.
+    This updates both the order status in the platform-specific table
+    and ensures the picklist items are marked as picked.
+    """
+    try:
+        data = json.loads(request.body)
+        picklist_id = data.get('picklist_id')
+        order_numbers = data.get('order_numbers', [])
+        
+        if not picklist_id or not order_numbers:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Picklist ID and order numbers are required'
+            }, status=400)
+        
+        # Logging for debugging
+        print(f"Marking {len(order_numbers)} orders in picklist {picklist_id} as printed")
+        
+        # Find the picklist
+        try:
+            picklist = Picklist.objects.get(picklist_id=picklist_id)
+        except Picklist.DoesNotExist:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Picklist {picklist_id} not found'
+            }, status=404)
+        
+        # Determine platform for updating platform-specific tables
+        platform = picklist.platform.upper() if picklist.platform else "UNKNOWN"
+        
+        # Model mapping for platform-specific order tables
+        model_mapping = {
+            'AMAZON': AmazonOrders,
+            'FLIPKART': FlipkarOrders,
+            'FIRSTCRY': FirstcryOrders,
+            'MEESHO': MeeshoOrders
+        }
+        
+        # Track updates
+        total_updated_items = 0
+        total_updated_orders = 0
+        platform_orders_updated = 0
+        processed_orders = []
+        
+        # Process each order
+        for order_number in order_numbers:
+            # Find all picklist items with this order number
+            items = PicklistItem.objects.filter(picklist=picklist, order_number=order_number)
+            
+            if not items.exists():
+                print(f"Order {order_number} not found in picklist {picklist_id}")
+                continue
+            
+            # Mark all matching items as picked/processed
+            order_updated_items = 0
+            for item in items:
+                if not item.picked:  # Only update if not already picked
+                    item.picked = True
+                    item.save()
+                    order_updated_items += 1
+                    
+                    # Also update the PicklistItemLocation if it exists
+                    try:
+                        location_info, created = PicklistItemLocation.objects.get_or_create(
+                            picklist_item=item,
+                            defaults={'location': 'Unknown', 'picked': False}
+                        )
+                        location_info.picked = True
+                        location_info.picked_at = timezone.now()
+                        location_info.save()
+                    except Exception as e:
+                        print(f"Error updating location info for item {item.id}: {str(e)}")
+                        # Continue anyway - the PicklistItem is already updated
+            
+            if order_updated_items > 0:
+                total_updated_items += order_updated_items
+                total_updated_orders += 1
+                processed_orders.append(order_number)
+                print(f"Order {order_number}: {order_updated_items} items marked as picked")
+            
+            # Update the status in the appropriate platform order table
+            if platform in model_mapping:
+                try:
+                    orders_updated = model_mapping[platform].objects.filter(
+                        order_number=order_number
+                    ).update(status='Processed')
+                    
+                    if orders_updated > 0:
+                        platform_orders_updated += 1
+                        print(f"Updated {platform} order {order_number} status to 'Processed'")
+                except Exception as e:
+                    print(f"Error updating {platform} order {order_number}: {str(e)}")
+                    # Continue processing other orders
+        
+        # Check if all items in the picklist are now picked
+        all_picked = not PicklistItem.objects.filter(picklist=picklist, picked=False).exists()
+        
+        # If all items are picked, update the picklist status if needed
+        picklist_status_updated = False
+        if all_picked and picklist.status == 'PACKING':
+            picklist.status = 'PACKED'
+            picklist.save()
+            picklist_status_updated = True
+            print(f"Picklist {picklist_id} status updated to 'PACKED'")
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Successfully processed {total_updated_orders} orders ({total_updated_items} items)',
+            'total_updated_orders': total_updated_orders,
+            'total_updated_items': total_updated_items,
+            'platform_orders_updated': platform_orders_updated,
+            'processed_orders': processed_orders,
+            'all_picked': all_picked,
+            'picklist_completed': picklist_status_updated
+        })
+        
+    except Exception as e:
+        print(f"Error in mark_multiple_orders_printed: {str(e)}")
+        traceback.print_exc()
+        
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error processing request: {str(e)}'
+        }, status=500)
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def save_awb_number(request):

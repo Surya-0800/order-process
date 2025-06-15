@@ -537,28 +537,33 @@ def get_validation_status(request):
 def search_product(request):
     """
     Enhanced sequential validation logic with quantity-based validation
+    Now supports searching by product_id OR sku
     """
-    product_id = request.GET.get('product_id', '')
+    search_query = request.GET.get('product_id', '')  # Keep same parameter name for compatibility
     picklist_id = request.GET.get('picklist_id', '')
     
-    if not product_id:
+    if not search_query:
         return JsonResponse({
             'status': 'error',
-            'message': 'Product ID is required'
+            'message': 'Product ID or SKU is required'
         }, status=400)
     
     try:
-        # Find the product in the master table
-        product = MasterTable.objects.filter(product_id=product_id).first()
+        # Enhanced search: Try to find product by product_id OR sku
+        from django.db.models import Q
+        
+        product = MasterTable.objects.filter(
+            Q(product_id=search_query) | Q(sku=search_query)
+        ).first()
         
         if not product:
             return JsonResponse({
                 'status': 'error',
-                'message': f'Product with ID {product_id} not found'
+                'message': f'Product with ID/SKU "{search_query}" not found'
             }, status=404)
         
-        # Check if image exists in database
-        image_upload = ImageUpload.objects.filter(file_name=f"{product_id}.jpg").first()
+        # Check if image exists in database (using the found product's product_id)
+        image_upload = ImageUpload.objects.filter(file_name=f"{product.product_id}.jpg").first()
         
         if image_upload:
             import base64
@@ -575,10 +580,11 @@ def search_product(request):
             try:
                 picklist = Picklist.objects.get(picklist_id=picklist_id)
                 
-                # Find ALL orders with this SKU in the picklist
+                # Find ALL orders with this SKU in the picklist (using the found product's SKU)
                 picklist_items = PicklistItem.objects.filter(
                     picklist=picklist, 
-                    sku=product.sku
+                    sku=product.sku,
+                    picked = False
                 ).order_by('order_number')
                 
                 if picklist_items.exists():
@@ -669,7 +675,7 @@ def search_product(request):
             except Picklist.DoesNotExist:
                 pass
         
-        # Return enhanced product details
+        # Return enhanced product details (always using the found product's actual values)
         response_data = {
             'status': 'success',
             'product': {
@@ -683,7 +689,9 @@ def search_product(request):
                 'pack_check': product.pack_check or '',
                 'pack_remarks': product.pack_remarks or ''
             },
-            'in_current_picklist': in_current_picklist
+            'in_current_picklist': in_current_picklist,
+            'search_query': search_query,  # Include what was searched for
+            'found_by': 'product_id' if product.product_id == search_query else 'sku'  # Indicate how it was found
         }
         
         if validation_info:
@@ -697,8 +705,7 @@ def search_product(request):
         return JsonResponse({
             'status': 'error',
             'message': f'Error searching for product: {str(e)}'
-        }, status=500)
-    
+        }, status=500)  
 
 @csrf_exempt
 @require_http_methods(["POST"])

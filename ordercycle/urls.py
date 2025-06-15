@@ -17,7 +17,7 @@ from .views.packing_views import (
 from .views.printing_views import (
     get_printer_list, save_printer_preferences, get_printer_preferences,
     send_test_print, print_label, mark_order_as_printed, save_awb_number,
-    print_invoice, search_awb,download_pdf
+    print_invoice, search_awb,download_pdf,get_pending_print_jobs,mark_multiple_orders_printed
 )
 from .views.location_views import (
    LocationOrdersViewSet
@@ -57,6 +57,8 @@ urlpatterns = [
 
     # Add these URL patterns to your urlpatterns list
     path('image-upload/', upload_image_view, name='image_upload'),  # Template view for the image upload page
+    path('api/print-jobs/pending/', get_pending_print_jobs, name='get_pending_print_jobs'),
+    path('api/orders/mark-multiple-printed/', mark_multiple_orders_printed, name='mark_multiple_orders_printed'),
 
     # API endpoints for image uploads
     path('api/images/upload-multiple/', upload_multiple_images, name='upload_multiple_images'),
@@ -114,6 +116,7 @@ urlpatterns = [
     
     # Include API routes - make sure this comes after individual API routes
     path('api/', include('ordercycle.api.urls')),
+    path('api/orders/mark-multiple-printed/', mark_multiple_orders_printed, name='mark_multiple_orders_printed'),
 
     path('api/search-dispatch-awb/', views.search_by_awb, name='search_by_awb'),
     path('api/orders/complete-by-awb/', views.complete_orders_by_awb, name='complete_orders_by_awb'),
