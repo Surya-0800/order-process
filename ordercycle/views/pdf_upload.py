@@ -187,7 +187,9 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
             pdf_info = order_data[-1]
             pdf_url = pdf_info.get('output_pdf_location', '')
             for item in items:
-                  qty = int(item["Qty"])
+                  for i in item.keys():
+                      if "Qty" in i :
+                          qty = int(item[i])
                   if qty > 1:
                       order_type = "Multiple"
                   if not FirstcryOrders.objects.filter(order_number=order_number, sku=item['sku'].replace("\n", "")).exists():

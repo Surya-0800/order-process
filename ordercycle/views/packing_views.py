@@ -64,7 +64,7 @@ def search_picklist(request):
             
             # UPDATED: Only include orders that are NOT in Dispatch OR Complete status
             # This fixes the caching issue by excluding completed orders from the response
-            if order_status not in ['Dispatch', 'Complete']:
+            if order_status != 'Dispatch':
                 # Get product_id from master table
                 product = MasterTable.objects.filter(sku=item.sku).first()
                 product_id = product.product_id if product else None
@@ -157,6 +157,8 @@ def search_picklist(request):
             'status': 'error',
             'message': f'Error searching picklist: {str(e)}'
         }, status=500)
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def validate_sku(request):

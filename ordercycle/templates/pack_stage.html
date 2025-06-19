@@ -33,10 +33,11 @@
             z-index: -1;
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
+       .container {
+    max-width: 1400px; /* Keep original max-width */
+    margin: 0 auto; /* Keep centered */
+    padding: 15px; /* Keep original padding */
+}
 
         /* Header Section */
         .header-section {
@@ -237,10 +238,13 @@
 
         /* Main Content Grid */
         .main-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
+            width: 100% !important;
+            max-width: none !important;
+        }
+
+        .search-card {
+            width: 100% !important;
+            margin: 0 !important;
         }
 
         /* Card Styles */
@@ -896,6 +900,10 @@
             color: white;
         }
 
+        .btn-validate {
+            display: none !important;
+        }
+
         .action-btn-sm.btn-validate {
             background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
             color: #212529;
@@ -1128,8 +1136,13 @@
     border-radius: 15px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
     overflow: hidden;
+    margin-top: 20px !important;
     margin-bottom: 20px;
     display: none; /* Hidden by default */
+}
+
+.search-card {
+    margin-bottom: 15px !important;
 }
 
 .product-search-results h3 {
@@ -2187,89 +2200,345 @@
     color: #495057;
     font-style: italic;
 }
+.picklist-info-bar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 16px 24px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.picklist-info-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 25px;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.info-item strong {
+    font-weight: 600;
+    opacity: 0.9;
+    letter-spacing: 0.5px;
+}
+
+.status-item {
+    margin-left: auto;
+}
+
+.status-badge {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.status-badge.status-pending {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.status-badge.status-complete {
+    background: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+    border: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.status-badge.status-loading {
+    background: rgba(108, 117, 125, 0.2);
+    color: #6c757d;
+    border: 1px solid rgba(108, 117, 125, 0.3);
+}
+
+.status-badge.status-progress {
+    background: rgba(0, 123, 255, 0.2);
+    color: #007bff;
+    border: 1px solid rgba(0, 123, 255, 0.3);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* Printer Selection Trigger Button */
+.printer-selection-trigger {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 20px;
+}
+
+.printer-settings-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+}
+
+.printer-settings-btn:hover {
+    background: linear-gradient(135deg, #138496 0%, #117a8b 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(23, 162, 184, 0.4);
+}
+
+.printer-icon {
+    font-size: 18px;
+}
+
+/* Printer Selection Popup Overlay */
+.printer-popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+
+.printer-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    z-index: 1001;
+}
+
+.printer-popup h3 {
+    margin: 0 0 25px 0;
+    color: #2c3e50;
+    font-size: 24px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.popup-close-btn {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #6c757d;
+    transition: color 0.3s ease;
+}
+
+.popup-close-btn:hover {
+    color: #dc3545;
+}
+
+.printer-popup-overlay.active {
+    display: block;
+}
+
+.btn-save-printers {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    margin-left: 10px;
+}
+
+.btn-save-printers:hover {
+    background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.header-top-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 20px !important;
+}
+
+.header-top-row h1 {
+    margin: 0 !important;
+}
+
+.printer-selection-trigger {
+    margin: 0 !important;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .picklist-info-content {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+    
+    .status-item {
+        margin-left: 0;
+    }
+    
+    .printer-popup {
+        width: 95%;
+        padding: 20px;
+    }
+    
+    .printer-controls-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+}
+.picklist-info-card {
+    display: none !important;
+}
     </style>
 </head>
 
 <body>
     <div class="container">
-        <div class="header-section">
-            <h1>Packing Stage</h1>
-            
-            <!-- Picklist search controls -->
-            <div class="picklist-controls">
-                <input type="text" id="picklist-search-input" placeholder="Enter Picklist ID..." style="padding: 14px 18px; border: 2px solid #e1e8ed; border-radius: 10px; flex: 1; min-width: 250px; font-size: 16px;">
-                <button onclick="searchPicklist()" class="control-btn btn-primary">Load Picklist</button>
-                <button onclick="clearPicklist()" class="control-btn btn-secondary">Clear</button>
-            </div>
+        <!-- Replace the existing header section with this -->
+<!-- Replace the entire header section with this -->
+<div class="header-section">
+    <div class="header-top-row">
+        <h1>Packing Stage</h1>
+        
+        <!-- Move Printer Selection to top right -->
+        <div class="printer-selection-trigger">
+            <button id="printer-settings-btn" class="printer-settings-btn" onclick="togglePrinterSelection()">
+                <span class="printer-icon">🖨️</span>
+                <span class="printer-text">Select Printers</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Picklist search controls -->
+    <div class="picklist-controls">
+        <input type="text" id="picklist-search-input" placeholder="Enter Picklist ID..." style="padding: 14px 18px; border: 2px solid #e1e8ed; border-radius: 10px; flex: 1; min-width: 250px; font-size: 16px;">
+        <button onclick="searchPicklist()" class="control-btn btn-primary">Load Picklist</button>
+        <button onclick="clearPicklist()" class="control-btn btn-secondary">Clear</button>
+    </div>
 
-            <!-- Print All Orders Section -->
-            <div id="print-all-section" class="print-all-section">
-                <button id="btn-print-all" class="btn-print-all" onclick="printAllOrders()">
-                    <span class="icon">🖨️</span>
-                    <span>Print All Orders</span>
-                </button>
-                <div id="print-all-status" class="print-all-status">
-                    Ready to print all orders in the current picklist
+    <!-- One-line Picklist Information Bar -->
+    <div id="picklist-info-bar" class="picklist-info-bar" style="display: none;">
+        <div class="picklist-info-content">
+            <span class="info-item">
+                <strong>PICKLIST ID:</strong> <span id="picklist-id-display">-</span>
+            </span>
+            <span class="info-item">
+                <strong>TOTAL ORDERS:</strong> <span id="total-orders-display">0</span>
+            </span>
+            <span class="info-item">
+                <strong>PORTAL:</strong> <span id="picklist-platform-display">-</span>
+            </span>
+            <span class="info-item">
+                <strong>COMPLETED:</strong> <span id="completed-orders-display">0</span>/<span id="total-orders-display-2">0</span>
+            </span>
+            <span class="info-item status-item">
+                <span id="picklist-status-display" class="status-badge status-pending">IN PROGRESS</span>
+            </span>
+        </div>
+    </div>
+
+    <!-- Print Services Status Bar -->
+    <div class="print-services-bar">
+        <div class="services-container">
+            <div class="service-group">
+                <span class="service-icon">🖨️</span>
+                <span class="service-label">Print Service:</span>
+                <span id="print-service-status" class="status status-connecting">Checking...</span>
+                <button id="connect-print-service" class="btn" style="display: none;">Connect</button>
+            </div>
+            
+            <div class="service-group">
+                <span class="service-icon">📄</span>
+                <span class="service-label">QZ Tray:</span>
+                <span id="qz-status" class="status status-connecting">Loading...</span>
+                <button id="connect-qz" class="btn" style="display: none;">Connect</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Printer Selection Popup (add before closing body tag) -->
+<div id="printer-popup-overlay" class="printer-popup-overlay" onclick="closePrinterPopup()">
+    <div class="printer-popup" onclick="event.stopPropagation()">
+        <button class="popup-close-btn" onclick="closePrinterPopup()">&times;</button>
+        <h3>🖨️ Select Your Printers</h3>
+        
+        <div class="printer-controls-grid">
+            <!-- Label Printer Selection -->
+            <div class="printer-control-group label-printer">
+                <h4>Label Printer</h4>
+                <select id="label-printer-select-popup" disabled>
+                    <option value="">Detecting printers...</option>
+                </select>
+                <div class="printer-info" id="label-printer-info-popup">
+                    <span class="printer-status-indicator no-printer">No Printer Selected</span>
+                </div>
+                <div class="printer-test-buttons">
+                    <button id="test-label-printer-popup" class="btn-test-print" disabled>Test Print</button>
                 </div>
             </div>
 
-            <!-- Print Services Status Bar -->
-            <div class="print-services-bar">
-                <div class="services-container">
-                    <div class="service-group">
-                        <span class="service-icon">🖨️</span>
-                        <span class="service-label">Print Service:</span>
-                        <span id="print-service-status" class="status status-connecting">Checking...</span>
-                        <button id="connect-print-service" class="btn" style="display: none;">Connect</button>
-                    </div>
-                    
-                    <div class="service-group">
-                        <span class="service-icon">📄</span>
-                        <span class="service-label">QZ Tray:</span>
-                        <span id="qz-status" class="status status-connecting">Loading...</span>
-                        <button id="connect-qz" class="btn" style="display: none;">Connect</button>
-                    </div>
+            <!-- Invoice Printer Selection -->
+            <div class="printer-control-group invoice-printer">
+                <h4>Invoice Printer</h4>
+                <select id="invoice-printer-select-popup" disabled>
+                    <option value="">Detecting printers...</option>
+                </select>
+                <div class="printer-info" id="invoice-printer-info-popup">
+                    <span class="printer-status-indicator no-printer">No Printer Selected</span>
+                </div>
+                <div class="printer-test-buttons">
+                    <button id="test-invoice-printer-popup" class="btn-test-print" disabled>Test Print</button>
                 </div>
             </div>
         </div>
-
-                <!-- Printer Selection Section -->
-        <div id="printer-selection-section" class="printer-selection-section">
-            <h3>Select Your Printers</h3>
-            <div class="printer-controls-grid">
-                <!-- Label Printer Selection -->
-                <div class="printer-control-group label-printer">
-                    <h4>Label Printer</h4>
-                    <select id="label-printer-select" disabled>
-                        <option value="">Detecting printers...</option>
-                    </select>
-                    <div class="printer-info" id="label-printer-info">
-                        <span class="printer-status-indicator no-printer">No Printer Selected</span>
-                    </div>
-                    <div class="printer-test-buttons">
-                        <button id="test-label-printer" class="btn-test-print" disabled>Test Print</button>
-                    </div>
-                </div>
-
-                <!-- Invoice Printer Selection -->
-                <div class="printer-control-group invoice-printer">
-                    <h4>Invoice Printer</h4>
-                    <select id="invoice-printer-select" disabled>
-                        <option value="">Detecting printers...</option>
-                    </select>
-                    <div class="printer-info" id="invoice-printer-info">
-                        <span class="printer-status-indicator no-printer">No Printer Selected</span>
-                    </div>
-                    <div class="printer-test-buttons">
-                        <button id="test-invoice-printer" class="btn-test-print" disabled>Test Print</button>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="printer-actions">
-                <button id="refresh-printers" class="btn-refresh-printers">🔄 Refresh Printer List</button>
-            </div>
+        
+        <div class="printer-actions">
+            <button id="refresh-printers-popup" class="btn-refresh-printers">🔄 Refresh Printer List</button>
+            <button onclick="savePrinterSettings()" class="btn-save-printers">💾 Save Settings</button>
         </div>
+    </div>
+</div>
+
+
 
         <!-- Main Content Grid -->
         <div class="main-content">
@@ -2556,6 +2825,346 @@
             return csrfToken;
         }
 
+        async function getPicklistSummaryData(picklistId) {
+    if (!picklistId) {
+        return {
+            success: false,
+            error: 'No picklist ID provided'
+        };
+    }
+    
+    try {
+        const response = await fetch(`/api/picklists/search/?picklist_id=${picklistId}&_t=${new Date().getTime()}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: Failed to fetch picklist`);
+        }
+        
+        const data = await response.json();
+        
+        const allOrders = [...new Set(data.picklist.items.map(item => item.order_number))];
+        const activeItems = data.picklist.items.filter(item => 
+            item.order_status !== 'Dispatch' && item.order_status !== 'Complete'
+        );
+        const activeOrders = [...new Set(activeItems.map(item => item.order_number))];
+        const completedOrders = allOrders.length - activeOrders.length;
+        
+        return {
+            success: true,
+            data: {
+                picklistId: data.picklist.picklist_id,
+                platform: data.picklist.platform,
+                totalOrders: allOrders.length,
+                completedOrders: completedOrders,
+                activeOrders: activeOrders.length,
+                status: completedOrders === allOrders.length ? 'completed' : 'in-progress'
+            }
+        };
+        
+    } catch (error) {
+        console.error('Error fetching picklist summary:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+async function loadAndShowPicklistSummary(picklistId) {
+    if (!picklistId) {
+        hidePicklistSummary();
+        return;
+    }
+    
+    // Show loading state
+    showPicklistSummary({
+        picklistId: picklistId,
+        platform: 'Loading...',
+        totalOrders: 0,
+        completedOrders: 0,
+        status: 'loading'
+    });
+    
+    // Get data and display
+    const result = await getPicklistSummaryData(picklistId);
+    
+    if (result.success) {
+        showPicklistSummary(result.data);
+    } else {
+        console.error('Failed to load picklist summary:', result.error);
+        hidePicklistSummary();
+    }
+}
+
+// Function to display the summary data
+function showPicklistSummary(data) {
+    const infoBar = document.getElementById('picklist-info-bar');
+    if (!infoBar) return;
+    
+    infoBar.style.display = 'block';
+    
+    document.getElementById('picklist-id-display').textContent = data.picklistId || '-';
+    document.getElementById('total-orders-display').textContent = data.totalOrders || '0';
+    document.getElementById('total-orders-display-2').textContent = data.totalOrders || '0';
+    document.getElementById('picklist-platform-display').textContent = (data.platform || '-').toUpperCase();
+    document.getElementById('completed-orders-display').textContent = data.completedOrders || '0';
+    
+    const statusElement = document.getElementById('picklist-status-display');
+    if (data.status === 'loading') {
+        statusElement.className = 'status-badge status-loading';
+        statusElement.textContent = 'LOADING...';
+    } else if (data.status === 'completed') {
+        statusElement.className = 'status-badge status-complete';
+        statusElement.textContent = 'COMPLETED';
+    } else {
+        statusElement.className = 'status-badge status-pending';
+        statusElement.textContent = 'IN PROGRESS';
+    }
+}
+
+function hidePicklistSummary() {
+    const infoBar = document.getElementById('picklist-info-bar');
+    if (infoBar) {
+        infoBar.style.display = 'none';
+    }
+}
+
+// Printer Selection Functions
+function togglePrinterSelection() {
+    const overlay = document.getElementById('printer-popup-overlay');
+    overlay.classList.add('active');
+    
+    if (qzReady || printServiceAvailable) {
+        detectPrintersForPopup();
+    }
+    
+    loadSavedPrinterSettings();
+}
+
+function closePrinterPopup() {
+    const overlay = document.getElementById('printer-popup-overlay');
+    overlay.classList.remove('active');
+}
+
+function detectPrintersForPopup() {
+    console.log("Detecting printers for popup...");
+    
+    const labelSelect = document.getElementById('label-printer-select-popup');
+    const invoiceSelect = document.getElementById('invoice-printer-select-popup');
+    
+    // Use the existing availablePrinters array from main detection
+    if (availablePrinters && availablePrinters.length > 0) {
+        populatePrinterSelectionsForPopup();
+    } else {
+        // Trigger main detection if not done yet
+        detectPrinters().then(() => {
+            populatePrinterSelectionsForPopup();
+        });
+    }
+}
+
+function populatePrinterSelectionsForPopup() {
+    const labelSelect = document.getElementById('label-printer-select-popup');
+    const invoiceSelect = document.getElementById('invoice-printer-select-popup');
+    
+    if (!labelSelect || !invoiceSelect) return;
+    
+    labelSelect.innerHTML = '<option value="">Select Label Printer...</option>';
+    invoiceSelect.innerHTML = '<option value="">Select Invoice Printer...</option>';
+    
+    if (!availablePrinters || availablePrinters.length === 0) {
+        labelSelect.innerHTML = '<option value="">No printers found</option>';
+        invoiceSelect.innerHTML = '<option value="">No printers found</option>';
+        return;
+    }
+    
+    availablePrinters.forEach(printer => {
+        const isLabelPrinter = labelPrinters.includes(printer);
+        
+        const labelOption = document.createElement('option');
+        labelOption.value = printer;
+        labelOption.textContent = printer + (isLabelPrinter ? ' ⭐ (Recommended)' : '');
+        labelSelect.appendChild(labelOption);
+        
+        const invoiceOption = document.createElement('option');
+        invoiceOption.value = printer;
+        invoiceOption.textContent = printer + (isLabelPrinter ? ' (Label Printer)' : '');
+        invoiceSelect.appendChild(invoiceOption);
+    });
+    
+    labelSelect.disabled = false;
+    invoiceSelect.disabled = false;
+    
+    // Set current values
+    if (labelPrinter) {
+        labelSelect.value = labelPrinter;
+        updatePrinterInfoForPopup('label', labelPrinter);
+    }
+    if (invoicePrinter) {
+        invoiceSelect.value = invoicePrinter;
+        updatePrinterInfoForPopup('invoice', invoicePrinter);
+    }
+}
+
+function updatePrinterInfoForPopup(type, printerName) {
+    const infoElement = document.getElementById(`${type}-printer-info-popup`);
+    const testButton = document.getElementById(`test-${type}-printer-popup`);
+    
+    if (!printerName) {
+        infoElement.innerHTML = '<span class="printer-status-indicator no-printer">No Printer Selected</span>';
+        if (testButton) testButton.disabled = true;
+        return;
+    }
+    
+    const isLabelPrinter = labelPrinters.includes(printerName);
+    const statusClass = isLabelPrinter ? 'label-printer' : 'regular-printer';
+    const statusText = isLabelPrinter ? '⭐ Label Printer' : '📄 Regular Printer';
+    
+    infoElement.innerHTML = `
+        <div>
+            <strong>${printerName}</strong><br>
+            <span class="printer-status-indicator ${statusClass}">${statusText}</span>
+        </div>
+    `;
+    
+    if (testButton) testButton.disabled = false;
+}
+
+function savePrinterSettings() {
+    const labelSelect = document.getElementById('label-printer-select-popup');
+    const invoiceSelect = document.getElementById('invoice-printer-select-popup');
+    
+    const selectedLabelPrinter = labelSelect ? labelSelect.value : '';
+    const selectedInvoicePrinter = invoiceSelect ? invoiceSelect.value : '';
+    
+    const settings = {
+        labelPrinter: selectedLabelPrinter,
+        invoicePrinter: selectedInvoicePrinter,
+        timestamp: new Date().getTime()
+    };
+    
+    // Update global variables
+    labelPrinter = selectedLabelPrinter;
+    invoicePrinter = selectedInvoicePrinter;
+    
+    // Save to localStorage
+    localStorage.setItem('printerSettings', JSON.stringify(settings));
+    
+    // Also save to cookies (fallback)
+    const expires = new Date();
+    expires.setTime(expires.getTime() + (30 * 24 * 60 * 60 * 1000)); // 30 days
+    document.cookie = `printerSettings=${JSON.stringify(settings)}; expires=${expires.toUTCString()}; path=/`;
+    
+    alert('✅ Printer settings saved successfully!');
+    closePrinterPopup();
+    
+    console.log('Saved printer settings:', settings);
+}
+
+function loadSavedPrinterSettings() {
+    let savedSettings = null;
+    
+    // Try localStorage first
+    try {
+        const localSettings = localStorage.getItem('printerSettings');
+        if (localSettings) {
+            savedSettings = JSON.parse(localSettings);
+        }
+    } catch (error) {
+        console.error('Error loading from localStorage:', error);
+    }
+    
+    // Fallback to cookies
+    if (!savedSettings) {
+        const cookieSettings = getCookie('printerSettings');
+        if (cookieSettings) {
+            try {
+                savedSettings = JSON.parse(cookieSettings);
+            } catch (error) {
+                console.error('Error parsing cookie settings:', error);
+            }
+        }
+    }
+    
+    if (savedSettings) {
+        labelPrinter = savedSettings.labelPrinter || '';
+        invoicePrinter = savedSettings.invoicePrinter || '';
+        
+        // Update popup UI
+        setTimeout(() => {
+            const labelSelect = document.getElementById('label-printer-select-popup');
+            const invoiceSelect = document.getElementById('invoice-printer-select-popup');
+            
+            if (labelSelect && labelPrinter) {
+                labelSelect.value = labelPrinter;
+                updatePrinterInfoForPopup('label', labelPrinter);
+            }
+            
+            if (invoiceSelect && invoicePrinter) {
+                invoiceSelect.value = invoicePrinter;
+                updatePrinterInfoForPopup('invoice', invoicePrinter);
+            }
+        }, 500);
+        
+        console.log('Loaded saved printer settings:', savedSettings);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Load saved settings on page load
+    loadSavedPrinterSettings();
+    
+    // Add event listeners for popup selects
+    setTimeout(() => {
+        const labelSelectPopup = document.getElementById('label-printer-select-popup');
+        const invoiceSelectPopup = document.getElementById('invoice-printer-select-popup');
+        const testLabelBtnPopup = document.getElementById('test-label-printer-popup');
+        const testInvoiceBtnPopup = document.getElementById('test-invoice-printer-popup');
+        const refreshBtnPopup = document.getElementById('refresh-printers-popup');
+        
+        if (labelSelectPopup) {
+            labelSelectPopup.addEventListener('change', function() {
+                updatePrinterInfoForPopup('label', this.value);
+            });
+        }
+        
+        if (invoiceSelectPopup) {
+            invoiceSelectPopup.addEventListener('change', function() {
+                updatePrinterInfoForPopup('invoice', this.value);
+            });
+        }
+        
+        if (testLabelBtnPopup) {
+            testLabelBtnPopup.addEventListener('click', function() {
+                const selectedPrinter = document.getElementById('label-printer-select-popup').value;
+                if (selectedPrinter) testPrintForPopup('label', selectedPrinter);
+            });
+        }
+        
+        if (testInvoiceBtnPopup) {
+            testInvoiceBtnPopup.addEventListener('click', function() {
+                const selectedPrinter = document.getElementById('invoice-printer-select-popup').value;
+                if (selectedPrinter) testPrintForPopup('invoice', selectedPrinter);
+            });
+        }
+        
+        if (refreshBtnPopup) {
+            refreshBtnPopup.addEventListener('click', function() {
+                detectPrintersForPopup();
+            });
+        }
+    }, 1000);
+});
+
+
+// Function to hide the summary
+function hidePicklistSummary() {
+    const infoBar = document.getElementById('picklist-info-bar');
+    if (infoBar) {
+        infoBar.style.display = 'none';
+    }
+}
+
         // Print Service Functions
         async function checkPrintServiceAvailability() {
             debugLog('Checking Print Service availability...');
@@ -2716,9 +3325,15 @@ function updatePrintAllButton() {
     const btn = document.getElementById('btn-print-all');
     const status = document.getElementById('print-all-status');
     
+    // ✅ Add null checks to prevent errors
+    if (!btn) {
+        console.warn('Print All button not found in DOM');
+        return;
+    }
+    
     if (!currentPicklistId || !currentPicklistItems.length) {
         btn.disabled = true;
-        status.textContent = 'No picklist loaded';
+        if (status) status.textContent = 'No picklist loaded';
         hidePrintAllSection();
         return;
     }
@@ -2728,10 +3343,10 @@ function updatePrintAllButton() {
     
     if (unprocessedOrders === 0) {
         btn.disabled = true;
-        status.textContent = 'All orders have been processed';
+        if (status) status.textContent = 'All orders have been processed';
     } else {
         btn.disabled = false;
-        status.textContent = `Ready to print ${unprocessedOrders} unprocessed orders`;
+        if (status) status.textContent = `Ready to print ${unprocessedOrders} unprocessed orders`;
     }
     
     showPrintAllSection();
@@ -2744,7 +3359,6 @@ function printAllOrders() {
         return;
     }
     
-    // Get all unprocessed orders
     const unprocessedOrderNumbers = Object.keys(allPendingOrders);
     
     if (unprocessedOrderNumbers.length === 0) {
@@ -2752,23 +3366,22 @@ function printAllOrders() {
         return;
     }
     
-    // Confirm with user
-    const confirmMessage = `This will print all ${unprocessedOrderNumbers.length} orders and mark them as packed. Continue?`;
+    const confirmMessage = `This will print all ${unprocessedOrderNumbers.length} orders.\nAfter printing, you'll be prompted to enter AWB for each order.\n\nContinue?`;
     if (!confirm(confirmMessage)) {
         return;
     }
     
-    // Check if printers are available
+    // Check printer availability
     const platformUpper = currentPicklistPlatform ? currentPicklistPlatform.toUpperCase() : '';
     
     if (platformUpper === 'MEESHO') {
         if (!printServiceAvailable || !labelPrinter) {
-            alert('Print Service and Label Printer are required for Meesho orders. Please ensure both are connected.');
+            alert('Print Service and Label Printer are required for Meesho orders.');
             return;
         }
     } else {
         if (!qzReady || !labelPrinter) {
-            alert('QZ Tray and Label Printer are required. Please ensure both are connected.');
+            alert('QZ Tray and Label Printer are required.');
             return;
         }
     }
@@ -2781,27 +3394,26 @@ function printAllOrders() {
     btn.innerHTML = '<span class="icon">🖨️</span><span>Printing All Orders...</span>';
     status.textContent = `Printing ${unprocessedOrderNumbers.length} orders...`;
     
-    // Print all orders at once
+    // Print all orders
     unprocessedOrderNumbers.forEach(orderNumber => {
         console.log(`🖨️ Printing order: ${orderNumber}`);
         printOrderLabel(currentPicklistPlatform, orderNumber);
     });
     
-    // Mark all orders as packed
+    // Mark all as printed in database
     markAllOrdersAsPacked(unprocessedOrderNumbers);
     
-    // Update UI after a delay
+    // Show AWB collection dialog after a delay
     setTimeout(() => {
         btn.disabled = false;
         btn.innerHTML = '<span class="icon">🖨️</span><span>Print All Orders</span>';
-        status.textContent = `All ${unprocessedOrderNumbers.length} orders sent to printer and marked as packed`;
+        status.textContent = `All orders printed. Please enter AWB numbers.`;
         
-        // Refresh the orders display
-        populateOrdersTables(currentPicklistItems);
-        updatePrintAllButton();
-        
-        alert(`✅ All ${unprocessedOrderNumbers.length} orders have been sent to the printer and marked as packed!`);
-    }, 2000);
+        // Refresh from database first, then show AWB dialogs
+        refreshPicklistFromDatabase().then(() => {
+            showBulkAwbDialog(unprocessedOrderNumbers);
+        });
+    }, 3000);
 }
 
 // Mark all orders as packed
@@ -2811,15 +3423,6 @@ function markAllOrdersAsPacked(orderNumbers) {
     }
 
     console.log(`Marking ${orderNumbers.length} orders as packed`);
-
-    // Update local data immediately
-    orderNumbers.forEach(orderNumber => {
-        currentPicklistItems.forEach(item => {
-            if (item.order_number === orderNumber) {
-                item.picked = true;
-            }
-        });
-    });
 
     const requestBody = {
         picklist_id: currentPicklistId,
@@ -2852,12 +3455,196 @@ function markAllOrdersAsPacked(orderNumbers) {
     })
     .then(data => {
         console.log('Orders marked as packed in database:', data.message);
+        
+        // NO LOCAL UPDATES - Only refresh from database
+        refreshPicklistFromDatabase();
     })
     .catch(error => {
         console.error("API error:", error);
         alert(`Database update error: ${error.message}`);
     });
 }
+
+function verifyAwbInBulk(orderNumber, awb, remainingOrders) {
+    const requestBody = {
+        order_number: orderNumber,
+        awb: awb,
+        picklist_id: currentPicklistId
+    };
+
+    const csrfToken = getCSRFToken();
+    if (!csrfToken) {
+        alert('CSRF token not available.');
+        showBulkAwbDialog(remainingOrders);
+        return;
+    }
+
+    fetch('/api/orders/save-awb/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(requestBody)
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.message || 'AWB verification failed');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log(`✅ AWB ${awb} verified for order ${orderNumber}`);
+        
+        // Continue with next order
+        showBulkAwbDialog(remainingOrders);
+    })
+    .catch(error => {
+        alert(`❌ AWB verification failed for order ${orderNumber}: ${error.message}\n\nOrder will remain in Processed status.`);
+        console.error("AWB verification error:", error);
+        
+        // Continue with next order even if this one failed
+        showBulkAwbDialog(remainingOrders);
+    })
+    .finally(() => {
+        // Refresh UI after each AWB verification
+        if (remainingOrders.length === 0) {
+            // Only refresh when all orders are processed
+            refreshPicklistFromDatabase();
+        }
+    });
+}
+
+const awbVerificationCSS = `
+.awb-status.verification-needed {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    color: #856404;
+    border: 1px solid #ffc107;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-awb {
+    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+    color: #333;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 2px 6px rgba(255, 193, 7, 0.3);
+}
+
+.btn-awb:hover {
+    background: linear-gradient(135deg, #e0a800 0%, #d39e00 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+}
+`;
+
+function addAwbVerificationStyles() {
+    const style = document.createElement('style');
+    style.textContent = awbVerificationCSS;
+    document.head.appendChild(style);
+}
+
+// Initialize the styles when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    addAwbVerificationStyles();
+});
+
+
+function showBulkAwbDialog(orderNumbers) {
+    if (orderNumbers.length === 0) {
+        refreshPicklistFromDatabase();
+        return;
+    }
+    
+    const orderNumber = orderNumbers[0];
+    const remainingOrders = orderNumbers.slice(1);
+    
+    const awb = prompt(`Verify AWB for Order ${orderNumber}\n\n(${orderNumbers.length} orders remaining)\n\nEnter the AWB number to verify it matches the system.\n\nClick Cancel to skip this order.`);
+    
+    if (awb && awb.trim() !== '') {
+        // Verify AWB and continue with next order
+        verifyAwbInBulk(orderNumber, awb.trim(), remainingOrders);
+    } else {
+        // Skip this order and continue with next
+        console.log(`Skipped AWB verification for order ${orderNumber}`);
+        showBulkAwbDialog(remainingOrders);
+    }
+}
+
+function validateAndCompleteOrderInBulk(orderNumber, awb, remainingOrders) {
+    const requestBody = {
+        order_number: orderNumber,
+        awb: awb,
+        picklist_id: currentPicklistId
+    };
+
+    const csrfToken = getCSRFToken();
+    if (!csrfToken) {
+        alert('CSRF token not available.');
+        showBulkAwbDialog(remainingOrders);
+        return;
+    }
+
+    fetch('/api/orders/save-awb/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(requestBody)
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.message || 'Error validating AWB');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log(`✅ AWB ${awb} validated for order ${orderNumber}`);
+        
+        // NO LOCAL UPDATES - Continue with next order
+        showBulkAwbDialog(remainingOrders);
+    })
+    .catch(error => {
+        alert(`❌ AWB validation failed for order ${orderNumber}: ${error.message}\n\nOrder will remain in Processed status.`);
+        console.error("AWB validation error:", error);
+        
+        // Continue with next order even if this one failed
+        showBulkAwbDialog(remainingOrders);
+    })
+    .finally(() => {
+        // Only refresh from database - no local updates
+        if (remainingOrders.length === 0) {
+            // Only refresh when all orders are processed
+            refreshPicklistFromDatabase();
+        }
+    });
+}
+
 
 function updatePrinterSelectionState(state) {
     const labelSelect = document.getElementById('label-printer-select');
@@ -3640,6 +4427,73 @@ async function loadPDFLib() {
     });
 }
 
+function showAwbDialog(orderNumber) {
+    const awb = prompt(`Order ${orderNumber} has been printed successfully!\n\nPlease verify the AWB number by entering it:`);
+    
+    if (awb && awb.trim() !== '') {
+        // User entered AWB - verify against database
+        verifyAwbAgainstDatabase(orderNumber, awb.trim());
+    } else {
+        // User cancelled - order stays in Processed status for later verification
+        console.log(`AWB verification skipped for order ${orderNumber}. Order will remain in Processed status.`);
+        alert(`Order ${orderNumber} is marked as Processed.\n\nPlease verify the AWB later from the Processed Orders section.`);
+    }
+}
+
+function validateAndCompleteOrder(orderNumber, awb) {
+    const requestBody = {
+        order_number: orderNumber,
+        awb: awb,
+        picklist_id: currentPicklistId
+    };
+
+    const csrfToken = getCSRFToken();
+    if (!csrfToken) {
+        alert('CSRF token not available. Please refresh the page.');
+        return;
+    }
+
+    fetch('/api/orders/save-awb/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(requestBody)
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.message || 'Error validating AWB');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert(`✅ AWB ${awb} validated successfully!\nOrder ${orderNumber} marked as Complete.`);
+        
+        // NO LOCAL UPDATES - Only refresh from database
+        refreshPicklistFromDatabase();
+    })
+    .catch(error => {
+        alert(`❌ AWB Validation Failed: ${error.message}\n\nOrder ${orderNumber} remains in Processed status.`);
+        console.error("AWB validation error:", error);
+    });
+}
+
+function scanAwbForOrder(orderNumber) {
+    const awb = prompt(`Enter AWB number for order ${orderNumber}:`);
+    
+    if (awb && awb.trim() !== '') {
+        validateAndCompleteOrder(orderNumber, awb.trim());
+    } else {
+        console.log(`AWB scan cancelled for order ${orderNumber}`);
+    }
+}
+
+
 function markOrderAsPrinted(orderNumber) {
     if (!currentPicklistId) {
         alert('No picklist selected');
@@ -3648,20 +4502,6 @@ function markOrderAsPrinted(orderNumber) {
 
     console.log(`Marking order ${orderNumber} as printed/processed`);
 
-    let itemUpdated = false;
-
-    currentPicklistItems.forEach(item => {
-        if (item.order_number === orderNumber) {
-            item.picked = true;
-            itemUpdated = true;
-        }
-    });
-
-    if (itemUpdated) {
-        populateOrdersTables(currentPicklistItems);
-    }
-
-    // Make API call to update database
     const requestBody = {
         picklist_id: currentPicklistId,
         order_number: orderNumber
@@ -3693,6 +4533,12 @@ function markOrderAsPrinted(orderNumber) {
     })
     .then(data => {
         console.log('Order marked as printed in database:', data.message);
+        
+        // NO LOCAL UPDATES - Refresh from database immediately
+        refreshPicklistFromDatabase().then(() => {
+            // Show AWB dialog after database refresh is complete
+            showAwbDialog(orderNumber);
+        });
     })
     .catch(error => {
         console.error("API error:", error);
@@ -3771,179 +4617,175 @@ function reprintOrderLabel(orderNumber) {
 
         // Picklist Functions
         function searchPicklist() {
-            const picklistInput = document.getElementById('picklist-search-input');
-            const picklistId = picklistInput ? picklistInput.value.trim() : '';
-            
-            if (!picklistId) {
-                alert('Please enter a Picklist ID');
-                return;
-            }
+    const picklistInput = document.getElementById('picklist-search-input');
+    const picklistId = picklistInput ? picklistInput.value.trim() : '';
+    
+    if (!picklistId) {
+        alert('Please enter a Picklist ID');
+        return;
+    }
 
-            console.log('Searching for picklist:', picklistId); // Debug log
+    console.log('Searching for picklist:', picklistId);
+    loadAndShowPicklistSummary(picklistId);
+    
+    // Show loading state
+    updatePicklistInfo({
+        id: picklistId,
+        platform: 'Loading...',
+        status: 'loading',
+        totalOrders: 0,
+        totalSkus: 0
+    });
 
-            // Show loading state
-            updatePicklistInfo({
-                id: picklistId,
-                platform: 'Loading...',
-                status: 'loading',
-                totalOrders: 0,
-                totalSkus: 0
-            });
+    const timestamp = new Date().getTime();
+    const fetchUrl = `/api/picklists/search/?picklist_id=${picklistId}&_t=${timestamp}`;
 
-            // Add cache-busting parameter
-            const timestamp = new Date().getTime();
-            const fetchUrl = `/api/picklists/search/?picklist_id=${picklistId}&_t=${timestamp}`;
+    console.log('Fetching URL:', fetchUrl);
 
-            console.log('Fetching URL:', fetchUrl); // Debug log
-
-            fetch(fetchUrl, {
-                headers: {
-                    'Cache-Control': 'no-cache, no-store, must-revalidate',
-                    'Pragma': 'no-cache',
-                    'Expires': '0'
-                }
-            })
-            .then(response => {
-                console.log('Response status:', response.status); // Debug log
-                if (!response.ok) {
-                    return response.json().then(data => {
-                        throw new Error(data.message || 'Error searching for picklist');
-                    });
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('API Response:', data); // Debug log
-                
-                // Filter out Dispatch and Complete orders
-                const activeItems = data.picklist.items.filter(item => 
-                    item.order_status !== 'Dispatch' && item.order_status !== 'Complete'
-                );
-
-                console.log('Active items after filtering:', activeItems); // Debug log
-
-                // Update global variables
-                currentPicklistId = data.picklist.picklist_id;
-                currentPicklistPlatform = data.picklist.platform;
-                currentPicklistItems = activeItems;
-
-                // Calculate stats
-                const uniqueOrders = [...new Set(activeItems.map(item => item.order_number))];
-                const uniqueSkus = [...new Set(activeItems.map(item => item.sku))];
-
-                console.log('Unique orders:', uniqueOrders); // Debug log
-                console.log('Unique SKUs:', uniqueSkus); // Debug log
-
-                // Determine status
-                let status = 'pending';
-                if (data.picklist.validation_status) {
-                    if (data.picklist.validation_status.all_validated) {
-                        status = 'completed';
-                    } else if (data.picklist.validation_status.validated_count > 0) {
-                        status = 'in-progress';
-                    }
-                }
-
-                // Update UI
-                updatePicklistInfo({
-                    id: data.picklist.picklist_id,
-                    platform: data.picklist.platform,
-                    status: status,
-                    totalOrders: uniqueOrders.length,
-                    totalSkus: uniqueSkus.length,
-                    validationStatus: data.picklist.validation_status
-                });
-                
-                // Show orders section with filtered data
-                showOrdersSection(activeItems);
-            })
-            .catch(error => {
-                console.error('API Error:', error); // Debug log
-                alert(`❌ ${error.message}`);
-                updatePicklistInfo(null);
-                hideOrdersSection();
+    fetch(fetchUrl, {
+        headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        }
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.message || 'Error searching for picklist');
             });
         }
+        return response.json();
+    })
+    .then(data => {
+        console.log('API Response:', data);
+        
+        // MODIFIED: Only filter out 'Dispatch' orders, keep 'Complete' orders
+        const activeItems = data.picklist.items.filter(item => 
+            item.order_status !== 'Dispatch'
+        );
+
+        console.log('Active items after filtering (including Complete):', activeItems);
+
+        // Update global variables
+        currentPicklistId = data.picklist.picklist_id;
+        currentPicklistPlatform = data.picklist.platform;
+        currentPicklistItems = activeItems;
+
+        // Calculate stats for unprocessed orders only (for the summary)
+        const unprocessedItems = activeItems.filter(item => 
+            item.order_status !== 'Complete' && !item.picked
+        );
+        const uniqueOrders = [...new Set(unprocessedItems.map(item => item.order_number))];
+        const uniqueSkus = [...new Set(unprocessedItems.map(item => item.sku))];
+
+        console.log('Unique unprocessed orders:', uniqueOrders);
+        console.log('Unique SKUs:', uniqueSkus);
+
+        // Determine status
+        let status = 'pending';
+        if (data.picklist.validation_status) {
+            if (data.picklist.validation_status.all_validated) {
+                status = 'completed';
+            } else if (data.picklist.validation_status.validated_count > 0) {
+                status = 'in-progress';
+            }
+        }
+
+        // Update UI with unprocessed order stats
+        updatePicklistInfo({
+            id: data.picklist.picklist_id,
+            platform: data.picklist.platform,
+            status: status,
+            totalOrders: uniqueOrders.length,
+            totalSkus: uniqueSkus.length,
+            validationStatus: data.picklist.validation_status
+        });
+        
+        // Show orders section with all items (including completed)
+        showOrdersSection(activeItems);
+    })
+    .catch(error => {
+        console.error('API Error:', error);
+        alert(`❌ ${error.message}`);
+        updatePicklistInfo(null);
+        hideOrdersSection();
+    });
+}
 
         function validateSKU(sku, orderNumber, validationMode = 'order_specific') {
-            if (!currentPicklistId || !sku) {
-                alert('Missing required information for validation');
-                return;
-            }
+    if (!currentPicklistId || !sku) {
+        alert('Missing required information for validation');
+        return;
+    }
 
-            const requestBody = {
-                picklist_id: currentPicklistId,
-                sku: sku,
-                validation_mode: validationMode
-            };
-            
-            if (validationMode === 'order_specific' && orderNumber) {
-                requestBody.order_number = orderNumber;
-            }
+    const requestBody = {
+        picklist_id: currentPicklistId,
+        sku: sku,
+        validation_mode: validationMode
+    };
+    
+    if (validationMode === 'order_specific' && orderNumber) {
+        requestBody.order_number = orderNumber;
+    }
 
-            const csrfToken = getCSRFToken();
-            if (!csrfToken) {
-                alert('CSRF token not available. Please refresh the page.');
-                return;
-            }
+    const csrfToken = getCSRFToken();
+    if (!csrfToken) {
+        alert('CSRF token not available. Please refresh the page.');
+        return;
+    }
 
-            fetch('/api/validate-sku/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                credentials: 'same-origin',
-                body: JSON.stringify(requestBody)
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(data => {
-                        throw new Error(data.message || 'Error validating SKU');
-                    });
-                }
-                return response.json();
-            })
-            .then(data => {
-                const details = data.validation_details;
-                let message = data.message;
-                
-                // Enhanced progress tracking for quantity-based validation
-                if (details && details.validated_count !== undefined && details.required_quantity !== undefined) {
-                    const progress = `${details.validated_count}/${details.required_quantity}`;
-                    message += ` (${progress})`;
-                    
-                    // Check if this SKU is now fully validated for this order
-                    if (details.is_complete) {
-                        message += ' - SKU fully validated!';
-                    } else {
-                        message += ` - ${details.required_quantity - details.validated_count} more validations needed`;
-                    }
-                }
-                                
-                // Update local validation tracking
-                updateLocalValidationTracking(sku, orderNumber, data);
-                
-                // Update UI elements
-                updateValidationUI(sku, orderNumber, data);
-                
-                // Update search result validation if applicable
-                updateSearchResultValidation(sku, orderNumber, data);
-                
-                // Check if entire order is ready for printing
-                checkOrderValidationStatus(orderNumber);
-                
-                // Refresh the display
-                populateOrdersTables(currentPicklistItems);
-            })
-            .catch(error => {
-                alert(`❌ ${error.message}`);
-                
-                // Re-enable validation buttons on error
-                resetValidationButtonsOnError(sku, orderNumber);
+    fetch('/api/validate-sku/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(requestBody)
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.message || 'Error validating SKU');
             });
         }
+        return response.json();
+    })
+    .then(data => {
+        const details = data.validation_details;
+        let message = data.message;
+        
+        if (details && details.validated_count !== undefined && details.required_quantity !== undefined) {
+            const progress = `${details.validated_count}/${details.required_quantity}`;
+            message += ` (${progress})`;
+            
+            if (details.is_complete) {
+                message += ' - SKU fully validated!';
+            } else {
+                message += ` - ${details.required_quantity - details.validated_count} more validations needed`;
+            }
+        }
+        
+        // Show validation message
+        alert(message);
+        
+        // Refresh from database first
+        refreshPicklistFromDatabase().then(() => {
+            // RESTORED: Check if order is complete and trigger auto-print
+            if (details && details.is_complete && orderNumber) {
+                console.log(`🎯 SKU ${sku} completed for order ${orderNumber} - checking for auto-print`);
+                checkOrderCompletionAndAutoPrint(orderNumber);
+            }
+        });
+    })
+    .catch(error => {
+        alert(`❌ ${error.message}`);
+        resetValidationButtonsOnError(sku, orderNumber);
+    });
+}
 
         function resetValidationButtonsOnError(sku, orderNumber) {
     // Reset table validation button
@@ -4006,6 +4848,7 @@ function reprintOrderLabel(orderNumber) {
             if (picklistInput) {
                 picklistInput.value = '';
             }
+            hidePicklistSummary();
             hideOrdersSection();
             hidePrintAllSection();
         }
@@ -4061,61 +4904,72 @@ function reprintOrderLabel(orderNumber) {
             hidePrintAllSection();
         }
 
-        function populateOrdersTables(items) {
-            console.log('populateOrdersTables called with items:', items.length); // Debug log
+function populateOrdersTables(items) {
+    console.log('populateOrdersTables called with items:', items.length);
+    
+    // Clear existing data
+    allPendingOrders = {};
+    allProcessedOrders = {};
+
+    // Group items by order type
+    items.forEach(item => {
+        const orderKey = item.order_number;
+
+        // Check if order is processed/completed
+        if (item.picked || item.order_status === 'Complete') {
+            // Processed/Completed order
+            if (!allProcessedOrders[orderKey]) {
+                allProcessedOrders[orderKey] = {
+                    order_number: item.order_number,
+                    awb: item.awb || null,
+                    order_status: item.order_status || 'Processed',
+                    items: []
+                };
+            }
+            allProcessedOrders[orderKey].items.push(item);
             
-            // Clear existing data
-            allPendingOrders = {};
-            allProcessedOrders = {};
-
-            // Group items by order type
-            items.forEach(item => {
-                const orderKey = item.order_number;
-
-                if (item.picked) {
-                    // Processed order
-                    if (!allProcessedOrders[orderKey]) {
-                        allProcessedOrders[orderKey] = {
-                            order_number: item.order_number,
-                            awb: item.awb || null,
-                            items: []
-                        };
-                    }
-                    allProcessedOrders[orderKey].items.push(item);
-                } else {
-                    // Pending order
-                    if (!allPendingOrders[orderKey]) {
-                        allPendingOrders[orderKey] = {
-                            order_number: item.order_number,
-                            skus: [],
-                            quantities: {},
-                            validated_skus: [],
-                            items: []
-                        };
-                    }
-                    
-                    if (!allPendingOrders[orderKey].skus.includes(item.sku)) {
-                        allPendingOrders[orderKey].skus.push(item.sku);
-                        allPendingOrders[orderKey].quantities[item.sku] = item.quantity;
-                        
-                        if (item.validated) {
-                            allPendingOrders[orderKey].validated_skus.push(item.sku);
-                        }
-                    }
-                    allPendingOrders[orderKey].items.push(item);
+            // Set status to Complete if any item in the order is Complete
+            if (item.order_status === 'Complete') {
+                allProcessedOrders[orderKey].order_status = 'Complete';
+            }
+        } else {
+            // Pending order (unprocessed)
+            if (!allPendingOrders[orderKey]) {
+                allPendingOrders[orderKey] = {
+                    order_number: item.order_number,
+                    skus: [],
+                    quantities: {},
+                    validated_skus: [],
+                    items: []
+                };
+            }
+            
+            if (!allPendingOrders[orderKey].skus.includes(item.sku)) {
+                allPendingOrders[orderKey].skus.push(item.sku);
+                allPendingOrders[orderKey].quantities[item.sku] = item.quantity;
+                
+                if (item.validated) {
+                    allPendingOrders[orderKey].validated_skus.push(item.sku);
                 }
-            });
-
-            console.log('Pending orders:', Object.keys(allPendingOrders).length); // Debug log
-            console.log('Processed orders:', Object.keys(allProcessedOrders).length); // Debug log
-
-            // Update count badges and summary
-            updateFilterCounts();
-
-            // Show the current filter
-            showFilteredOrders(currentOrderFilter);
-            updatePrintAllButton();
+            }
+            allPendingOrders[orderKey].items.push(item);
         }
+    });
+
+    console.log('Pending orders:', Object.keys(allPendingOrders).length);
+    console.log('Processed orders (including completed):', Object.keys(allProcessedOrders).length);
+    
+    // Log the completed orders specifically
+    const completedOrders = Object.values(allProcessedOrders).filter(order => order.order_status === 'Complete');
+    console.log('Completed orders:', completedOrders.length, completedOrders.map(o => o.order_number));
+
+    // Update count badges and summary
+    updateFilterCounts();
+
+    // Show the current filter
+    showFilteredOrders(currentOrderFilter);
+    updatePrintAllButton();
+}
 
 function updateFilterCounts() {
     const unprocessedCount = Object.keys(allPendingOrders).length;
@@ -4144,7 +4998,7 @@ function showFilteredOrders(filterType) {
     tableBody.innerHTML = '';
 
     if (filterType === 'unprocessed') {
-        titleElement.innerHTML = '⏳ Pending Orders';
+        titleElement.innerHTML = '⏳ Unprocessed Orders';
         tableHead.innerHTML = `
             <tr>
                 <th>📦 Order #</th>
@@ -4153,19 +5007,119 @@ function showFilteredOrders(filterType) {
                 <th>⚡ Actions</th>
             </tr>
         `;
-        populateUnprocessedOrders(tableBody); // Remove setTimeout
+        populateUnprocessedOrders(tableBody);
     } else {
-        titleElement.innerHTML = '✅ Completed Orders';
+        titleElement.innerHTML = '✅ Processed Orders (AWB Verification Required)';
         tableHead.innerHTML = `
             <tr>
-                <th>📦 Order #</th>
-                <th>🚚 AWB Status</th>
+                <th>📦 Order # & Status</th>
+                <th>🔍 Verification Status</th>
                 <th>⚡ Actions</th>
             </tr>
         `;
-        populateProcessedOrders(tableBody); // Remove setTimeout
+        populateProcessedOrders(tableBody);
     }
 }
+
+// CSS for the new Scan AWB button
+const newAwbButtonCSS = `
+.btn-awb {
+    background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+    color: white;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 2px 6px rgba(255, 107, 53, 0.3);
+}
+
+.btn-awb:hover {
+    background: linear-gradient(135deg, #f7931e 0%, #ff6b35 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+}
+
+.btn-awb:active {
+    transform: translateY(0);
+}
+
+.awb-status.missing {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    color: #856404;
+    border: 1px solid #ffc107;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.awb-status.added {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+    border: 1px solid #28a745;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.processed-order-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.order-status-label {
+    font-size: 11px;
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* Enhanced action buttons container for processed orders */
+.action-buttons {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+}
+
+.completed-indicator {
+    color: #28a745;
+    font-weight: bold;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: rgba(40, 167, 69, 0.1);
+    border-radius: 12px;
+}
+`;
+
+function addAwbButtonStyles() {
+    const style = document.createElement('style');
+    style.textContent = newAwbButtonCSS;
+    document.head.appendChild(style);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    addAwbButtonStyles();
+});
 
 
 function populateProcessedOrders(tableBody) {
@@ -4176,32 +5130,208 @@ function populateProcessedOrders(tableBody) {
         return;
     }
 
-    processedOrdersArray.forEach(order => {
-        const hasAwb = order.awb && order.awb.trim() !== '';
-        const awbStatusClass = hasAwb ? 'added' : 'missing';
-        const awbStatusText = hasAwb ? 'Added' : 'Missing';
+    // Sort orders: Processed orders first, then Completed orders at the end
+    const sortedOrders = processedOrdersArray.sort((a, b) => {
+        // If both have same status, sort by order number
+        if (a.order_status === b.order_status) {
+            return a.order_number.localeCompare(b.order_number);
+        }
+        // Completed orders go to the end (return 1 means 'a' comes after 'b')
+        if (a.order_status === 'Complete') return 1;
+        if (b.order_status === 'Complete') return -1;
+        return 0;
+    });
+
+    sortedOrders.forEach(order => {
+        const isCompleted = order.order_status === 'Complete';
+        
+        // Determine verification status and button based on order status
+        let verificationStatus, verificationText, actionButtons;
+        
+        if (isCompleted) {
+            // Completed orders - AWB is verified, but show disabled verify button
+            verificationStatus = 'completed';
+            verificationText = '✅ Completed';
+            actionButtons = `
+                <div class="action-buttons">
+                    <button class="action-btn-sm btn-awb" disabled title="Order already completed">🔍 Verify AWB</button>
+                    <button class="action-btn-sm btn-reprint" onclick="reprintOrderLabel('${order.order_number}')">🖨️ Reprint</button>
+                </div>
+            `;
+        } else {
+            // Processed orders - need AWB verification
+            verificationStatus = 'verification-needed';
+            verificationText = '🔍 AWB Verification Required';
+            actionButtons = `
+                <div class="action-buttons">
+                    <button class="action-btn-sm btn-awb" onclick="verifyAwbForOrder('${order.order_number}')">🔍 Verify AWB</button>
+                    <button class="action-btn-sm btn-reprint" onclick="reprintOrderLabel('${order.order_number}')">🖨️ Reprint</button>
+                </div>
+            `;
+        }
         
         const row = document.createElement('tr');
-        row.className = 'processed';
+        row.className = isCompleted ? 'completed' : 'processed';
         row.innerHTML = `
             <td>
-                <span class="order-id-link viewed">${order.order_number}</span>
+                <span class="order-id-link ${isCompleted ? 'completed' : 'viewed'}">${order.order_number}</span>
+                <br><small style="color: #6c757d;">Status: ${order.order_status}</small>
             </td>
             <td>
-                <span class="awb-status ${awbStatusClass}">
-                    ${awbStatusText}
-                </span>
-                ${hasAwb ? `<br><small>${order.awb}</small>` : ''}
+                <span class="awb-status ${verificationStatus}">${verificationText}</span>
+                ${!isCompleted ? '<br><small style="color: #856404;">AWB exists but needs verification</small>' : '<br><small style="color: #155724;">Order completed successfully</small>'}
             </td>
             <td>
-                <div class="action-buttons">
-                    ${!hasAwb ? `<button class="action-btn-sm btn-awb" onclick="addAwbToOrder('${order.order_number}')">Add AWB</button>` : ''}
-                    <button class="action-btn-sm btn-reprint" onclick="reprintOrderLabel('${order.order_number}')">Reprint</button>
-                </div>
+                ${actionButtons}
             </td>
         `;
         
         tableBody.appendChild(row);
+    });
+}
+
+const disabledAwbButtonCSS = `
+.btn-awb:disabled {
+    background: #6c757d !important;
+    color: #ffffff !important;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.btn-awb:disabled:hover {
+    background: #6c757d !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Additional styling for completed orders to show they're at the bottom */
+.orders-table tr.completed {
+    border-top: 2px solid #28a745;
+}
+
+.orders-table tr.completed:first-of-type {
+    border-top: 3px solid #28a745;
+}
+
+.orders-table tr.completed td {
+    background: linear-gradient(135deg, #f8fff9 0%, #e8f5e9 100%);
+    opacity: 0.9;
+}
+
+.orders-table tr.completed:hover td {
+    background: linear-gradient(135deg, #e8f5e9 0%, #d4edda 100%);
+    opacity: 1;
+}
+`;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const style = document.createElement('style');
+    style.textContent = disabledAwbButtonCSS;
+    document.head.appendChild(style);
+});
+
+const completedOrdersCSS = `
+.order-id-link.completed {
+    color: #28a745;
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    border: 1px solid #28a745;
+}
+
+.order-id-link.completed:hover {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.awb-status.completed {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+    border: 1px solid #28a745;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.orders-table tr.completed td {
+    background: linear-gradient(135deg, #f8fff9 0%, #e8f5e9 100%);
+}
+
+.orders-table tr.completed:hover td {
+    background: linear-gradient(135deg, #e8f5e9 0%, #d4edda 100%);
+}
+`;
+
+// 4. Add the CSS when DOM loads
+document.addEventListener('DOMContentLoaded', function() {
+    const style = document.createElement('style');
+    style.textContent = completedOrdersCSS;
+    document.head.appendChild(style);
+});
+
+function verifyAwbForOrder(orderNumber) {
+    const awb = prompt(`Please verify the AWB number for order ${orderNumber}:\n\nEnter the AWB number to confirm it matches the system:`);
+    
+    if (awb && awb.trim() !== '') {
+        verifyAwbAgainstDatabase(orderNumber, awb.trim());
+    } else {
+        console.log(`AWB verification cancelled for order ${orderNumber}`);
+    }
+}
+
+// 3. AWB verification against database (uses your existing API endpoint)
+function verifyAwbAgainstDatabase(orderNumber, enteredAwb) {
+    const requestBody = {
+        order_number: orderNumber,
+        awb: enteredAwb,
+        picklist_id: currentPicklistId
+    };
+
+    const csrfToken = getCSRFToken();
+    if (!csrfToken) {
+        alert('CSRF token not available. Please refresh the page.');
+        return;
+    }
+
+    fetch('/api/orders/save-awb/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(requestBody)
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.message || 'AWB verification failed');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        // Your backend should return awb_match: true if AWB matches
+        if (data.awb_match) {
+            alert(`✅ AWB verification successful!\nAWB: ${enteredAwb}\nOrder ${orderNumber} marked as Complete.`);
+        } else {
+            alert(`✅ AWB verified and order completed!\nOrder ${orderNumber} moved to Complete status.`);
+        }
+        
+        // Refresh from database to remove order from Processed Orders (since it's now Complete)
+        refreshPicklistFromDatabase();
+    })
+    .catch(error => {
+        // This will show if AWB doesn't match or other validation errors
+        alert(`❌ AWB Verification Failed: ${error.message}\n\nPlease check the AWB number and try again.`);
+        console.error("AWB verification error:", error);
     });
 }
 
@@ -4646,12 +5776,10 @@ function validateSKUFromTable(sku, orderNumber, validationMode = 'order_specific
         const details = data.validation_details;
         let message = data.message;
         
-        // Enhanced progress tracking for quantity-based validation
         if (details && details.validated_count !== undefined && details.required_quantity !== undefined) {
             const progress = `${details.validated_count}/${details.required_quantity}`;
             message += ` (${progress})`;
             
-            // Check if this SKU is now fully validated for this order
             if (details.is_complete) {
                 message += ' - SKU fully validated!';
             } else {
@@ -4659,19 +5787,18 @@ function validateSKUFromTable(sku, orderNumber, validationMode = 'order_specific
             }
         }
         
-        // Update local validation tracking
-        updateLocalValidationTracking(sku, orderNumber, data);
+        console.log(`Table validation result: ${message}`);
         
-        // Update the specific product card in the expanded view
-        updateTableProductCardProgress(sku, orderNumber, data);
-        
-        // Update the main order row validation status
-        updateMainOrderRowValidation(orderNumber);
-        
-        // Refresh the main table display to update counts
-        
-        // **DO NOT AUTO-CLOSE** - Keep the dropdown open
-        // The order details should remain expanded after validation
+        // Refresh from database first
+        refreshPicklistFromDatabase().then(() => {
+            // RESTORED: Check if this completes the order and trigger auto-print
+            if (details && details.is_complete) {
+                console.log(`🎯 Table SKU ${sku} completed for order ${orderNumber} - checking for auto-print`);
+                setTimeout(() => {
+                    checkTableOrderCompletionAndAutoPrint(orderNumber);
+                }, 300);
+            }
+        });
     })
     .catch(error => {
         alert(`❌ ${error.message}`);
@@ -4684,6 +5811,7 @@ function validateSKUFromTable(sku, orderNumber, validationMode = 'order_specific
         }
     });
 }
+
 
 
 function updateMainOrderRowValidation(orderNumber) {
@@ -4806,27 +5934,44 @@ function updateTableProductCardProgress(sku, orderNumber, data) {
 }
 
 function checkTableOrderCompletionAndAutoPrint(orderNumber) {
-    const orderData = allPendingOrders[orderNumber];
-    if (!orderData) return;
+    console.log(`🎯 Table: Checking if order ${orderNumber} is fully validated for auto-print`);
     
-    // Check if all SKUs in the expanded table view are validated
+    // Get order data from current pending orders
+    const orderData = allPendingOrders[orderNumber];
+    if (!orderData) {
+        console.log(`Order ${orderNumber} not found in pending orders - checking from items directly`);
+        // Fallback to the general check
+        checkOrderCompletionAndAutoPrint(orderNumber);
+        return;
+    }
+    
+    console.log(`Table: Order ${orderData.order_number} has ${orderData.skus.length} SKUs:`, orderData.skus);
+    
+    // Check if all SKUs in the order are validated
     let allValidated = true;
     for (const sku of orderData.skus) {
         const skuItems = currentPicklistItems.filter(item => 
             item.sku === sku && item.order_number === orderNumber && !item.picked
         );
         
-        const isSkuValidated = skuItems.length > 0 && 
-            (skuItems[0].is_sku_complete || skuItems[0].validated);
-        
-        if (!isSkuValidated) {
-            allValidated = false;
-            break;
+        if (skuItems.length > 0) {
+            const item = skuItems[0];
+            const isSkuValidated = item.is_sku_complete || 
+                                 item.validated ||
+                                 (item.validation_progress && item.validation_progress.is_complete);
+            
+            if (!isSkuValidated) {
+                allValidated = false;
+                console.log(`Table: SKU ${sku} is not fully validated yet`);
+                break;
+            } else {
+                console.log(`Table: SKU ${sku} is validated ✅`);
+            }
         }
     }
     
     if (allValidated) {
-        console.log(`🎯 Table order ${orderNumber} is fully validated - triggering auto-print`);
+        console.log(`🎯 Table order ${orderNumber} is fully validated - triggering auto-print in 800ms`);
         
         // Auto-print after a short delay
         setTimeout(() => {
@@ -4847,9 +5992,10 @@ function checkTableOrderCompletionAndAutoPrint(orderNumber) {
             }, 1000);
             
         }, 800);
+    } else {
+        console.log(`Table: Order ${orderNumber} is not yet fully validated - auto-print cancelled`);
     }
 }
-
 
 
 function loadProductDetailsForTable(sku, orderNumber) {
@@ -4927,134 +6073,137 @@ function updateProductCardInTable(sku, orderNumber, data) {
 }
 
         function quickValidateOrder(orderNumber) {
-            if (!currentPicklistId) {
-                alert('No picklist loaded');
-                return;
-            }
-            
-            const orderItems = currentPicklistItems.filter(item => 
-                item.order_number === orderNumber && !item.picked
-            );
-            
-            if (orderItems.length === 0) {
-                alert('No items found for this order');
-                return;
-            }
-            
-            const uniqueSkus = [...new Set(orderItems.map(item => item.sku))];
-            const unvalidatedSkus = uniqueSkus.filter(sku => {
-                const skuItems = orderItems.filter(item => item.sku === sku);
-                return skuItems.length > 0 && !skuItems[0].validated;
+    if (!currentPicklistId) {
+        alert('No picklist loaded');
+        return;
+    }
+    
+    const orderItems = currentPicklistItems.filter(item => 
+        item.order_number === orderNumber && !item.picked
+    );
+    
+    if (orderItems.length === 0) {
+        alert('No items found for this order');
+        return;
+    }
+    
+    const uniqueSkus = [...new Set(orderItems.map(item => item.sku))];
+    const unvalidatedSkus = uniqueSkus.filter(sku => {
+        const skuItems = orderItems.filter(item => item.sku === sku);
+        return skuItems.length > 0 && !skuItems[0].validated;
+    });
+    
+    if (unvalidatedSkus.length === 0) {
+        alert('All SKUs in this order are already validated!');
+        return;
+    }
+    
+    const skuToValidate = unvalidatedSkus[0];
+    
+    const requestBody = {
+        picklist_id: currentPicklistId,
+        sku: skuToValidate,
+        order_number: orderNumber,
+        validation_mode: 'order_specific'
+    };
+
+    const csrfToken = getCSRFToken();
+    if (!csrfToken) {
+        alert('CSRF token not available. Please refresh the page.');
+        return;
+    }
+
+    fetch('/api/validate-sku/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(requestBody)
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.message || 'Error validating SKU');
             });
-            
-            if (unvalidatedSkus.length === 0) {
-                alert('All SKUs in this order are already validated!');
-                return;
-            }
-            
-            const skuToValidate = unvalidatedSkus[0];
-            
-            const requestBody = {
-                picklist_id: currentPicklistId,
-                sku: skuToValidate,
-                order_number: orderNumber,
-                validation_mode: 'order_specific'
-            };
-
-            const csrfToken = getCSRFToken();
-            if (!csrfToken) {
-                alert('CSRF token not available. Please refresh the page.');
-                return;
-            }
-
-            fetch('/api/validate-sku/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                credentials: 'same-origin',
-                body: JSON.stringify(requestBody)
-            })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.json().then(data => {
-                            throw new Error(data.message || 'Error validating SKU');
-                        });
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    alert(`✅ ${data.message}`);
-                    
-                    currentPicklistItems.forEach(item => {
-                        if (item.sku === skuToValidate && item.order_number === orderNumber) {
-                            item.validated = true;
-                        }
-                    });
-                    
-                    populateOrdersTables(currentPicklistItems);
-                })
-                .catch(error => {
-                    alert(`❌ ${error.message}`);
-                });
         }
+        return response.json();
+    })
+    .then(data => {
+        alert(`✅ ${data.message}`);
+        
+        // Refresh from database first
+        refreshPicklistFromDatabase().then(() => {
+            // RESTORED: Check if order is complete and trigger auto-print
+            if (data.validation_details && data.validation_details.is_complete) {
+                console.log(`🎯 Quick validate completed SKU for order ${orderNumber} - checking for auto-print`);
+                checkOrderCompletionAndAutoPrint(orderNumber);
+            }
+        });
+    })
+    .catch(error => {
+        alert(`❌ ${error.message}`);
+    });
+}
+
 
 
         function addAwbToOrder(orderNumber) {
-            const awb = prompt(`Enter AWB number for order ${orderNumber}:`);
-            if (!awb || awb.trim() === '') {
-                return;
-            }
+    const awb = prompt(`Enter AWB number for order ${orderNumber}:`);
+    if (!awb || awb.trim() === '') {
+        return;
+    }
 
-            const requestBody = {
-                order_number: orderNumber,
-                awb: awb.trim(),
-                picklist_id: currentPicklistId
-            };
+    const requestBody = {
+        order_number: orderNumber,
+        awb: awb.trim(),
+        picklist_id: currentPicklistId
+    };
 
-            const csrfToken = getCSRFToken();
-            if (!csrfToken) {
-                alert('CSRF token not available. Please refresh the page.');
-                return;
-            }
+    const csrfToken = getCSRFToken();
+    if (!csrfToken) {
+        alert('CSRF token not available. Please refresh the page.');
+        return;
+    }
 
-            fetch('/api/orders/save-awb/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                credentials: 'same-origin',
-                body: JSON.stringify(requestBody)
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(data => {
-                        throw new Error(data.message || 'Error saving AWB number');
-                    });
-                }
-                return response.json();
-            })
-            .then(data => {
-                alert(`✅ AWB ${awb} added to order ${orderNumber}`);
-                
-                // Update local data
-                currentPicklistItems.forEach(item => {
-                    if (item.order_number === orderNumber) {
-                        item.awb = awb.trim();
-                    }
-                });
-                
-                // Refresh the display
-                populateOrdersTables(currentPicklistItems);
-            })
-            .catch(error => {
-                alert(`❌ ${error.message}`);
+    fetch('/api/orders/save-awb/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(requestBody)
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.message || 'Error saving AWB number');
             });
         }
+        return response.json();
+    })
+    .then(data => {
+        alert(`✅ AWB ${awb} added to order ${orderNumber}`);
+        
+        // ONLY update local data AFTER successful database update
+        currentPicklistItems.forEach(item => {
+            if (item.order_number === orderNumber) {
+                item.awb = awb.trim();
+            }
+        });
+        
+        // Refresh the display
+        populateOrdersTables(currentPicklistItems);
+    })
+    .catch(error => {
+        alert(`❌ ${error.message}`);
+        // Don't update local data if API call failed
+    });
+}
 
         // Product Search Functions
         function initializeProductSearch() {
@@ -5567,12 +6716,14 @@ function validateSKU(sku, orderNumber, validationMode = 'order_specific') {
             }
         }
         
-        
-        // Update local validation tracking
+        // ONLY update local data AFTER successful database update
         updateLocalValidationTracking(sku, orderNumber, data);
         
         // Update UI elements
         updateValidationUI(sku, orderNumber, data);
+        
+        // Update search result validation if applicable
+        updateSearchResultValidation(sku, orderNumber, data);
         
         // Check if entire order is ready for printing
         checkOrderValidationStatus(orderNumber);
@@ -5582,68 +6733,87 @@ function validateSKU(sku, orderNumber, validationMode = 'order_specific') {
     })
     .catch(error => {
         alert(`❌ ${error.message}`);
+        
+        // Re-enable validation buttons on error
+        resetValidationButtonsOnError(sku, orderNumber);
     });
 }
+
+function refreshPicklistFromDatabase() {
+    if (!currentPicklistId) {
+        console.log('No picklist loaded to refresh');
+        return Promise.resolve();
+    }
+
+    console.log('Refreshing picklist data from database...');
+    
+    const timestamp = new Date().getTime();
+    const fetchUrl = `/api/picklists/search/?picklist_id=${currentPicklistId}&_t=${timestamp}`;
+
+    return fetch(fetchUrl, {
+        headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to refresh data from database');
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Refreshed data from database:', data);
+        
+        // MODIFIED: Only filter out 'Dispatch' orders, keep 'Complete' orders
+        const activeItems = data.picklist.items.filter(item => 
+            item.order_status !== 'Dispatch'
+        );
+
+        // Update global variables with fresh database data ONLY
+        currentPicklistItems = activeItems;
+        currentPicklistPlatform = data.picklist.platform;
+
+        // Refresh the UI with database data
+        populateOrdersTables(currentPicklistItems);
+        updatePrintAllButton();
+        
+        console.log('Successfully refreshed from database');
+        return data;
+    })
+    .catch(error => {
+        console.error('Error refreshing from database:', error);
+        throw error;
+    });
+}
+
+// Call this function periodically to sync with database
+function startPeriodicRefresh() {
+    setInterval(() => {
+        if (currentPicklistId) {
+            console.log('Auto-refreshing from database...');
+            refreshPicklistFromDatabase();
+        }
+    }, 60000); // 10 seconds for more frequent updates
+}
+
+// Initialize periodic refresh when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    startPeriodicRefresh();
+});
 
 // ===== NEW HELPER FUNCTIONS - ADD THESE TO YOUR CODE =====
 
 // Track validation progress locally for enhanced UI updates
 function updateLocalValidationTracking(sku, orderNumber, validationData) {
-    const details = validationData.validation_details;
-    
-    if (!details) return;
-    
-    // Update the local picklist items with validation progress
-    currentPicklistItems.forEach(item => {
-        if (item.sku === sku && item.order_number === orderNumber) {
-            // Track validation count and completion status
-            item.validated_count = details.validated_count;
-            item.required_quantity = details.required_quantity;
-            item.is_sku_complete = details.is_complete;
-            
-            // Mark as validated only when fully complete
-            if (details.is_complete) {
-                item.validated = true;
-            }
-        }
-    });
-    
-    // Update search order items if applicable
-    if (currentSearchOrderItems && currentSearchOrderItems.length > 0) {
-        currentSearchOrderItems.forEach(item => {
-            if (item.sku === sku && item.order_number === orderNumber) {
-                item.validated_count = details.validated_count;
-                item.required_quantity = details.required_quantity;
-                item.is_sku_complete = details.is_complete;
-                
-                if (details.is_complete) {
-                    item.validated = true;
-                }
-            }
-        });
-        
-        // Immediately update the search order counts after updating local data
-        setTimeout(() => {
-            updateSearchOrderValidationCounts();
-        }, 100);
-    }
+    // REMOVED - No local updates allowed
+    console.log('Local validation tracking disabled - using database only');
 }
 
-
-// Enhanced UI update for quantity-based validation
 function updateValidationUI(sku, orderNumber, data) {
-    const details = data.validation_details;
-    
-    if (!details) return;
-    
-    // Update product cards in expanded order view
-    updateProductCardValidationStatus(sku, orderNumber, details);
-    
-    // Update search results cards
-    updateSearchCardValidationStatus(sku, orderNumber, details);
-    
-    // Update validation progress displays
-    updateValidationProgressDisplays(sku, orderNumber, details);
+    // REMOVED - UI updates will come from database refresh
+    console.log('Local UI updates disabled - using database refresh only');
 }
 
 // Update product card validation status with progress
@@ -5742,48 +6912,8 @@ function updateValidationProgressDisplays(sku, orderNumber, details) {
 
 // Check if entire order is ready for printing
 function checkOrderValidationStatus(orderNumber) {
-    if (!currentPicklistId || !orderNumber) return;
-    
-    // Get all items for this order
-    const orderItems = currentPicklistItems.filter(item => 
-        item.order_number === orderNumber && !item.picked
-    );
-    
-    if (orderItems.length === 0) return;
-    
-    // Group by SKU and check validation status
-    const skuGroups = {};
-    orderItems.forEach(item => {
-        if (!skuGroups[item.sku]) {
-            skuGroups[item.sku] = {
-                sku: item.sku,
-                required_quantity: item.quantity,
-                validated_count: item.validated_count || 0,
-                is_complete: item.is_sku_complete || false
-            };
-        }
-    });
-    
-    // Check if all SKUs are fully validated
-    const allSkus = Object.values(skuGroups);
-    const fullyValidatedSkus = allSkus.filter(sku => sku.is_complete);
-    const isOrderComplete = fullyValidatedSkus.length === allSkus.length;
-    
-    // Update print button status
-    updatePrintButtonStatus(orderNumber, isOrderComplete);
-    
-    // Update validation status display in table
-    updateOrderValidationDisplay(orderNumber, fullyValidatedSkus.length, allSkus.length, isOrderComplete);
-    
-    // **NEW: Auto-print when order is fully validated**
-    if (isOrderComplete) {
-        console.log(`🎯 Order ${orderNumber} is fully validated - triggering auto-print`);
-        
-        // Small delay to ensure UI updates are complete
-        setTimeout(() => {
-            printOrderLabel(currentPicklistPlatform, orderNumber);
-        }, 500);
-    }
+    // REMOVED - Status will be checked from database
+    console.log('Local status checking disabled - using database only');
 }
 
 // Update print button status based on validation
@@ -5833,9 +6963,78 @@ function validateSKUFromSearch(sku, orderNumber) {
         validateBtn.textContent = 'Validating...';
     }
     
-    // Use the main validation function with enhanced callback
     validateSKUWithSearchUpdate(sku, orderNumber, 'order_specific');
 }
+
+function checkOrderCompletionAndAutoPrint(orderNumber) {
+    console.log(`🎯 Checking if order ${orderNumber} is fully validated for auto-print`);
+    
+    // Get all items for this order from current data
+    const orderItems = currentPicklistItems.filter(item => 
+        item.order_number === orderNumber && !item.picked
+    );
+    
+    if (orderItems.length === 0) {
+        console.log(`No unprocessed items found for order ${orderNumber}`);
+        return;
+    }
+    
+    // Get unique SKUs in this order
+    const uniqueSkus = [...new Set(orderItems.map(item => item.sku))];
+    console.log(`Order ${orderNumber} has ${uniqueSkus.length} unique SKUs:`, uniqueSkus);
+    
+    // Check if all SKUs are validated
+    let allValidated = true;
+    let validationDetails = [];
+    
+    for (const sku of uniqueSkus) {
+        const skuItems = orderItems.filter(item => item.sku === sku);
+        
+        if (skuItems.length > 0) {
+            const item = skuItems[0];
+            
+            // Check validation using multiple possible fields
+            const isSkuValidated = item.is_sku_complete || 
+                                 item.validated || 
+                                 (item.validation_progress && item.validation_progress.is_complete);
+            
+            validationDetails.push({
+                sku: sku,
+                validated: isSkuValidated,
+                validation_progress: item.validation_progress
+            });
+            
+            if (!isSkuValidated) {
+                allValidated = false;
+                console.log(`SKU ${sku} is not fully validated yet`, {
+                    is_sku_complete: item.is_sku_complete,
+                    validated: item.validated,
+                    validation_progress: item.validation_progress
+                });
+            } else {
+                console.log(`SKU ${sku} is validated ✅`);
+            }
+        }
+    }
+    
+    console.log(`Order ${orderNumber} validation summary:`, {
+        allValidated,
+        validationDetails
+    });
+    
+    if (allValidated) {
+        console.log(`🎯 Order ${orderNumber} is fully validated - triggering auto-print in 800ms`);
+        
+        // Auto-print after a short delay
+        setTimeout(() => {
+            console.log(`🖨️ Auto-printing order ${orderNumber}`);
+            printOrderLabel(currentPicklistPlatform, orderNumber);
+        }, 800);
+    } else {
+        console.log(`Order ${orderNumber} is not yet fully validated - auto-print cancelled`);
+    }
+}
+
 function validateSKUWithSearchUpdate(sku, orderNumber, validationMode = 'order_specific') {
     if (!currentPicklistId || !sku) {
         alert('Missing required information for validation');
@@ -5880,36 +7079,32 @@ function validateSKUWithSearchUpdate(sku, orderNumber, validationMode = 'order_s
         const details = data.validation_details;
         let message = data.message;
         
-        // Enhanced progress tracking for quantity-based validation
         if (details && details.validated_count !== undefined && details.required_quantity !== undefined) {
             const progress = `${details.validated_count}/${details.required_quantity}`;
             message += ` (${progress})`;
             
-            // Check if this SKU is now fully validated for this order
             if (details.is_complete) {
                 message += ' - SKU fully validated!';
             } else {
                 message += ` - ${details.required_quantity - details.validated_count} more validations needed`;
             }
         }
-                
-        // Update local validation tracking
-        updateLocalValidationTracking(sku, orderNumber, data);
         
-        // Update UI elements
-        updateValidationUI(sku, orderNumber, data);
+        console.log(`Search validation result: ${message}`);
         
-        // Update search results specifically
+        // Update the search card validation status immediately
         updateSearchValidationProgress(sku, orderNumber, data);
         
-        // Update the header counts
-        updateSearchOrderValidationCounts();
-        
-        // Check if entire order is ready for printing
-        checkOrderValidationStatus(orderNumber);
-        
-        // Refresh the main table display
-        populateOrdersTables(currentPicklistItems);
+        // Refresh from database first
+        refreshPicklistFromDatabase().then(() => {
+            // FIXED: Check if this SKU completion makes the entire order complete for auto-print
+            if (details && details.is_complete) {
+                console.log(`🎯 Search SKU ${sku} completed for order ${orderNumber} - checking for auto-print`);
+                setTimeout(() => {
+                    checkSearchOrderCompletionAndAutoPrint(orderNumber);
+                }, 500); // Give a bit more time for database refresh
+            }
+        });
     })
     .catch(error => {
         alert(`❌ ${error.message}`);
@@ -5922,6 +7117,91 @@ function validateSKUWithSearchUpdate(sku, orderNumber, validationMode = 'order_s
         }
     });
 }
+
+function checkSearchOrderCompletionAndAutoPrint(orderNumber) {
+    console.log(`🎯 Search: Checking if order ${orderNumber} is fully validated for auto-print`);
+    
+    // Get the latest data from the refreshed currentPicklistItems
+    const orderItems = currentPicklistItems.filter(item => 
+        item.order_number === orderNumber && !item.picked
+    );
+    
+    if (orderItems.length === 0) {
+        console.log(`No unprocessed items found for order ${orderNumber}`);
+        return;
+    }
+    
+    // Get unique SKUs in this order
+    const uniqueSkus = [...new Set(orderItems.map(item => item.sku))];
+    console.log(`Search: Order ${orderNumber} has ${uniqueSkus.length} unique SKUs:`, uniqueSkus);
+    
+    // Check if all SKUs are validated using the latest database data
+    let allValidated = true;
+    let validationDetails = [];
+    
+    for (const sku of uniqueSkus) {
+        const skuItems = orderItems.filter(item => item.sku === sku);
+        
+        if (skuItems.length > 0) {
+            const item = skuItems[0];
+            
+            // Check validation using the latest database fields
+            const isSkuValidated = item.is_sku_complete || 
+                                 item.validated || 
+                                 (item.validation_progress && item.validation_progress.is_complete);
+            
+            validationDetails.push({
+                sku: sku,
+                validated: isSkuValidated,
+                is_sku_complete: item.is_sku_complete,
+                validated_flag: item.validated,
+                validation_progress: item.validation_progress
+            });
+            
+            if (!isSkuValidated) {
+                allValidated = false;
+                console.log(`Search: SKU ${sku} is not fully validated yet`, {
+                    is_sku_complete: item.is_sku_complete,
+                    validated: item.validated,
+                    validation_progress: item.validation_progress
+                });
+            } else {
+                console.log(`Search: SKU ${sku} is validated ✅`);
+            }
+        }
+    }
+    
+    console.log(`Search order ${orderNumber} validation summary:`, {
+        allValidated,
+        validationDetails
+    });
+    
+    if (allValidated) {
+        console.log(`🎯 Search order ${orderNumber} is fully validated - triggering auto-print in 800ms`);
+        
+        // Auto-print after a short delay
+        setTimeout(() => {
+            console.log(`🖨️ Auto-printing order ${orderNumber} from search validation`);
+            printOrderLabel(currentPicklistPlatform, orderNumber);
+            
+            // Optional: Close search results after printing and focus back to search
+            setTimeout(() => {
+                console.log(`🔄 Auto-closing search results after print`);
+                hideProductSearchResults();
+                
+                // Focus back to search input for next scan
+                const searchInput = document.getElementById('product-search-input');
+                if (searchInput) {
+                    searchInput.focus();
+                }
+            }, 1000);
+            
+        }, 800);
+    } else {
+        console.log(`Search: Order ${orderNumber} is not yet fully validated - auto-print cancelled`);
+    }
+}
+
 
 function checkOrderPrintability(orderNumber, printBtn) {
     if (!currentPicklistId) return;
@@ -5983,10 +7263,8 @@ function updateSearchValidationProgress(sku, orderNumber, data) {
             productCard.style.boxShadow = '';
         }, 1000);
         
-        // **NEW: Check if entire order is complete and auto-print**
-        setTimeout(() => {
-            checkForOrderCompletionAndAutoPrint(orderNumber);
-        }, 300);
+        // Update the search order validation counts
+        updateSearchOrderValidationCounts();
         
     } else {
         // Show validation progress on button
@@ -6008,28 +7286,34 @@ function updateSearchValidationProgress(sku, orderNumber, data) {
 }
 
 function checkForOrderCompletionAndAutoPrint(orderNumber) {
+    console.log(`🎯 Search: Checking if order ${orderNumber} is fully validated for auto-print`);
+    
     if (!currentSearchOrderItems || currentSearchOrderItems.length === 0) {
+        console.log('No current search order items - using general check');
+        checkOrderCompletionAndAutoPrint(orderNumber);
         return;
     }
     
     // Get unique SKUs in the current search order
     const uniqueSkus = [...new Set(currentSearchOrderItems.map(item => item.sku))];
+    console.log(`Search: Order ${orderNumber} has ${uniqueSkus.length} SKUs:`, uniqueSkus);
     
     // Check if all SKUs are validated
     let allValidated = true;
     for (const sku of uniqueSkus) {
         const skuItem = currentSearchOrderItems.find(item => item.sku === sku);
-        if (!skuItem || (!skuItem.validated && !skuItem.is_sku_complete)) {
+        if (!skuItem || (!skuItem.validated && !skuItem.is_sku_complete && 
+                        !(skuItem.validation_progress && skuItem.validation_progress.is_complete))) {
             allValidated = false;
+            console.log(`Search: SKU ${sku} is not fully validated yet`);
             break;
+        } else {
+            console.log(`Search: SKU ${sku} is validated ✅`);
         }
     }
     
     if (allValidated) {
-        console.log(`🎯 Search order ${orderNumber} is fully validated - triggering auto-print`);
-        
-        // Update validation progress section to show completion
-        updateValidationProgressSection(uniqueSkus.length, uniqueSkus.length);
+        console.log(`🎯 Search order ${orderNumber} is fully validated - triggering auto-print in 800ms`);
         
         // Auto-print after a short delay
         setTimeout(() => {
@@ -6048,6 +7332,8 @@ function checkForOrderCompletionAndAutoPrint(orderNumber) {
             }, 1000);
             
         }, 800);
+    } else {
+        console.log(`Search: Order ${orderNumber} is not yet fully validated - auto-print cancelled`);
     }
 }
 
@@ -6109,27 +7395,8 @@ function updateValidationProgressSection(validatedCount, totalSkus) {
 
 
 function updateSearchResultValidation(sku, orderNumber, data) {
-    const details = data.validation_details;
-    
-    // Update the specific product card with progress
-    updateSearchValidationProgress(sku, orderNumber, data);
-    
-    // Update order stats for the entire order
-    updateSearchOrderValidationCounts();
-    
-    // Show success animation for the validated product if complete
-    if (details && details.is_complete) {
-        const productCard = document.getElementById(`search-product-card-${sku}`);
-        if (productCard) {
-            // Success animation
-            productCard.style.transform = 'scale(1.02)';
-            productCard.style.boxShadow = '0 4px 12px rgba(40, 167, 69, 0.3)';
-            setTimeout(() => {
-                productCard.style.transform = '';
-                productCard.style.boxShadow = '';
-            }, 1000);
-        }
-    }
+    // REMOVED - Search results will refresh from database
+    console.log('Local search updates disabled - using database refresh only');
 }
 
 function updateSearchOrderStats() {
