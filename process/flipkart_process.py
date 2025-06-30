@@ -18,7 +18,7 @@ def extract_text_with_fitz(input_pdf, page_num, only_orderid=False):
     else:
       page = doc[page_num]
     text = page.get_text("text")
-    order_id_match = re.search(r"E-Kart Logistics\s*\n*(OD\d+)", text)
+    order_id_match = re.search(r"(?:E-Kart Logistics|Order Id:)\s*(?:\\n)?\n*(OD\d+)", text)
     awb = re.search(r"AWB No\. (\w+)", text.replace("\n", " "))
     if only_orderid:
       return order_id_match.group(1),awb.group(1)
@@ -37,7 +37,11 @@ def extract_text_with_fitz(input_pdf, page_num, only_orderid=False):
 
       # Create a dictionary
       data_dict = {key: list(vals) for key, vals in zip(keys, zip_longest(*value_chunks, fillvalue=""))}
-      data_dict["Order No."] = [order_id_match.group(1)]
+      try:
+        data_dict["Order No."] = [order_id_match.group(1)]
+      except Exception:
+         import pdb
+         pdb.set_trace()
       # total_len = len(data_dict["SKU"])
       awb_value = awb.group(1) if awb else ''
       data_dict["AWB"] = [awb_value]
