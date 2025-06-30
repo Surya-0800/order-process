@@ -37,11 +37,8 @@ def extract_text_with_fitz(input_pdf, page_num, only_orderid=False):
 
       # Create a dictionary
       data_dict = {key: list(vals) for key, vals in zip(keys, zip_longest(*value_chunks, fillvalue=""))}
-      try:
-        data_dict["Order No."] = [order_id_match.group(1)]
-      except Exception:
-         import pdb
-         pdb.set_trace()
+      data_dict["Order No."] = [order_id_match.group(1)]
+
       # total_len = len(data_dict["SKU"])
       awb_value = awb.group(1) if awb else ''
       data_dict["AWB"] = [awb_value]
