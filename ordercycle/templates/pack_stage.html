@@ -4157,6 +4157,7 @@ async function printPageWithPrintService(pdfUrl, printerName, pageRange, pageTyp
                 printRequest.settings.scaling = "fit_to_paper";
                 printRequest.settings.orientation = "portrait";
                 printRequest.settings.force_orientation = true;
+                delete printRequest.centre;
             } else {
                 // Flipkart invoices
                 printRequest.settings.scaling = "fit_to_paper";
