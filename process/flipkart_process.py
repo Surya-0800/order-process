@@ -116,14 +116,16 @@ def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio=0.46
             top_height = rect.height * top_ratio  # Calculate top section height
             bottom_height = rect.height +1 - top_height  # Remaining height for the bottom section
 
-            if page_num == 0:
-              side_margin = 175
-              top_rect = fitz.Rect(side_margin, 0, rect.width - side_margin, top_height - 3)
-              
-              # Create page with reduced width to eliminate margins
-              cropped_width = rect.width - (2 * side_margin)  # New width without margins
-              top_page = new_doc.new_page(width=cropped_width, height=top_height)
-              top_page.show_pdf_page(top_page.rect, doc, page_num, clip=top_rect)
+            side_margin = 180
+            top_margin = 20  
+
+            top_rect = fitz.Rect(side_margin, top_margin, rect.width - side_margin, top_height - 3)
+
+            cropped_width = rect.width - (2 * side_margin)  # New width without margins
+            # Adjust the height to account for the top margin
+            cropped_height = top_height - top_margin
+            top_page = new_doc.new_page(width=cropped_width, height=cropped_height)
+            top_page.show_pdf_page(top_page.rect, doc, page_num, clip=top_rect)
 
             # --- Create Bottom Part (Custom Height) ---
             bottom_rect = fitz.Rect(0, top_height, rect.width, rect.height)
@@ -157,14 +159,14 @@ def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio=0.46
                 source_type="flipkart"
             )
             saved_orders.append(order_pdf)
-            os.remove(output_pdf_path)
+            # os.remove(output_pdf_path)
         else:
             new_doc = fitz.open(output_pdf_path)
             new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
             new_doc.insert_page(-1) 
             output_pdf_path_temp = os.path.join(output_folder, f"Order_{orderid_name}_temp.pdf")
             new_doc.save(output_pdf_path_temp)
-            os.remove(output_pdf_path)
+            # os.remove(output_pdf_path)
             os.rename(output_pdf_path_temp, output_pdf_path)
         new_doc.close()
         
