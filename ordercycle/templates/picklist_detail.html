@@ -416,6 +416,25 @@
         background-color: #c82333;
       }
     }
+    /* Total row styling - Add this to your existing CSS */
+.total-row {
+  font-weight: bold;
+  background-color: #f8f9fa;
+  border-top: 2px solid #333;
+}
+
+.total-row td {
+  padding: 15px 12px;
+  font-size: 16px;
+}
+
+/* Print-specific styling for total row */
+@media print {
+  .total-row {
+    background-color: #f0f0f0 !important;
+    border-top: 2px solid #000 !important;
+  }
+}
   </style>
 </head>
 
@@ -478,20 +497,23 @@
       <!-- Sorting controls - will be added by JavaScript -->
 
       <table class="table" id="picklist-items-table">
-        <thead>
-          <tr>
-            <th>SKU</th>
-            <th>QTY</th>
-            <th>LOCATION</th>
-            <th>PICKED STATUS</th>
-          </tr>
-        </thead>
-        <tbody id="picklist-items">
-          <tr>
-            <td colspan="4" class="text-center">Loading picklist items...</td>
-          </tr>
-        </tbody>
-      </table>
+  <thead>
+    <tr>
+      <th>SKU</th>
+      <th>QTY</th>
+      <th>LOCATION</th>
+      <th>PICKED STATUS</th>
+    </tr>
+  </thead>
+  <tbody id="picklist-items">
+    <tr>
+      <td colspan="4" class="text-center">Loading picklist items...</td>
+    </tr>
+  </tbody>
+  <tfoot id="picklist-total">
+    <!-- Total row will be populated by JavaScript -->
+  </tfoot>
+</table>
 
       <!-- Bottom action buttons - same as top for convenience -->
       <div class="action-buttons no-print">
@@ -556,6 +578,19 @@
           deletePicklist();
         }
       }
+
+      function updateTotalQuantity(items) {
+  const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+  const totalRow = document.getElementById('picklist-total');
+  
+  totalRow.innerHTML = `
+    <tr class="total-row">
+      <td><strong>TOTAL</strong></td>
+      <td><strong>${totalQuantity}</strong></td>
+      <td colspan="2"></td>
+    </tr>
+  `;
+}
 
       // Function to delete picklist
       function deletePicklist() {
@@ -1095,35 +1130,40 @@
 
       // Function to render picklist items - UPDATED without individual actions
       function renderPicklistItems(items) {
-        if (items.length === 0) {
-          picklistItems.innerHTML = `
-                        <tr>
-                            <td colspan="4" class="text-center">No items in this picklist</td>
-                        </tr>
-                    `;
-          return;
-        }
+  if (items.length === 0) {
+    picklistItems.innerHTML = `
+      <tr>
+        <td colspan="4" class="text-center">No items in this picklist</td>
+      </tr>
+    `;
+    // Clear total when no items
+    document.getElementById('picklist-total').innerHTML = '';
+    return;
+  }
 
-        let html = '';
-        items.forEach(item => {
-          const orderCount = item.orderNumbers ? item.orderNumbers.length : 1;
-          const orderTitle = orderCount > 1 ? `title="Contains ${orderCount} orders"` : '';
+  let html = '';
+  items.forEach(item => {
+    const orderCount = item.orderNumbers ? item.orderNumbers.length : 1;
+    const orderTitle = orderCount > 1 ? `title="Contains ${orderCount} orders"` : '';
 
-          html += `
-                        <tr ${orderTitle}>
-                            <td>${item.sku}</td>
-                            <td>${item.quantity}</td>
-                            <td>${item.location}</td>
-                            <td>
-                                <span class="status-indicator ${item.picked ? 'status-picked' : 'status-pending'}"></span>
-                                ${item.picked ? 'YES' : 'NO'}
-                            </td>
-                        </tr>
-                    `;
-        });
+    html += `
+      <tr ${orderTitle}>
+        <td>${item.sku}</td>
+        <td>${item.quantity}</td>
+        <td>${item.location}</td>
+        <td>
+          <span class="status-indicator ${item.picked ? 'status-picked' : 'status-pending'}"></span>
+          ${item.picked ? 'YES' : 'NO'}
+        </td>
+      </tr>
+    `;
+  });
 
-        picklistItems.innerHTML = html;
-      }
+  picklistItems.innerHTML = html;
+  
+  // Update total quantity
+  updateTotalQuantity(items);
+}
 
       // Enhanced function to update picker info display
       function updatePickerInfoDisplay() {

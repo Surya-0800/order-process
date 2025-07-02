@@ -30,7 +30,6 @@ class PicklistViewSet(ViewSet):
     def get_picklists(self, request):
         """
         Get all picklists with optional status filter and sorted by status
-        (CREATED first, then others) and then by created_at date
         """
         status = request.query_params.get('status', None)
         
@@ -40,12 +39,12 @@ class PicklistViewSet(ViewSet):
             picklists = Picklist.objects.all()
         
         # Define a custom sorting order for statuses
-        # This will ensure CREATED appears before PRINTED and other statuses
         status_order = {
             'CREATED': 1,
             'PRINTED': 2,
             'PACKING': 3,
-            # Add other statuses as needed with appropriate numbers
+            'PARTIAL_DISPATCH': 4,
+            'DISPATCH': 5,
         }
         
         # Convert queryset to list for custom sorting
@@ -54,8 +53,8 @@ class PicklistViewSet(ViewSet):
         # Custom sorting: first by status order, then by created_at date (descending)
         picklists_list.sort(
             key=lambda p: (
-                status_order.get(p.status, 999),  # Default to a high number for undefined statuses
-                -p.created_at.timestamp()  # Negative timestamp for descending date order
+                status_order.get(p.status, 999),
+                -p.created_at.timestamp()
             )
         )
         
@@ -70,6 +69,7 @@ class PicklistViewSet(ViewSet):
         
         return Response(data)
     
+    
     @action(detail=True, methods=['get'])
     def get_picklist_items(self, request, pk=None):
         """
@@ -77,7 +77,7 @@ class PicklistViewSet(ViewSet):
         """
         try:
             picklist = Picklist.objects.get(picklist_id=pk)
-            items = picklist.items.all().prefetch_related('location_info')  # Use prefetch_related to optimize
+            items = picklist.items.all().prefetch_related('location_info')
             
             # Get all active pickers
             pickers = Picker.objects.filter(is_active=True).values('picker_id', 'name')
@@ -86,9 +86,6 @@ class PicklistViewSet(ViewSet):
             assigned_picker_id = None
             assigned_picker_name = None
             
-            # Try to find if there's a picker assigned to any items in this picklist
-            # You might want to add a picker field to the Picklist model itself
-            # For now, we'll check if any item has a picker assigned
             first_picker_info = PicklistItemLocation.objects.filter(
                 picklist_item__picklist=picklist,
                 picker__isnull=False
@@ -101,7 +98,6 @@ class PicklistViewSet(ViewSet):
             # Get items with enhanced data
             detailed_items = []
             for item in items:
-                # Get location info if available
                 try:
                     location_info = getattr(item, 'location_info', None)
                     
@@ -110,13 +106,11 @@ class PicklistViewSet(ViewSet):
                         picked = location_info.picked
                         picker_id = location_info.picker.picker_id if location_info.picker else None
                     else:
-                        # Try to get location from MasterTable
                         master_item = MasterTable.objects.filter(sku=item.sku).first()
                         location = master_item.location if master_item else "Unknown"
                         picked = False
                         picker_id = None
                         
-                        # Create location info if it doesn't exist but we have location data
                         if master_item and master_item.location:
                             location_info, created = PicklistItemLocation.objects.get_or_create(
                                 picklist_item=item,
@@ -126,7 +120,6 @@ class PicklistViewSet(ViewSet):
                                 }
                             )
                 except Exception as e:
-                    # If any error occurs, use default values
                     location = "Unknown"
                     picked = False
                     picker_id = None
@@ -141,19 +134,24 @@ class PicklistViewSet(ViewSet):
                     'picker_id': picker_id
                 })
             
-            # Sort the items by SKU in descending order by default
             detailed_items.sort(key=lambda x: x['sku'], reverse=True)
+
+            orders = set() 
+            for i in detailed_items:
+                orders.add(i["order_number"])
             
             return Response({
                 'picklist_id': picklist.picklist_id,
                 'picklist_type': picklist.picklist_type,
                 'status': picklist.status,
                 'platform': picklist.platform,
-                'picker_id': assigned_picker_id,      # Add this line
-                'picker_name': assigned_picker_name,  # Add this line
+                'picker_id': assigned_picker_id,
+                'picker_name': assigned_picker_name,
                 'items': detailed_items,
                 'pickers': list(pickers),
-                'created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(picklist, 'created_at') else None
+                'created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(picklist, 'created_at') else None,
+                'total_orders': len(orders),
+                'total_items':len(items)
             })
         
         except Picklist.DoesNotExist:
@@ -161,6 +159,274 @@ class PicklistViewSet(ViewSet):
                 'status': 'error',
                 'message': 'Picklist not found'
             }, status=404)
+        
+    @action(detail=True, methods=['post'])
+    def mark_printed_only(self, request, pk=None):
+        """
+        Mark order as printed but NOT processed - only for printing stage
+        This doesn't change order status, just marks it as printed for tracking
+        """
+        try:
+            picklist = Picklist.objects.get(picklist_id=pk)
+            order_number = request.data.get('order_number')
+            
+            if not order_number:
+                return Response({
+                    'status': 'error',
+                    'message': 'Order number is required'
+                }, status=400)
+            
+            # Get the platform model
+            platform = picklist.platform.upper()
+            model_mapping = {
+                'AMAZON': AmazonOrders,
+                'FLIPKART': FlipkarOrders,
+                'FIRSTCRY': FirstcryOrders,
+                'MEESHO': MeeshoOrders
+            }
+            
+            if platform not in model_mapping:
+                return Response({
+                    'status': 'error',
+                    'message': f'Invalid platform: {platform}'
+                }, status=400)
+            
+            order_model = model_mapping[platform]
+            
+            # Update order with is_printed flag but keep status as 'Pick'
+            updated_count = order_model.objects.filter(
+                order_number=order_number
+            ).update(
+                is_printed=True,  # New field to track printing
+                printed_at=timezone.now()
+            )
+            
+            if updated_count == 0:
+                return Response({
+                    'status': 'error',
+                    'message': f'Order {order_number} not found'
+                }, status=404)
+            
+            return Response({
+                'status': 'success',
+                'message': f'Order {order_number} marked as printed. Awaiting AWB validation.'
+            })
+        
+        except Picklist.DoesNotExist:
+            return Response({
+                'status': 'error',
+                'message': 'Picklist not found'
+            }, status=404)
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': f'Error marking order as printed: {str(e)}'
+            }, status=500)
+        
+    @action(detail=True, methods=['post'])
+    def validate_awb_and_complete(self, request, pk=None):
+        """
+        Validate AWB and mark order as complete if validation passes
+        """
+        try:
+            picklist = Picklist.objects.get(picklist_id=pk)
+            order_number = request.data.get('order_number')
+            awb = request.data.get('awb')
+            
+            if not order_number or not awb:
+                return Response({
+                    'status': 'error',
+                    'message': 'Order number and AWB are required'
+                }, status=400)
+            
+            # Get the platform model
+            platform = picklist.platform.upper()
+            model_mapping = {
+                'AMAZON': AmazonOrders,
+                'FLIPKART': FlipkarOrders,
+                'FIRSTCRY': FirstcryOrders,
+                'MEESHO': MeeshoOrders
+            }
+            
+            if platform not in model_mapping:
+                return Response({
+                    'status': 'error',
+                    'message': f'Invalid platform: {platform}'
+                }, status=400)
+            
+            order_model = model_mapping[platform]
+            
+            # Get the order
+            try:
+                order = order_model.objects.get(order_number=order_number)
+            except order_model.DoesNotExist:
+                return Response({
+                    'status': 'error',
+                    'message': f'Order {order_number} not found'
+                }, status=404)
+            
+            # Validate AWB against existing AWB in database
+            if hasattr(order, 'awb') and order.awb:
+                if order.awb.strip() != awb.strip():
+                    return Response({
+                        'status': 'error',
+                        'message': f'AWB mismatch. Expected: {order.awb}, Provided: {awb}',
+                        'awb_match': False
+                    }, status=400)
+            
+            # AWB validation passed - mark as complete
+            order.status = 'Complete'
+            order.is_validated = True
+            order.awb = awb.strip()
+            order.validated_at = timezone.now()
+            order.save()
+            
+            # Check if all orders in picklist are complete and update picklist status
+            self._update_picklist_status(picklist)
+            
+            return Response({
+                'status': 'success',
+                'message': f'AWB validated successfully. Order {order_number} marked as Complete.',
+                'awb_match': True
+            })
+        
+        except Picklist.DoesNotExist:
+            return Response({
+                'status': 'error',
+                'message': 'Picklist not found'
+            }, status=404)
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': f'Error validating AWB: {str(e)}'
+            }, status=500)
+        
+    def _update_picklist_status(self, picklist):
+        """
+        Update picklist status based on order statuses
+        """
+        platform = picklist.platform.upper()
+        model_mapping = {
+            'AMAZON': AmazonOrders,
+            'FLIPKART': FlipkarOrders,
+            'FIRSTCRY': FirstcryOrders,
+            'MEESHO': MeeshoOrders
+        }
+        
+        if platform not in model_mapping:
+            return
+        
+        order_model = model_mapping[platform]
+        
+        # Get all order numbers in this picklist
+        picklist_order_numbers = list(
+            picklist.items.values_list('order_number', flat=True).distinct()
+        )
+        
+        # Get order status counts
+        order_statuses = order_model.objects.filter(
+            order_number__in=picklist_order_numbers
+        ).values_list('status', flat=True)
+        
+        status_counts = {}
+        for status in order_statuses:
+            status_counts[status] = status_counts.get(status, 0) + 1
+        
+        total_orders = len(picklist_order_numbers)
+        complete_orders = status_counts.get('Complete', 0)
+        processed_orders = status_counts.get('Processed', 0)
+        dispatch_orders = status_counts.get('Dispatch', 0)
+        
+        # Update picklist status based on order distribution
+        if complete_orders == total_orders:
+            # All orders are complete - ready for dispatch
+            picklist.status = 'DISPATCH'
+        elif dispatch_orders > 0:
+            # Some orders are already dispatched
+            if dispatch_orders == total_orders:
+                picklist.status = 'DISPATCH'
+            else:
+                picklist.status = 'PARTIAL_DISPATCH'
+        elif (complete_orders + processed_orders) == total_orders:
+            # All orders are either complete or processed
+            if complete_orders > 0:
+                picklist.status = 'PARTIAL_DISPATCH'
+            else:
+                picklist.status = 'PACKING'  # All processed but none complete
+        else:
+            # Still have pending orders
+            picklist.status = 'PACKING'
+        
+        picklist.save()
+    
+    @action(detail=True, methods=['post'])
+    def skip_awb_validation(self, request, pk=None):
+        """
+        Skip AWB validation and mark order as processed (not complete)
+        """
+        try:
+            picklist = Picklist.objects.get(picklist_id=pk)
+            order_number = request.data.get('order_number')
+            
+            if not order_number:
+                return Response({
+                    'status': 'error',
+                    'message': 'Order number is required'
+                }, status=400)
+            
+            # Get the platform model
+            platform = picklist.platform.upper()
+            model_mapping = {
+                'AMAZON': AmazonOrders,
+                'FLIPKART': FlipkarOrders,
+                'FIRSTCRY': FirstcryOrders,
+                'MEESHO': MeeshoOrders
+            }
+            
+            if platform not in model_mapping:
+                return Response({
+                    'status': 'error',
+                    'message': f'Invalid platform: {platform}'
+                }, status=400)
+            
+            order_model = model_mapping[platform]
+            
+            # Mark as processed but not complete
+            updated_count = order_model.objects.filter(
+                order_number=order_number
+            ).update(
+                status='Processed',  # Different from 'Complete'
+                is_validated=False,
+                processed_at=timezone.now()
+            )
+            
+            if updated_count == 0:
+                return Response({
+                    'status': 'error',
+                    'message': f'Order {order_number} not found'
+                }, status=404)
+            
+            # Update picklist status
+            self._update_picklist_status(picklist)
+            
+            return Response({
+                'status': 'success',
+                'message': f'Order {order_number} marked as Processed. AWB validation can be done later.'
+            })
+        
+        except Picklist.DoesNotExist:
+            return Response({
+                'status': 'error',
+                'message': 'Picklist not found'
+            }, status=404)
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'message': f'Error processing order: {str(e)}'
+            }, status=500)
+    
+    
+    
     @action(detail=True, methods=['post'])
     def undo_picked(self, request, pk=None):
         """
@@ -239,8 +505,9 @@ class PicklistViewSet(ViewSet):
             
             # Check if all items are picked
             if picklist.items.filter(picked=False).count() == 0:
-                picklist.status = 'PACKING'
-                picklist.save()
+                if picklist.status != 'PACKING':
+                    picklist.status = 'PACKING'
+                    picklist.save()
                 
                 return Response({
                     'status': 'success',
@@ -256,7 +523,7 @@ class PicklistViewSet(ViewSet):
             return Response({
                 'status': 'error',
                 'message': 'Picklist not found'
-            }, status=404)
+            }, status=404)  
         
     @action(detail=True, methods=['get'])
     def get_detailed_items(self, request, pk=None):
@@ -500,13 +767,12 @@ class PicklistViewSet(ViewSet):
             }
             
             if platform in model_mapping:
-                # Get the appropriate model
                 order_model = model_mapping[platform]
                 
                 # Delete orders that match the order numbers in this picklist
                 deleted_orders_count = order_model.objects.filter(
                     order_number__in=order_numbers,
-                    status='Pick'  # Only delete orders that are in 'Pick' status (part of this picklist)
+                    status__in=['Pick', 'Processed']  # Include both Pick and Processed
                 ).delete()[0]
             else:
                 deleted_orders_count = 0

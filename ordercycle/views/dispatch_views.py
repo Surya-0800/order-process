@@ -13,127 +13,168 @@ from django.db import transaction
 
 
 
-# Get picklists with orders in Complete status (changed from Dispatch)
 def get_dispatch_picklists(request):
     """
-    Get picklists with orders that are in Complete OR Dispatch status
-    - Complete orders: Ready to be dispatched via AWB processing
-    - Dispatch orders: Already dispatched
+    Get picklists with status 'Dispatch' - Simple and direct approach
     """
     try:
+        # Get platform filter from query parameters
+        platform_filter = request.GET.get('platform', '').upper()
+        
+        # Get date filters
+        specific_date = request.GET.get('date')
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+        
+        print(f"Date filters - specific: {specific_date}, start: {start_date}, end: {end_date}")
+        print(f"Platform filter: {platform_filter}")
+        
+        # Simple query: Get picklists with status 'Dispatch'
+        picklists_query = Picklist.objects.filter(status='DISPATCH').order_by('-created_at')
+        
+        # Apply date filtering if provided
+        if specific_date:
+            try:
+                filter_date = datetime.strptime(specific_date, '%Y-%m-%d').date()
+                picklists_query = picklists_query.filter(created_at__date=filter_date)
+                print(f"Applied specific date filter: {filter_date}")
+            except ValueError as e:
+                print(f"Invalid specific date format: {specific_date}, error: {e}")
+                
+        elif start_date and end_date:
+            try:
+                start_filter_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+                end_filter_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+                
+                # Validate date range
+                if start_filter_date > end_filter_date:
+                    raise ValueError("Start date cannot be later than end date")
+                
+                # Check if range is not too large (90 days max)
+                date_diff = (end_filter_date - start_filter_date).days
+                if date_diff > 90:
+                    raise ValueError("Date range cannot exceed 90 days")
+                
+                picklists_query = picklists_query.filter(
+                    created_at__date__gte=start_filter_date,
+                    created_at__date__lte=end_filter_date
+                )
+                print(f"Applied date range filter: {start_filter_date} to {end_filter_date}")
+                
+            except ValueError as e:
+                print(f"Invalid date range: {start_date} to {end_date}, error: {e}")
+        
+        # Apply platform filter if specified
+        if platform_filter and platform_filter != 'ALL':
+            picklists_query = picklists_query.filter(platform__iexact=platform_filter)
+            print(f"Applied platform filter: {platform_filter}")
+        
+        picklists = picklists_query
         picklists_data = []
-        using_dispatch_model = False
         
-        try:
-            # Try to use PicklistDispatchStatus model first
-            from django.apps import apps
-            PicklistDispatchStatus = apps.get_model('ordercycle', 'PicklistDispatchStatus')
-            
-            # Get all dispatch status records and update them
-            dispatch_statuses = PicklistDispatchStatus.objects.select_related('picklist').all()
-            
-            if dispatch_statuses.exists():
-                using_dispatch_model = True
-                print(f"Found {dispatch_statuses.count()} dispatch status records")
-                
-                # Update all dispatch statuses to get latest data
-                for status in dispatch_statuses:
-                    status.update_status_with_complete_and_dispatch()
-                
-                # Include picklists that have Complete OR Dispatch orders
-                for status in dispatch_statuses:
-                    if status.total_relevant_orders > 0:  # Has Complete or Dispatch orders
-                        percentage = 0
-                        if status.total_orders > 0:
-                            percentage = (status.dispatched_orders / status.total_orders) * 100
-                        
-                        picklist = status.picklist
-                        picklists_data.append({
-                            'picklist_id': picklist.picklist_id,
-                            'picklist_type': picklist.picklist_type,
-                            'platform': picklist.platform,
-                            'total_orders': status.total_orders,
-                            'dispatch_orders': status.dispatched_orders,
-                            'complete_orders': status.complete_orders,
-                            'total_relevant_orders': status.total_relevant_orders,
-                            'dispatch_percentage': round(percentage, 1),
-                            'status': picklist.status,
-                            'created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S')
-                        })
-                
-                print(f"Using dispatch model, found {len(picklists_data)} picklists with Complete/Dispatch orders")
-        except Exception as e:
-            print(f"Error using PicklistDispatchStatus model: {str(e)}")
-            using_dispatch_model = False
+        print(f"Found {picklists.count()} picklists with status 'Dispatch'")
         
-        # If no dispatch model available, fall back to direct checking
-        if not using_dispatch_model:
-            print("Falling back to direct order status checking")
-            
-            # Get all picklists and check for Complete OR Dispatch orders
-            picklists = Picklist.objects.all()
-            print(f"Found {picklists.count()} picklists")
-            
-            for picklist in picklists:
+        # Process each picklist to get order counts
+        for picklist in picklists:
+            try:
+                # Get all items in this picklist
                 picklist_items = PicklistItem.objects.filter(picklist=picklist)
-                total_orders = picklist_items.values('order_number').distinct().count()
+                total_unique_orders = picklist_items.values('order_number').distinct().count()
                 
-                if total_orders == 0:
+                if total_unique_orders == 0:
                     continue
                 
-                # Count orders in Complete OR Dispatch status
-                dispatch_orders = 0
-                complete_orders = 0
                 platform = picklist.platform.upper()
-                order_numbers = picklist_items.values_list('order_number', flat=True).distinct()
+                order_numbers = list(picklist_items.values_list('order_number', flat=True).distinct())
                 
+                dispatched_orders = 0
+                complete_orders = 0
+                
+                # Count order statuses
                 for order_number in order_numbers:
-                    order_status = None
-                    
-                    if platform == 'AMAZON':
-                        order = AmazonOrders.objects.filter(order_number=order_number).first()
-                    elif platform == 'FLIPKART':
-                        order = FlipkarOrders.objects.filter(order_number=order_number).first()
-                    elif platform == 'FIRSTCRY':
-                        order = FirstcryOrders.objects.filter(order_number=order_number).first()
-                    elif platform == 'MEESHO':
-                        order = MeeshoOrders.objects.filter(order_number=order_number).first()
-                    else:
+                    try:
+                        order = None
+                        
+                        if platform == 'AMAZON':
+                            order = AmazonOrders.objects.filter(order_number=order_number).first()
+                        elif platform == 'FLIPKART':
+                            order = FlipkarOrders.objects.filter(order_number=order_number).first()
+                        elif platform == 'FIRSTCRY':
+                            order = FirstcryOrders.objects.filter(order_number=order_number).first()
+                        elif platform == 'MEESHO':
+                            order = MeeshoOrders.objects.filter(order_number=order_number).first()
+                        else:
+                            continue
+                        
+                        if order:
+                            if order.status == 'Dispatch':
+                                dispatched_orders += 1
+                            elif order.status == 'Complete':
+                                complete_orders += 1
+                                
+                    except Exception as e:
+                        print(f"Error processing order {order_number}: {e}")
                         continue
-                    
-                    if order:
-                        if order.status == 'Dispatch':
-                            dispatch_orders += 1
-                        elif order.status == 'Complete':
-                            complete_orders += 1
                 
-                # Only include picklists that have Complete OR Dispatch orders
-                total_relevant_orders = dispatch_orders + complete_orders
-                if total_relevant_orders > 0:
-                    dispatch_percentage = (dispatch_orders / total_orders) * 100 if total_orders > 0 else 0
-                    
-                    picklists_data.append({
-                        'picklist_id': picklist.picklist_id,
-                        'picklist_type': picklist.picklist_type,
-                        'platform': picklist.platform,
-                        'total_orders': total_orders,
-                        'dispatch_orders': dispatch_orders,
-                        'complete_orders': complete_orders,
-                        'total_relevant_orders': total_relevant_orders,
-                        'dispatch_percentage': round(dispatch_percentage, 1),
-                        'status': picklist.status,
-                        'created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S')
-                    })
+                # Calculate dispatch percentage
+                dispatch_percentage = 0
+                if total_unique_orders > 0:
+                    dispatch_percentage = round((dispatched_orders / total_unique_orders) * 100, 1)
+                
+                # Add to results - show ALL picklists with status 'Dispatch'
+                picklists_data.append({
+                    'picklist_id': picklist.picklist_id,
+                    'picklist_type': picklist.picklist_type or 'N/A',
+                    'platform': picklist.platform,
+                    'total_orders': total_unique_orders,
+                    'dispatch_orders': dispatched_orders,
+                    'complete_orders': complete_orders,
+                    'total_relevant_orders': dispatched_orders + complete_orders,
+                    'dispatch_percentage': dispatch_percentage,
+                    'status': picklist.status,
+                    'created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'created_date': picklist.created_at.strftime('%Y-%m-%d')
+                })
+                
+                print(f"Added picklist {picklist.picklist_id}: {dispatched_orders} dispatched, {complete_orders} complete, {dispatch_percentage}% dispatch rate")
+                
+            except Exception as e:
+                print(f"Error processing picklist {picklist.picklist_id}: {e}")
+                continue
         
-        # Sort by dispatch percentage (descending), then by total relevant orders
-        picklists_data.sort(key=lambda x: (x['dispatch_percentage'], x['total_relevant_orders']), reverse=True)
+        # Sort by dispatch percentage (descending), then by total orders
+        picklists_data.sort(key=lambda x: (x['dispatch_percentage'], x['total_orders']), reverse=True)
         
-        print(f"Returning {len(picklists_data)} picklists with Complete/Dispatch orders")
+        # Prepare response with date filter info
+        date_filter_info = {}
+        if specific_date:
+            date_filter_info = {
+                'filter_type': 'specific',
+                'date': specific_date,
+                'display_text': f"Data for {specific_date}"
+            }
+        elif start_date and end_date:
+            date_filter_info = {
+                'filter_type': 'range',
+                'start_date': start_date,
+                'end_date': end_date,
+                'display_text': f"Data from {start_date} to {end_date}"
+            }
+        else:
+            date_filter_info = {
+                'filter_type': 'all',
+                'display_text': f"All dispatch picklists"
+            }
+        
+        print(f"Returning {len(picklists_data)} dispatch picklists")
         
         return JsonResponse({
             'status': 'success',
             'picklists': picklists_data,
-            'using_dispatch_model': using_dispatch_model
+            'using_dispatch_model': False,
+            'filtered_platform': platform_filter or 'ALL',
+            'date_filter': date_filter_info,
+            'total_picklists': len(picklists_data)
         })
     
     except Exception as e:
@@ -144,17 +185,29 @@ def get_dispatch_picklists(request):
         return JsonResponse({
             'status': 'error',
             'message': f'Error retrieving dispatch picklists: {str(e)}',
-            'picklists': []
+            'picklists': [],
+            'date_filter': {
+                'filter_type': 'error',
+                'date': timezone.now().date().strftime('%Y-%m-%d'),
+                'display_text': 'Error loading data'
+            }
         })
-
-# Get dispatch orders for a specific picklist
+# ===== ENHANCED GET_DISPATCH_ORDERS WITH DATE CONTEXT =====
 def get_dispatch_orders(request, picklist_id):
     """
     Get Complete and Dispatch orders for a specific picklist
-    Shows both statuses to give full picture of dispatch workflow
+    Enhanced with date context for better filtering and display
     """
     try:
         picklist = get_object_or_404(Picklist, picklist_id=picklist_id)
+        
+        # Get date filters for context
+        specific_date = request.GET.get('date')
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+        
+        print(f"Getting dispatch orders for picklist {picklist_id} with date context")
+        
         picklist_items = PicklistItem.objects.filter(picklist=picklist)
         
         total_orders = picklist_items.values('order_number').distinct().count()
@@ -166,47 +219,53 @@ def get_dispatch_orders(request, picklist_id):
         order_numbers = picklist_items.values_list('order_number', flat=True).distinct()
         
         for order_number in order_numbers:
-            # Get the order based on platform
-            if platform == 'AMAZON':
-                orders = AmazonOrders.objects.filter(order_number=order_number)
-            elif platform == 'FLIPKART':
-                orders = FlipkarOrders.objects.filter(order_number=order_number)
-            elif platform == 'FIRSTCRY':
-                orders = FirstcryOrders.objects.filter(order_number=order_number)
-            elif platform == 'MEESHO':
-                orders = MeeshoOrders.objects.filter(order_number=order_number)
-            else:
-                continue
-            
-            if not orders.exists():
-                continue
-            
-            order = orders.first()
-            
-            # Count Complete and Dispatch orders
-            is_dispatch = order.status == 'Dispatch'
-            is_complete = order.status == 'Complete'
-            
-            if is_dispatch:
-                dispatch_orders += 1
-            elif is_complete:
-                complete_orders += 1
-            
-            # Only include Complete or Dispatch orders in the response
-            if is_dispatch or is_complete:
-                # Find the associated picklist items
-                items = picklist_items.filter(order_number=order_number)
+            try:
+                # Get the order based on platform
+                orders = None
+                if platform == 'AMAZON':
+                    orders = AmazonOrders.objects.filter(order_number=order_number)
+                elif platform == 'FLIPKART':
+                    orders = FlipkarOrders.objects.filter(order_number=order_number)
+                elif platform == 'FIRSTCRY':
+                    orders = FirstcryOrders.objects.filter(order_number=order_number)
+                elif platform == 'MEESHO':
+                    orders = MeeshoOrders.objects.filter(order_number=order_number)
+                else:
+                    continue
                 
-                # Add each item as a separate entry in orders_data
-                for item in items:
-                    orders_data.append({
-                        'order_number': order.order_number,
-                        'sku': item.sku,
-                        'quantity': item.quantity,
-                        'status': order.status,
-                        'awb': order.AWB if hasattr(order, 'AWB') else None,
-                        'sort_priority': 1 if is_dispatch else 2  # Dispatch first, then Complete
-                    })
+                if not orders or not orders.exists():
+                    continue
+                
+                order = orders.first()
+                
+                # Count Complete and Dispatch orders
+                is_dispatch = order.status == 'Dispatch'
+                is_complete = order.status == 'Complete'
+                
+                if is_dispatch:
+                    dispatch_orders += 1
+                elif is_complete:
+                    complete_orders += 1
+                
+                # Only include Complete or Dispatch orders in the response
+                if is_dispatch or is_complete:
+                    # Find the associated picklist items
+                    items = picklist_items.filter(order_number=order_number)
+                    
+                    # Add each item as a separate entry in orders_data
+                    for item in items:
+                        orders_data.append({
+                            'order_number': order.order_number,
+                            'sku': item.sku,
+                            'quantity': item.quantity,
+                            'status': order.status,
+                            'awb': getattr(order, 'AWB', None) or 'N/A',
+                            'sort_priority': 1 if is_dispatch else 2  # Dispatch first, then Complete
+                        })
+                        
+            except Exception as e:
+                print(f"Error processing order {order_number}: {e}")
+                continue
         
         # Sort orders - Dispatch first, then Complete
         orders_data.sort(key=lambda x: x['sort_priority'])
@@ -220,6 +279,38 @@ def get_dispatch_orders(request, picklist_id):
         if total_orders > 0:
             dispatch_percentage = round((dispatch_orders / total_orders) * 100)
         
+        # Prepare date context information
+        date_context = {
+            'picklist_date': picklist.created_at.strftime('%Y-%m-%d'),
+            'picklist_created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'filter_date': specific_date,
+            'filter_start': start_date,
+            'filter_end': end_date
+        }
+        
+        # Determine if picklist matches current date filter
+        picklist_date = picklist.created_at.date()
+        matches_filter = False
+        
+        if specific_date:
+            try:
+                filter_date = datetime.strptime(specific_date, '%Y-%m-%d').date()
+                matches_filter = picklist_date == filter_date
+            except ValueError:
+                matches_filter = False
+        elif start_date and end_date:
+            try:
+                start_filter_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+                end_filter_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+                matches_filter = start_filter_date <= picklist_date <= end_filter_date
+            except ValueError:
+                matches_filter = False
+        else:
+            # Default to today
+            matches_filter = picklist_date == timezone.now().date()
+        
+        date_context['matches_current_filter'] = matches_filter
+        
         response_data = {
             'picklist_id': picklist.picklist_id,
             'platform': picklist.platform,
@@ -229,7 +320,9 @@ def get_dispatch_orders(request, picklist_id):
             'total_relevant_orders': dispatch_orders + complete_orders,
             'dispatch_percentage': dispatch_percentage,
             'created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-            'orders': orders_data
+            'created_date': picklist.created_at.strftime('%Y-%m-%d'),
+            'orders': orders_data,
+            'date_context': date_context
         }
         
         return JsonResponse(response_data)
@@ -241,10 +334,237 @@ def get_dispatch_orders(request, picklist_id):
         
         return JsonResponse({
             'status': 'error',
-            'message': f'Error retrieving dispatch orders: {str(e)}'
+            'message': f'Error retrieving dispatch orders: {str(e)}',
+            'date_context': {
+                'filter_date': specific_date,
+                'filter_start': start_date,
+                'filter_end': end_date,
+                'error': str(e)
+            }
         }, status=500)
+
+# ===== NEW ENDPOINT FOR DATE-BASED ANALYTICS =====
+def get_dispatch_analytics_by_date(request):
+    """
+    Get dispatch analytics aggregated by date range
+    Useful for generating reports and trends
+    """
+    try:
+        # Get date filters
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+        platform_filter = request.GET.get('platform', '').upper()
+        group_by = request.GET.get('group_by', 'date')  # 'date', 'platform', 'week', 'month'
+        
+        if not start_date or not end_date:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'start_date and end_date parameters are required'
+            }, status=400)
+        
+        try:
+            start_filter_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_filter_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            
+            # Validate date range
+            if start_filter_date > end_filter_date:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Start date cannot be later than end date'
+                }, status=400)
+            
+            # Check if range is not too large (90 days max for detailed analytics)
+            date_diff = (end_filter_date - start_filter_date).days
+            if date_diff > 90:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Date range cannot exceed 90 days for detailed analytics'
+                }, status=400)
+                
+        except ValueError:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Invalid date format. Use YYYY-MM-DD'
+            }, status=400)
+        
+        # Get picklists in date range
+        picklists_query = Picklist.objects.filter(
+            created_at__date__gte=start_filter_date,
+            created_at__date__lte=end_filter_date
+        ).order_by('created_at')
+        
+        if platform_filter and platform_filter != 'ALL':
+            picklists_query = picklists_query.filter(platform__iexact=platform_filter)
+        
+        # Group analytics by specified grouping
+        analytics_data = {}
+        
+        for picklist in picklists_query:
+            try:
+                # Determine grouping key
+                if group_by == 'date':
+                    group_key = picklist.created_at.date().strftime('%Y-%m-%d')
+                    display_key = picklist.created_at.date().strftime('%Y-%m-%d')
+                elif group_by == 'week':
+                    # Get Monday of the week
+                    monday = picklist.created_at.date() - timedelta(days=picklist.created_at.weekday())
+                    group_key = monday.strftime('%Y-%m-%d')
+                    display_key = f"Week of {monday.strftime('%Y-%m-%d')}"
+                elif group_by == 'month':
+                    group_key = picklist.created_at.date().strftime('%Y-%m')
+                    display_key = picklist.created_at.date().strftime('%B %Y')
+                elif group_by == 'platform':
+                    group_key = picklist.platform.upper()
+                    display_key = picklist.platform.upper()
+                else:
+                    group_key = picklist.created_at.date().strftime('%Y-%m-%d')
+                    display_key = picklist.created_at.date().strftime('%Y-%m-%d')
+                
+                if group_key not in analytics_data:
+                    analytics_data[group_key] = {
+                        'group_key': group_key,
+                        'display_key': display_key,
+                        'total_picklists': 0,
+                        'total_orders': 0,
+                        'dispatched_orders': 0,
+                        'complete_orders': 0,
+                        'platforms': set(),
+                        'picklist_details': []
+                    }
+                
+                # Calculate orders for this picklist
+                picklist_items = PicklistItem.objects.filter(picklist=picklist)
+                total_orders = picklist_items.values('order_number').distinct().count()
+                
+                if total_orders > 0:
+                    platform = picklist.platform.upper()
+                    order_numbers = list(picklist_items.values_list('order_number', flat=True).distinct())
+                    
+                    dispatched_count = 0
+                    complete_count = 0
+                    
+                    for order_number in order_numbers:
+                        try:
+                            order = None
+                            if platform == 'AMAZON':
+                                order = AmazonOrders.objects.filter(order_number=order_number).first()
+                            elif platform == 'FLIPKART':
+                                order = FlipkarOrders.objects.filter(order_number=order_number).first()
+                            elif platform == 'FIRSTCRY':
+                                order = FirstcryOrders.objects.filter(order_number=order_number).first()
+                            elif platform == 'MEESHO':
+                                order = MeeshoOrders.objects.filter(order_number=order_number).first()
+                            
+                            if order:
+                                if order.status == 'Dispatch':
+                                    dispatched_count += 1
+                                elif order.status == 'Complete':
+                                    complete_count += 1
+                                    
+                        except Exception as e:
+                            print(f"Error processing order {order_number} in analytics: {e}")
+                            continue
+                    
+                    # Update analytics data
+                    analytics_data[group_key]['total_picklists'] += 1
+                    analytics_data[group_key]['total_orders'] += total_orders
+                    analytics_data[group_key]['dispatched_orders'] += dispatched_count
+                    analytics_data[group_key]['complete_orders'] += complete_count
+                    analytics_data[group_key]['platforms'].add(picklist.platform)
+                    
+                    # Add picklist details
+                    dispatch_percentage = 0
+                    if total_orders > 0:
+                        dispatch_percentage = round((dispatched_count / total_orders) * 100, 1)
+                    
+                    analytics_data[group_key]['picklist_details'].append({
+                        'picklist_id': picklist.picklist_id,
+                        'platform': picklist.platform,
+                        'total_orders': total_orders,
+                        'dispatched_orders': dispatched_count,
+                        'complete_orders': complete_count,
+                        'dispatch_percentage': dispatch_percentage,
+                        'created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                    })
+                    
+            except Exception as e:
+                print(f"Error processing picklist {picklist.picklist_id} in analytics: {e}")
+                continue
+        
+        # Convert to list and calculate percentages
+        analytics_list = []
+        for group_data in analytics_data.values():
+            total_orders = group_data['total_orders']
+            dispatch_percentage = 0
+            complete_percentage = 0
+            
+            if total_orders > 0:
+                dispatch_percentage = round((group_data['dispatched_orders'] / total_orders) * 100, 1)
+                complete_percentage = round((group_data['complete_orders'] / total_orders) * 100, 1)
+            
+            analytics_list.append({
+                'group_key': group_data['group_key'],
+                'display_key': group_data['display_key'],
+                'total_picklists': group_data['total_picklists'],
+                'total_orders': total_orders,
+                'dispatched_orders': group_data['dispatched_orders'],
+                'complete_orders': group_data['complete_orders'],
+                'dispatch_percentage': dispatch_percentage,
+                'complete_percentage': complete_percentage,
+                'platforms': list(group_data['platforms']),
+                'picklist_details': group_data['picklist_details']
+            })
+        
+        # Sort by group key
+        analytics_list.sort(key=lambda x: x['group_key'])
+        
+        # Calculate summary totals
+        summary = {
+            'total_picklists': sum(d['total_picklists'] for d in analytics_list),
+            'total_orders': sum(d['total_orders'] for d in analytics_list),
+            'total_dispatched': sum(d['dispatched_orders'] for d in analytics_list),
+            'total_complete': sum(d['complete_orders'] for d in analytics_list),
+            'overall_dispatch_percentage': 0,
+            'overall_complete_percentage': 0,
+            'date_range_days': date_diff + 1
+        }
+        
+        if summary['total_orders'] > 0:
+            summary['overall_dispatch_percentage'] = round(
+                (summary['total_dispatched'] / summary['total_orders']) * 100, 1
+            )
+            summary['overall_complete_percentage'] = round(
+                (summary['total_complete'] / summary['total_orders']) * 100, 1
+            )
+        
+        return JsonResponse({
+            'status': 'success',
+            'date_range': {
+                'start_date': start_date,
+                'end_date': end_date,
+                'platform_filter': platform_filter or 'ALL',
+                'group_by': group_by
+            },
+            'analytics': analytics_list,
+            'summary': summary
+        })
+        
+    except Exception as e:
+        print(f"Error in get_dispatch_analytics_by_date: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error retrieving analytics: {str(e)}'
+        }, status=500)
+
+
 # Mark orders as dispatched (now completed)
 def mark_orders_as_dispatched(request, picklist_id):
+    """
+    Enhanced version of mark orders as dispatched with date tracking
+    """
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
     
@@ -258,58 +578,80 @@ def mark_orders_as_dispatched(request, picklist_id):
         if not order_numbers:
             return JsonResponse({'error': 'No orders provided'}, status=400)
         
+        # Track the dispatch date for analytics
+        dispatch_date = timezone.now()
+        
         # Update order status based on platform
         updated_count = 0
+        updated_orders = []
         
         for order_number in order_numbers:
-            if platform == 'AMAZON':
-                orders = AmazonOrders.objects.filter(order_number=order_number)
-            elif platform == 'FLIPKART':
-                orders = FlipkarOrders.objects.filter(order_number=order_number)
-            elif platform == 'FIRSTCRY':
-                orders = FirstcryOrders.objects.filter(order_number=order_number)
-            elif platform == 'MEESHO':
-                orders = MeeshoOrders.objects.filter(order_number=order_number)
-            else:
+            try:
+                orders = None
+                if platform == 'AMAZON':
+                    orders = AmazonOrders.objects.filter(order_number=order_number)
+                elif platform == 'FLIPKART':
+                    orders = FlipkarOrders.objects.filter(order_number=order_number)
+                elif platform == 'FIRSTCRY':
+                    orders = FirstcryOrders.objects.filter(order_number=order_number)
+                elif platform == 'MEESHO':
+                    orders = MeeshoOrders.objects.filter(order_number=order_number)
+                else:
+                    continue
+                
+                if orders and orders.exists():
+                    # Update orders and track changes
+                    for order in orders:
+                        if order.status == 'Complete':  # Only update Complete orders
+                            order.status = 'Dispatch'
+                            order.save()
+                            updated_orders.append({
+                                'order_number': order_number,
+                                'platform': platform,
+                                'dispatched_at': dispatch_date.strftime('%Y-%m-%d %H:%M:%S')
+                            })
+                    updated_count += 1
+                    
+            except Exception as e:
+                print(f"Error updating order {order_number}: {e}")
                 continue
-            
-            if orders.exists():
-                orders.update(status='Complete')  # Changed from 'Dispatch' to 'Complete'
-                updated_count += 1
         
-        # Check if all orders in picklist are now completed
-        # Use the PicklistDispatchStatus model if available
+        # Update dispatch status tracking
         try:
             dispatch_status, created = PicklistDispatchStatus.objects.get_or_create(
                 picklist=picklist,
                 defaults={
                     'total_orders': 0,
                     'dispatched_orders': 0,
+                    'complete_orders': 0,
                     'is_fully_dispatched': False
                 }
             )
             
             # Update the status
-            all_dispatched = dispatch_status.update_status()
+            all_dispatched = dispatch_status.update_status_with_complete_and_dispatch()
             
             # Include dispatch status info in the response
             dispatch_info = {
                 'total_orders': dispatch_status.total_orders,
                 'dispatched_orders': dispatch_status.dispatched_orders,
+                'complete_orders': dispatch_status.complete_orders,
                 'percentage': round((dispatch_status.dispatched_orders / dispatch_status.total_orders * 100), 1) if dispatch_status.total_orders > 0 else 0,
                 'is_fully_dispatched': dispatch_status.is_fully_dispatched
             }
             
         except Exception as e:
             print(f"Error updating dispatch status: {str(e)}")
-            # Fall back to the old implementation
-            all_dispatched = check_all_dispatched(picklist, platform)
             dispatch_info = None
+            all_dispatched = False
         
         response_data = {
             'success': True,
-            'message': f'Successfully marked {updated_count} order(s) as completed.',  # Changed wording
-            'all_dispatched': all_dispatched
+            'message': f'Successfully marked {updated_count} order(s) as dispatched.',
+            'updated_count': updated_count,
+            'all_dispatched': all_dispatched,
+            'dispatch_date': dispatch_date.strftime('%Y-%m-%d %H:%M:%S'),
+            'updated_orders': updated_orders
         }
         
         if dispatch_info:
@@ -321,7 +663,7 @@ def mark_orders_as_dispatched(request, picklist_id):
         print(f"Error in mark_orders_as_dispatched: {str(e)}")
         traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
-    
+ 
 # Helper function to check if all orders in a picklist are dispatched (now completed)
 def check_all_dispatched(picklist, platform):
     """
@@ -543,27 +885,195 @@ def change_to_dispatch(request):
             'error': str(e)
         }, status=500)
 
+def get_date_range_statistics(request):
+    """
+    Get comprehensive statistics for a date range
+    """
+    try:
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date', start_date)  # Default to same date if not provided
+        platform_filter = request.GET.get('platform', '').upper()
+        
+        if not start_date:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'start_date parameter is required'
+            }, status=400)
+        
+        try:
+            start_filter_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_filter_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+        except ValueError:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Invalid date format. Use YYYY-MM-DD'
+            }, status=400)
+        
+        # Get picklists in date range
+        picklists_query = Picklist.objects.filter(
+            created_at__date__gte=start_filter_date,
+            created_at__date__lte=end_filter_date
+        )
+        
+        if platform_filter and platform_filter != 'ALL':
+            picklists_query = picklists_query.filter(platform__iexact=platform_filter)
+        
+        # Initialize statistics
+        stats = {
+            'date_range': {
+                'start': start_date,
+                'end': end_date,
+                'days': (end_filter_date - start_filter_date).days + 1
+            },
+            'platform': platform_filter or 'ALL',
+            'totals': {
+                'picklists': 0,
+                'orders': 0,
+                'dispatched': 0,
+                'complete': 0,
+                'other_status': 0
+            },
+            'by_platform': {},
+            'by_date': {},
+            'by_status': {
+                'Dispatch': 0,
+                'Complete': 0,
+                'Pack': 0,
+                'Pick': 0,
+                'Ready to Process': 0,
+                'Other': 0
+            }
+        }
+        
+        # Process each picklist
+        for picklist in picklists_query:
+            try:
+                platform = picklist.platform.upper()
+                picklist_date = picklist.created_at.date().strftime('%Y-%m-%d')
+                
+                # Initialize platform stats if needed
+                if platform not in stats['by_platform']:
+                    stats['by_platform'][platform] = {
+                        'picklists': 0,
+                        'orders': 0,
+                        'dispatched': 0,
+                        'complete': 0
+                    }
+                
+                # Initialize date stats if needed
+                if picklist_date not in stats['by_date']:
+                    stats['by_date'][picklist_date] = {
+                        'picklists': 0,
+                        'orders': 0,
+                        'dispatched': 0,
+                        'complete': 0
+                    }
+                
+                # Get picklist items and orders
+                picklist_items = PicklistItem.objects.filter(picklist=picklist)
+                total_orders = picklist_items.values('order_number').distinct().count()
+                order_numbers = list(picklist_items.values_list('order_number', flat=True).distinct())
+                
+                dispatched_count = 0
+                complete_count = 0
+                
+                # Check order statuses
+                for order_number in order_numbers:
+                    try:
+                        order = None
+                        if platform == 'AMAZON':
+                            order = AmazonOrders.objects.filter(order_number=order_number).first()
+                        elif platform == 'FLIPKART':
+                            order = FlipkarOrders.objects.filter(order_number=order_number).first()
+                        elif platform == 'FIRSTCRY':
+                            order = FirstcryOrders.objects.filter(order_number=order_number).first()
+                        elif platform == 'MEESHO':
+                            order = MeeshoOrders.objects.filter(order_number=order_number).first()
+                        
+                        if order:
+                            if order.status == 'Dispatch':
+                                dispatched_count += 1
+                            elif order.status == 'Complete':
+                                complete_count += 1
+                            
+                            # Update status statistics
+                            if order.status in stats['by_status']:
+                                stats['by_status'][order.status] += 1
+                            else:
+                                stats['by_status']['Other'] += 1
+                                
+                    except Exception as e:
+                        print(f"Error processing order {order_number} in statistics: {e}")
+                        continue
+                
+                # Update statistics
+                stats['totals']['picklists'] += 1
+                stats['totals']['orders'] += total_orders
+                stats['totals']['dispatched'] += dispatched_count
+                stats['totals']['complete'] += complete_count
+                
+                stats['by_platform'][platform]['picklists'] += 1
+                stats['by_platform'][platform]['orders'] += total_orders
+                stats['by_platform'][platform]['dispatched'] += dispatched_count
+                stats['by_platform'][platform]['complete'] += complete_count
+                
+                stats['by_date'][picklist_date]['picklists'] += 1
+                stats['by_date'][picklist_date]['orders'] += total_orders
+                stats['by_date'][picklist_date]['dispatched'] += dispatched_count
+                stats['by_date'][picklist_date]['complete'] += complete_count
+                
+            except Exception as e:
+                print(f"Error processing picklist {picklist.picklist_id} in statistics: {e}")
+                continue
+        
+        # Calculate percentages
+        if stats['totals']['orders'] > 0:
+            stats['percentages'] = {
+                'dispatch': round((stats['totals']['dispatched'] / stats['totals']['orders']) * 100, 1),
+                'complete': round((stats['totals']['complete'] / stats['totals']['orders']) * 100, 1)
+            }
+        else:
+            stats['percentages'] = {'dispatch': 0, 'complete': 0}
+        
+        return JsonResponse({
+            'status': 'success',
+            'statistics': stats
+        })
+        
+    except Exception as e:
+        print(f"Error in get_date_range_statistics: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error retrieving statistics: {str(e)}'
+        }, status=500)
+
+
 @csrf_exempt
 @require_POST
 def bulk_change_to_dispatch(request):
     """
-    Change multiple orders' status from Complete to Dispatch and UPDATE dispatch tracking
+    Change multiple orders' status from Complete to Dispatch with enhanced date tracking
     """
     try:
         data = json.loads(request.body)
         orders = data.get('orders', [])
-        awb = data.get('awb')  # Optional, for validation
+        awb = data.get('awb')
         
         if not orders:
             return JsonResponse({
                 'error': 'No orders provided'
             }, status=400)
         
-        # Track updated orders and failed orders
+        # Track changes with timestamps
         updated_count = 0
         deleted_files = 0
         failed_orders = []
-        affected_picklists = set()  # Track which picklists need dispatch status update
+        affected_picklists = set()
+        dispatch_timestamp = timezone.now()
+        updated_orders_log = []
         
         # Process each order
         for order_data in orders:
@@ -578,69 +1088,86 @@ def bulk_change_to_dispatch(request):
                 })
                 continue
             
-            # Select the appropriate model based on platform
-            model = None
-            if platform.upper() == 'AMAZON':
-                model = AmazonOrders
-            elif platform.upper() == 'FLIPKART':
-                model = FlipkarOrders
-            elif platform.upper() == 'FIRSTCRY':
-                model = FirstcryOrders
-            elif platform.upper() == 'MEESHO':
-                model = MeeshoOrders
-            else:
-                failed_orders.append({
-                    'order_number': order_number,
-                    'platform': platform,
-                    'reason': f'Unknown platform: {platform}'
-                })
-                continue
-            
-            # Find the order
-            query = model.objects.filter(order_number=order_number)
-            
-            # Add AWB filter if provided
-            if awb:
-                query = query.filter(AWB=awb)
-            
-            # Filter for Complete status orders
-            complete_orders = query.filter(status='Complete')
-            
-            if not complete_orders.exists():
-                failed_orders.append({
-                    'order_number': order_number,
-                    'platform': platform,
-                    'reason': 'No matching Complete orders found'
-                })
-                continue
-            
-            # Check for PDF files and delete them
-            for order in complete_orders:
-                pdf_path = getattr(order, 'pdf_path', None)
-                if pdf_path and pdf_path.strip() and os.path.exists(pdf_path):
-                    try:
-                        os.remove(pdf_path)
-                        deleted_files += 1
-                        print(f"Deleted PDF file: {pdf_path}")
-                    except Exception as e:
-                        print(f"Error deleting PDF file {pdf_path}: {str(e)}")
-                
-                # Clear the pdf_path field after deleting the file
-                if hasattr(order, 'pdf_path'):
-                    order.pdf_path = ''
-                    order.save()
-            
-            # Update to Dispatch
-            count = complete_orders.update(status='Dispatch')
-            updated_count += count
-            
-            # Find which picklists contain this order to update dispatch status
             try:
-                picklist_items = PicklistItem.objects.filter(order_number=order_number)
-                for item in picklist_items:
-                    affected_picklists.add(item.picklist.picklist_id)
+                # Select the appropriate model based on platform
+                model = None
+                if platform.upper() == 'AMAZON':
+                    model = AmazonOrders
+                elif platform.upper() == 'FLIPKART':
+                    model = FlipkarOrders
+                elif platform.upper() == 'FIRSTCRY':
+                    model = FirstcryOrders
+                elif platform.upper() == 'MEESHO':
+                    model = MeeshoOrders
+                else:
+                    failed_orders.append({
+                        'order_number': order_number,
+                        'platform': platform,
+                        'reason': f'Unknown platform: {platform}'
+                    })
+                    continue
+                
+                # Find the order
+                query = model.objects.filter(order_number=order_number)
+                
+                # Add AWB filter if provided
+                if awb:
+                    query = query.filter(AWB=awb)
+                
+                # Filter for Complete status orders
+                complete_orders = query.filter(status='Complete')
+                
+                if not complete_orders.exists():
+                    failed_orders.append({
+                        'order_number': order_number,
+                        'platform': platform,
+                        'reason': 'No matching Complete orders found'
+                    })
+                    continue
+                
+                # Check for PDF files and delete them
+                for order in complete_orders:
+                    pdf_path = getattr(order, 'pdf_path', None)
+                    if pdf_path and pdf_path.strip() and os.path.exists(pdf_path):
+                        try:
+                            os.remove(pdf_path)
+                            deleted_files += 1
+                        except Exception as e:
+                            print(f"Error deleting PDF file {pdf_path}: {str(e)}")
+                    
+                    # Clear the pdf_path field after deleting the file
+                    if hasattr(order, 'pdf_path'):
+                        order.pdf_path = ''
+                        order.save()
+                
+                # Update to Dispatch
+                count = complete_orders.update(status='Dispatch')
+                updated_count += count
+                
+                # Log the change
+                updated_orders_log.append({
+                    'order_number': order_number,
+                    'platform': platform.upper(),
+                    'awb': awb,
+                    'dispatched_at': dispatch_timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                    'orders_affected': count
+                })
+                
+                # Find which picklists contain this order to update dispatch status
+                try:
+                    picklist_items = PicklistItem.objects.filter(order_number=order_number)
+                    for item in picklist_items:
+                        affected_picklists.add(item.picklist.picklist_id)
+                except Exception as e:
+                    print(f"Error finding picklists for order {order_number}: {str(e)}")
+                    
             except Exception as e:
-                print(f"Error finding picklists for order {order_number}: {str(e)}")
+                failed_orders.append({
+                    'order_number': order_number,
+                    'platform': platform,
+                    'reason': f'Processing error: {str(e)}'
+                })
+                continue
         
         # Update dispatch status for all affected picklists
         updated_picklists = []
@@ -654,16 +1181,19 @@ def bulk_change_to_dispatch(request):
                     defaults={
                         'total_orders': 0,
                         'dispatched_orders': 0,
+                        'complete_orders': 0,
                         'is_fully_dispatched': False
                     }
                 )
                 
                 # Update the dispatch status
-                was_fully_dispatched = dispatch_status.update_status()
+                was_fully_dispatched = dispatch_status.update_status_with_complete_and_dispatch()
                 updated_picklists.append({
                     'picklist_id': picklist_id,
+                    'picklist_date': picklist.created_at.strftime('%Y-%m-%d'),
                     'total_orders': dispatch_status.total_orders,
                     'dispatched_orders': dispatch_status.dispatched_orders,
+                    'complete_orders': dispatch_status.complete_orders,
                     'is_fully_dispatched': was_fully_dispatched,
                     'percentage': round((dispatch_status.dispatched_orders / dispatch_status.total_orders * 100), 1) if dispatch_status.total_orders > 0 else 0
                 })
@@ -677,7 +1207,9 @@ def bulk_change_to_dispatch(request):
             'deleted_files': deleted_files,
             'failed_orders': failed_orders,
             'updated_picklists': updated_picklists,
-            'affected_picklists_count': len(affected_picklists)
+            'affected_picklists_count': len(affected_picklists),
+            'dispatch_timestamp': dispatch_timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            'updated_orders_log': updated_orders_log
         })
     
     except Exception as e:
@@ -689,8 +1221,7 @@ def bulk_change_to_dispatch(request):
 
 def download_dispatch_csv_and_cleanup(request, picklist_id):
     """
-    Download CSV report for fully dispatched picklist and then cleanup all related records
-    FIXED: Now properly handles multi orders with multiple records per order number
+    Download CSV report for fully dispatched picklist with enhanced date information
     """
     try:
         picklist = get_object_or_404(Picklist, picklist_id=picklist_id)
@@ -710,77 +1241,86 @@ def download_dispatch_csv_and_cleanup(request, picklist_id):
         # Count dispatched orders and collect all order data
         dispatched_orders = 0
         orders_data = []
-        all_order_records = []  # Store all individual records for deletion
+        all_order_records = []
         
         for order_number in order_numbers:
-            order_records = []
-            is_order_dispatched = False
-            
-            # Get ALL records for this order number (for multi orders)
-            if platform == 'AMAZON':
-                order_records = list(AmazonOrders.objects.filter(order_number=order_number))
-            elif platform == 'FLIPKART':
-                order_records = list(FlipkarOrders.objects.filter(order_number=order_number))
-            elif platform == 'FIRSTCRY':
-                order_records = list(FirstcryOrders.objects.filter(order_number=order_number))
-            elif platform == 'MEESHO':
-                order_records = list(MeeshoOrders.objects.filter(order_number=order_number))
-            
-            if order_records:
-                # Check if ALL records for this order are in Dispatch status
-                all_dispatched = all(record.status == 'Dispatch' for record in order_records)
+            try:
+                order_records = []
+                is_order_dispatched = False
                 
-                if all_dispatched:
-                    dispatched_orders += 1
-                    is_order_dispatched = True
+                # Get ALL records for this order number
+                if platform == 'AMAZON':
+                    order_records = list(AmazonOrders.objects.filter(order_number=order_number))
+                elif platform == 'FLIPKART':
+                    order_records = list(FlipkarOrders.objects.filter(order_number=order_number))
+                elif platform == 'FIRSTCRY':
+                    order_records = list(FirstcryOrders.objects.filter(order_number=order_number))
+                elif platform == 'MEESHO':
+                    order_records = list(MeeshoOrders.objects.filter(order_number=order_number))
                 
-                # Add all records to the deletion list
-                all_order_records.extend(order_records)
-                
-                # Add order data to CSV (group by order number but include all SKUs)
-                if is_order_dispatched:
-                    # Get picklist items for this order
-                    order_items = picklist_items.filter(order_number=order_number)
+                if order_records:
+                    # Check if ALL records for this order are in Dispatch status
+                    all_dispatched = all(record.status == 'Dispatch' for record in order_records)
                     
-                    # For each picklist item, find corresponding order record
-                    for item in order_items:
-                        # Find the order record that matches this SKU
-                        matching_record = None
-                        for record in order_records:
-                            if record.sku == item.sku:
-                                matching_record = record
-                                break
+                    if all_dispatched:
+                        dispatched_orders += 1
+                        is_order_dispatched = True
+                    
+                    # Add all records to the reference list
+                    all_order_records.extend(order_records)
+                    
+                    # Add order data to CSV if dispatched
+                    if is_order_dispatched:
+                        order_items = picklist_items.filter(order_number=order_number)
                         
-                        if matching_record:
-                            orders_data.append({
-                                'order_number': matching_record.order_number,
-                                'sku': item.sku,
-                                'quantity': item.quantity,
-                                'platform': platform,
-                                'status': matching_record.status,
-                                'awb': getattr(matching_record, 'AWB', ''),
-                                'order_type': getattr(matching_record, 'order_type', ''),
-                                'pdf_url': getattr(matching_record, 'pdf_url', '')
-                            })
+                        for item in order_items:
+                            # Find the order record that matches this SKU
+                            matching_record = None
+                            for record in order_records:
+                                if record.sku == item.sku:
+                                    matching_record = record
+                                    break
+                            
+                            if matching_record:
+                                orders_data.append({
+                                    'order_number': matching_record.order_number,
+                                    'sku': item.sku,
+                                    'quantity': item.quantity,
+                                    'platform': platform,
+                                    'status': matching_record.status,
+                                    'awb': getattr(matching_record, 'AWB', ''),
+                                    'order_type': getattr(matching_record, 'order_type', ''),
+                                    'pdf_url': getattr(matching_record, 'pdf_url', '')
+                                })
+                                
+            except Exception as e:
+                print(f"Error processing order {order_number} for CSV: {e}")
+                continue
         
         # Check if all orders are dispatched
         if dispatched_orders != total_unique_orders:
             return JsonResponse({
-                'error': f'Cannot download CSV. Only {dispatched_orders} out of {total_unique_orders} orders are fully dispatched. All orders must be in Dispatch status to download CSV.',
+                'error': f'Cannot download CSV. Only {dispatched_orders} out of {total_unique_orders} orders are fully dispatched.',
                 'dispatched_orders': dispatched_orders,
                 'total_orders': total_unique_orders,
                 'total_records_found': len(all_order_records)
             }, status=400)
         
-        # Create CSV response
+        # Create CSV response with enhanced headers
         response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = f'attachment; filename="dispatch_report_{picklist_id}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+        
+        # Enhanced filename with date information
+        export_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        picklist_date = picklist.created_at.strftime("%Y%m%d")
+        filename = f'dispatch_report_{picklist_id}_{picklist_date}_{export_timestamp}.csv'
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
         
         writer = csv.writer(response)
         
-        # Write CSV header
+        # Enhanced CSV headers with date information
         writer.writerow([
             'Picklist ID',
+            'Picklist Date',
             'Order Number', 
             'SKU', 
             'Quantity', 
@@ -789,14 +1329,19 @@ def download_dispatch_csv_and_cleanup(request, picklist_id):
             'AWB', 
             'Order Type',
             'PDF URL',
-            'Export Date'
+            'Export Date',
+            'Export Time'
         ])
         
-        # Write data rows
-        export_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        # Write data rows with enhanced date information
+        export_date = datetime.now().strftime('%Y-%m-%d')
+        export_time = datetime.now().strftime('%H:%M:%S')
+        picklist_created_date = picklist.created_at.strftime('%Y-%m-%d')
+        
         for order in orders_data:
             writer.writerow([
                 picklist_id,
+                picklist_created_date,
                 order['order_number'],
                 order['sku'],
                 order['quantity'],
@@ -805,82 +1350,17 @@ def download_dispatch_csv_and_cleanup(request, picklist_id):
                 order['awb'],
                 order['order_type'],
                 order['pdf_url'],
-                export_date
+                export_date,
+                export_time
             ])
         
-        # After successful CSV generation, cleanup all related records
-        try:
-            with transaction.atomic():
-                print(f"Starting cleanup for picklist {picklist_id}")
-                
-                # Delete orders from platform tables
-                deleted_counts = {
-                    'order_records': 0,
-                    'picklist_items': 0,
-                    'picklist': 0,
-                    'dispatch_status': 0
-                }
-                
-                # IMPROVED: Delete all order records by their IDs (handles multi orders properly)
-                if platform == 'AMAZON':
-                    order_ids = [record.id for record in all_order_records if hasattr(record, 'id')]
-                    deleted_count = AmazonOrders.objects.filter(id__in=order_ids).count()
-                    AmazonOrders.objects.filter(id__in=order_ids).delete()
-                    deleted_counts['order_records'] = deleted_count
-                    print(f"Deleted {deleted_count} Amazon order records")
-                    
-                elif platform == 'FLIPKART':
-                    order_ids = [record.id for record in all_order_records if hasattr(record, 'id')]
-                    deleted_count = FlipkarOrders.objects.filter(id__in=order_ids).count()
-                    FlipkarOrders.objects.filter(id__in=order_ids).delete()
-                    deleted_counts['order_records'] = deleted_count
-                    print(f"Deleted {deleted_count} Flipkart order records")
-                    
-                elif platform == 'FIRSTCRY':
-                    order_ids = [record.id for record in all_order_records if hasattr(record, 'id')]
-                    deleted_count = FirstcryOrders.objects.filter(id__in=order_ids).count()
-                    FirstcryOrders.objects.filter(id__in=order_ids).delete()
-                    deleted_counts['order_records'] = deleted_count
-                    print(f"Deleted {deleted_count} FirstCry order records")
-                    
-                elif platform == 'MEESHO':
-                    order_ids = [record.id for record in all_order_records if hasattr(record, 'id')]
-                    deleted_count = MeeshoOrders.objects.filter(id__in=order_ids).count()
-                    MeeshoOrders.objects.filter(id__in=order_ids).delete()
-                    deleted_counts['order_records'] = deleted_count
-                    print(f"Deleted {deleted_count} Meesho order records")
-                
-                # Delete picklist items
-                deleted_counts['picklist_items'] = picklist_items.count()
-                picklist_items.delete()
-                print(f"Deleted {deleted_counts['picklist_items']} picklist items")
-                
-                # Delete dispatch status if exists
-                try:
-                    dispatch_status = PicklistDispatchStatus.objects.get(picklist=picklist)
-                    dispatch_status.delete()
-                    deleted_counts['dispatch_status'] = 1
-                    print(f"Deleted dispatch status record")
-                except PicklistDispatchStatus.DoesNotExist:
-                    print(f"No dispatch status record found")
-                
-                # Delete the picklist itself
-                picklist.delete()
-                deleted_counts['picklist'] = 1
-                print(f"Deleted picklist {picklist_id}")
-                
-                print(f"Cleanup completed for picklist {picklist_id}:")
-                print(f"- Total unique orders: {total_unique_orders}")
-                print(f"- Total order records deleted: {deleted_counts['order_records']}")
-                print(f"- Picklist items deleted: {deleted_counts['picklist_items']}")
-                print(f"- Picklist deleted: {deleted_counts['picklist']}")
-                print(f"- Dispatch status deleted: {deleted_counts['dispatch_status']}")
-                
-        except Exception as cleanup_error:
-            print(f"Error during cleanup: {str(cleanup_error)}")
-            traceback.print_exc()
-            # Note: CSV will still be downloaded even if cleanup fails
-            # You might want to handle this differently based on your requirements
+        # Log the CSV generation with date context
+        print(f"CSV report generated for picklist {picklist_id}:")
+        print(f"- Picklist created: {picklist_created_date}")
+        print(f"- Total unique orders: {total_unique_orders}")
+        print(f"- Total order records: {len(all_order_records)}")
+        print(f"- Export timestamp: {export_timestamp}")
+        print(f"- All data preserved in database")
         
         return response
         
@@ -889,7 +1369,8 @@ def download_dispatch_csv_and_cleanup(request, picklist_id):
         traceback.print_exc()
         return JsonResponse({
             'error': f'Error generating CSV report: {str(e)}'
-        }, status=500)   
+        }, status=500)
+
 def check_picklist_fully_dispatched(request, picklist_id):
     """
     Check if a picklist is fully dispatched (all orders in Dispatch status)

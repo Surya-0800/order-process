@@ -33,16 +33,25 @@ class BaseOrder(models.Model):
     pdf_url = models.CharField(max_length=300)
     AWB = models.CharField(max_length=100, blank=True, null=True)
     
+    # NEW FIELDS - Add these:
+    is_printed = models.BooleanField(default=False, help_text="Whether the order has been printed")
+    printed_at = models.DateTimeField(null=True, blank=True, help_text="When the order was printed")
+    is_validated = models.BooleanField(default=False, help_text="Whether AWB has been validated")
+    validated_at = models.DateTimeField(null=True, blank=True, help_text="When AWB was validated")
+    processed_at = models.DateTimeField(null=True, blank=True, help_text="When order was marked as processed")
+    
     class Meta:
         abstract = True
         indexes = [
             models.Index(fields=['order_number', 'status']),
             models.Index(fields=['order_type', 'status']),
+            # NEW INDEXES:
+            models.Index(fields=['is_printed', 'is_validated']),
+            models.Index(fields=['status', 'is_validated']),
         ]
 
     def __str__(self):
         return f"Order {self.order_number}"
-
 class AmazonOrders(BaseOrder):
     class Meta:
         verbose_name = "Amazon Order"
@@ -95,13 +104,14 @@ class Picklist(models.Model):
         ('CREATED', 'Created'),
         ('PRINTED', 'Printed'),
         ('PACKING', 'Packing'),
-        ('COMPLETED', 'Completed'),
+        ('PARTIAL_DISPATCH', 'Partial Dispatch'),
+        ('DISPATCH', 'Dispatch'),                   
     ]
     
     picklist_id = models.CharField(max_length=10, unique=True)
     picklist_type = models.CharField(max_length=10, choices=PICKLIST_TYPE_CHOICES)
     quantity = models.IntegerField()
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='CREATED')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='CREATED')  # Increased max_length
     platform = models.CharField(max_length=20)  # AMAZON, FLIPKART, FIRSTCRY, MEESHO
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -213,6 +223,8 @@ class Picklist(models.Model):
             'validated_count': validated_order_skus,
             'all_validated': validated_order_skus == total_order_skus and total_order_skus > 0
         }
+
+
 class PicklistItem(models.Model):
     picklist = models.ForeignKey(Picklist, on_delete=models.CASCADE, related_name='items')
     order_number = models.CharField(max_length=200)

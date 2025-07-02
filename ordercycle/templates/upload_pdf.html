@@ -834,15 +834,93 @@
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
     }
 
-    .dispatch-section-title {
-      font-size: 1.6em;
-      font-weight: 600;
-      color: #333;
-      margin-bottom: 25px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
+    /* Add this CSS to fix the layout */
+.dispatch-section-title {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  padding: 25px 30px;
+  border-radius: 15px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+  border-left: 5px solid #667eea;
+  margin-bottom: 25px;
+}
+
+.dispatch-title-row {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+#dispatch-section-title-text {
+  font-size: 1.4em;
+  font-weight: 700;
+  color: #333;
+  display: block;
+  width: 100%;
+}
+
+.dispatch-controls-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+
+.dispatch-refresh-btn {
+  background: linear-gradient(135deg, #6c757d, #5a6268);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 25px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9em;
+  white-space: nowrap;
+  min-width: 140px;
+  flex-shrink: 0;
+}
+
+.awb-search-container {
+  flex: 1;
+  max-width: 400px;
+  min-width: 250px;
+}
+
+#awb-search-input {
+  width: 100%;
+  padding: 12px 20px;
+  border: 2px solid #ddd;
+  border-radius: 25px;
+  background: white;
+  color: #333;
+  font-weight: 500;
+  font-size: 1em;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+#awb-search-input:focus {
+  border-color: #28a745;
+  box-shadow: 0 0 10px rgba(40, 167, 69, 0.3);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .dispatch-controls-row {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .dispatch-refresh-btn {
+    width: 100%;
+    min-width: auto;
+  }
+  
+  .awb-search-container {
+    width: 100%;
+    max-width: none;
+  }
+}
 
     .dispatch-picklist-table {
       width: 100%;
@@ -968,21 +1046,71 @@
     }
 
     .dispatch-refresh-btn {
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 25px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      font-size: 0.9em;
-    }
+  background: linear-gradient(135deg, #6c757d, #5a6268);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 25px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9em;
+  white-space: nowrap;
+  min-width: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+}
 
-    .dispatch-refresh-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
-    }
+.dispatch-refresh-btn:hover {
+  background: linear-gradient(135deg, #5a6268, #495057);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(108, 117, 125, 0.4);
+}
+
+#dispatch-orders-btn {
+  background: linear-gradient(135deg, #28a745, #20c997) !important;
+  color: white !important;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 25px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9em;
+  white-space: nowrap;
+  min-width: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+#dispatch-orders-btn:hover {
+  background: linear-gradient(135deg, #218838, #1e7e34) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(40, 167, 69, 0.4);
+}
+
+.dispatch-refresh-btn::before,
+#dispatch-orders-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.dispatch-refresh-btn:hover::before,
+#dispatch-orders-btn:hover::before {
+  left: 100%;
+}
 
     .dispatch-view-details-btn {
       background: linear-gradient(135deg, #667eea, #764ba2);
@@ -1208,6 +1336,76 @@
       transform: none;
       box-shadow: none;
     }
+
+    /* AWB Search Input Styles - Add this to your <style> section */
+  .awb-search-container {
+    position: relative;
+    min-width: 350px;
+    flex: 1;
+    max-width: 450px;
+  }
+
+  #awb-search-input {
+    width: 100%;
+    padding: 18px 25px;
+    border: 3px solid rgba(255, 255, 255, 0.4);
+    border-radius: 30px;
+    background: rgba(255, 255, 255, 0.95);
+    color: #333;
+    font-weight: 600;
+    font-size: 1.1em;
+    transition: all 0.4s ease;
+    box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+    outline: none;
+    backdrop-filter: blur(10px);
+    position: relative;
+    z-index: 10;
+  }
+
+  #awb-search-input:focus {
+    border-color: #28a745;
+    background: white;
+    box-shadow: 0 12px 35px rgba(40, 167, 69, 0.5);
+    transform: translateY(-3px) scale(1.02);
+  }
+
+  #awb-search-input::placeholder {
+    color: #666;
+    font-weight: 500;
+    font-size: 1em;
+  }
+
+  .awb-processing {
+    border-color: #ffc107 !important;
+    background: #fff9c4 !important;
+    box-shadow: 0 12px 35px rgba(255, 193, 7, 0.4) !important;
+  }
+
+  .awb-success {
+    border-color: #28a745 !important;
+    background: #d4edda !important;
+    box-shadow: 0 12px 35px rgba(40, 167, 69, 0.6) !important;
+    animation: successPulse 0.8s ease;
+  }
+
+  .awb-error {
+    border-color: #dc3545 !important;
+    background: #f8d7da !important;
+    box-shadow: 0 12px 35px rgba(220, 53, 69, 0.5) !important;
+    animation: errorShake 0.8s ease;
+  }
+
+  @keyframes successPulse {
+    0% { transform: scale(1) translateY(0); }
+    50% { transform: scale(1.08) translateY(-5px); }
+    100% { transform: scale(1.02) translateY(-3px); }
+  }
+
+  @keyframes errorShake {
+    0%, 100% { transform: translateX(0) translateY(-3px); }
+    25% { transform: translateX(-8px) translateY(-3px); }
+    75% { transform: translateX(8px) translateY(-3px); }
+}
     
     /* CSV Download Button Styles */
     .csv-download-btn {
@@ -1301,53 +1499,9 @@
         </table>
       </div>
 
-      <!-- Combined Dispatch Dashboard Content -->
       <div id="dispatch-dashboard-content" style="display: none;">
-        <div class="dispatch-dashboard-container">
-          <div class="dispatch-dashboard-header">
-            <h3 class="dispatch-dashboard-title">🚚 Dispatch & Analytics Dashboard</h3>
-            <p class="dispatch-dashboard-subtitle">Monitor dispatch progress and manage orders in real-time</p>
-          </div>
-          
-          <div class="dispatch-dashboard-content">
-            <!-- Statistics Overview -->
-            <div class="dispatch-stats-overview" id="dispatchStatsOverview">
-              <div class="dispatch-stat-card">
-                <span class="dispatch-stat-number" id="dispatchTotalPicklists">-</span>
-                <span class="dispatch-stat-label">Total Picklists</span>
-              </div>
-              <div class="dispatch-stat-card">
-                <span class="dispatch-stat-number" id="dispatchTotalOrders">-</span>
-                <span class="dispatch-stat-label">Total Orders</span>
-              </div>
-              <div class="dispatch-stat-card">
-                <span class="dispatch-stat-number" id="dispatchedOrdersCount">-</span>
-                <span class="dispatch-stat-label">Dispatched Orders</span>
-              </div>
-              <div class="dispatch-stat-card">
-                <span class="dispatch-stat-number" id="dispatchOverallPercentage">-%</span>
-                <span class="dispatch-stat-label">Overall Dispatch Rate</span>
-              </div>
-            </div>
-
-            <!-- Combined Picklists Section -->
-            <div class="dispatch-picklists-section">
-              <div class="dispatch-section-title">
-                <span>📊 Dispatch Management & Analytics</span>
-                <div style="display: flex; gap: 10px;">
-                  <button class="dispatch-refresh-btn" onclick="loadCombinedDispatchData()">🔄 Refresh Data</button>
-                  <button id="dispatch-orders-btn" class="btn btn-success">📦 Complete Orders by AWB</button>
-                </div>
-              </div>
-              
-              <div id="combinedDispatchContent">
-                <div class="dispatch-loading">Loading dispatch data...</div>
-              </div>
-            </div>
-          </div>
-        </div>
+    <!-- Content will be dynamically generated -->
       </div>
-    </div>
 
     <!-- Order Modal -->
     <div id="orderModal" class="modal">
@@ -1438,9 +1592,821 @@
 
   </div>
 
-  <script>
+<script>
+
+const dispatchDropdownCSS = `
+/* FIXED: Single row layout for filters */
+.filters-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 25px;
+  padding: 20px 25px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* Portal filter - LEFT side */
+.portal-filter-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.portal-filter-left label {
+  color: white;
+  font-weight: 700;
+  font-size: 1.2em;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.portal-filter-left select {
+  padding: 12px 20px;
+  border-radius: 12px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  font-weight: 600;
+  font-size: 1.1em;
+  min-width: 180px;
+  background: white;
+  color: #333;
+  cursor: pointer;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+/* Date filter - RIGHT side */
+.date-filter-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.date-filter-label {
+  color: white;
+  font-weight: 600;
+  font-size: 1em;
+  white-space: nowrap;
+}
+
+.date-filter-select {
+  padding: 12px 15px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  background: white;
+  color: #333;
+  font-weight: 600;
+  min-width: 140px;
+  cursor: pointer;
+}
+
+.date-filter-btn {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.date-filter-help-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  color: white;
+  width: 35px;
+  height: 35px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Hidden date inputs row */
+.date-inputs-row {
+  margin-top: 15px;
+  padding: 15px 25px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  display: flex;
+  gap: 30px;
+  align-items: center;
+}
+
+.date-filter-input {
+  padding: 8px 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background: white;
+  color: #333;
+  font-weight: 500;
+  min-width: 140px;
+}
+
+.specific-date-input, .date-range-inputs {
+  display: none;
+  align-items: center;
+  gap: 10px;
+}
+
+.specific-date-input.active, .date-range-inputs.active {
+  display: flex;
+}
+
+/* Hover effects */
+.portal-filter-left select:hover, .date-filter-select:hover {
+  background: #f8f9fa;
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.25);
+}
+
+.portal-filter-left select:focus, .date-filter-select:focus {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+  border-color: #fff;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+}
+
+.date-filter-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+}
+
+.date-filter-help-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+/* Ensure dropdown options are visible */
+.portal-filter-left select option, .date-filter-select option {
+  background: white;
+  color: #333;
+  padding: 10px;
+  font-weight: 600;
+  border: none;
+}
+
+.portal-filter-left select option:hover, .date-filter-select option:hover {
+  background: #667eea;
+  color: white;
+}
+
+.portal-filter-left select option:checked, .date-filter-select option:checked {
+  background: #667eea;
+  color: white;
+}
+
+/* Responsive - stack on mobile */
+@media (max-width: 768px) {
+  .filters-row {
+    flex-direction: column;
+    gap: 20px;
+    align-items: stretch;
+  }
+  
+  .portal-filter-left, .date-filter-right {
+    justify-content: space-between;
+  }
+  
+  .date-filter-right {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .date-inputs-row {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .date-range-inputs {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+/* Additional styling for better appearance */
+.dispatch-dashboard-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 30px;
+  text-align: center;
+  position: relative;
+  overflow: visible;
+  z-index: 10;
+}
+
+.dispatch-dashboard-header::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  animation: pulse 4s ease-in-out infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+}
+`;
+
+
+let selectedDateFilter = 'today'; // 'today', 'yesterday', 'last7days', 'last30days', 'specific', 'range'
+
+let startDate = '';
+
+let endDate = '';
+let specificDate = '';
+
+// CSS for date filter controls
+const dateFilterCSS = `
+.date-filter-container {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 15px;
+  padding: 20px;
+  margin: 20px 0;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.date-filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.date-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.date-filter-label {
+  color: white;
+  font-weight: 600;
+  font-size: 1em;
+  white-space: nowrap;
+}
+
+.date-filter-input {
+  padding: 8px 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background: white;
+  color: #333;
+  font-weight: 500;
+  min-width: 140px;
+}
+
+.date-filter-select {
+  padding: 8px 15px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background: white;
+  color: #333;
+  font-weight: 600;
+  min-width: 120px;
+}
+
+.date-filter-btn {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.date-filter-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+}
+
+.date-range-inputs {
+  display: none;
+  gap: 10px;
+  align-items: center;
+}
+
+.date-range-inputs.active {
+  display: flex;
+}
+
+.specific-date-input {
+  display: none;
+}
+
+.specific-date-input.active {
+  display: flex;
+}
+
+.date-filter-help-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  color: white;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  margin-left: 10px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.date-filter-help-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+@media (max-width: 768px) {
+  .date-filter-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .date-filter-group {
+    justify-content: space-between;
+  }
+  
+  .date-range-inputs {
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+`;
+
+// Date utility functions
+function getTodayDate() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function getYesterdayDate() {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return yesterday.toISOString().split('T')[0];
+}
+
+function getDateRange(days) {
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  return {
+    start: startDate.toISOString().split('T')[0],
+    end: endDate.toISOString().split('T')[0]
+  };
+}
+
+function formatDateForDisplay(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'short', 
+    day: 'numeric' 
+  });
+}
+
+function getDispatchDashboardHTML() {
+  return `
+    <div class="dispatch-dashboard-container">
+      <div class="dispatch-dashboard-header">
+        <h3 class="dispatch-dashboard-title">🚚 Dispatch & Analytics Dashboard</h3>
+        <p class="dispatch-dashboard-subtitle">Monitor dispatch progress and manage orders in real-time</p>
+        
+        <!-- FIXED: Both filters on the same line -->
+        <div class="filters-row">
+          <!-- Portal Filter on Left -->
+          <div class="portal-filter-left">
+            <label for="portal-filter">PORTAL:</label>
+            <select id="portal-filter">
+              <option value="ALL">ALL PLATFORMS</option>
+              <option value="AMAZON">AMAZON</option>
+              <option value="FLIPKART">FLIPKART</option>
+              <option value="FIRSTCRY">FIRSTCRY</option>
+              <option value="MEESHO">MEESHO</option>
+            </select>
+          </div>
+          
+          <!-- Date Filter on Right -->
+          <div class="date-filter-right">
+            <label class="date-filter-label">📅 DATE FILTER:</label>
+            <select id="date-filter-type" class="date-filter-select">
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="last7days">Last 7 Days</option>
+              <option value="last30days">Last 30 Days</option>
+              <option value="specific">Specific Date</option>
+              <option value="range">Date Range</option>
+            </select>
+            <button id="date-filter-help" class="date-filter-help-btn" title="Date Filter Help">❓</button>
+            <button id="apply-date-filter" class="date-filter-btn">🔍 Apply</button>
+          </div>
+        </div>
+
+        <!-- Hidden inputs for specific date and range (shown when needed) -->
+        <div class="date-inputs-row" style="display: none;" id="date-inputs-container">
+          <div class="specific-date-input" id="specific-date-group">
+            <label class="date-filter-label">📆 SELECT DATE:</label>
+            <input type="date" id="specific-date-input" class="date-filter-input">
+          </div>
+          
+          <div class="date-range-inputs" id="date-range-group">
+            <label class="date-filter-label">📅 FROM:</label>
+            <input type="date" id="start-date-input" class="date-filter-input">
+            <label class="date-filter-label">📅 TO:</label>
+            <input type="date" id="end-date-input" class="date-filter-input">
+          </div>
+        </div>
+      </div>
+      
+      <div class="dispatch-dashboard-content">
+        <div class="dispatch-stats-overview" id="dispatchStatsOverview">
+          <div class="dispatch-stat-card">
+            <span class="dispatch-stat-number" id="dispatchTotalPicklists">-</span>
+            <span class="dispatch-stat-label">Total Picklists</span>
+          </div>
+          <div class="dispatch-stat-card">
+            <span class="dispatch-stat-number" id="dispatchTotalOrders">-</span>
+            <span class="dispatch-stat-label">Total Orders</span>
+          </div>
+          <div class="dispatch-stat-card">
+            <span class="dispatch-stat-number" id="dispatchedOrdersCount">-</span>
+            <span class="dispatch-stat-label">Dispatched Orders</span>
+          </div>
+          <div class="dispatch-stat-card">
+            <span class="dispatch-stat-number" id="dispatchOverallPercentage">-%</span>
+            <span class="dispatch-stat-label">Overall Dispatch Rate</span>
+          </div>
+        </div>
+
+        <div class="dispatch-picklists-section">
+          <!-- Replace the entire dispatch-section-title div with this: -->
+          <div class="dispatch-section-title">
+            <div class="dispatch-title-row">
+              <span id="dispatch-section-title-text">📊 Dispatch Management & Analytics - Today (Jun 27, 2025)</span>
+            </div>
+            <div class="dispatch-controls-row">
+              <button class="dispatch-refresh-btn" onclick="loadCombinedDispatchData()">
+                🔄 Refresh Data
+              </button>
+              <div class="awb-search-container">
+                <input type="text" id="awb-search-input" placeholder="📦 Dispatch by AWB - Enter AWB Number..." />
+              </div>
+            </div>
+          </div>
+          
+          <div id="combinedDispatchContent">
+            <div class="dispatch-loading">Loading dispatch data...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+
+
+function setupDateFilterControls() {
+  const dateFilterType = document.getElementById('date-filter-type');
+  const dateInputsContainer = document.getElementById('date-inputs-container');
+  const specificDateGroup = document.getElementById('specific-date-group');
+  const dateRangeGroup = document.getElementById('date-range-group');
+  const specificDateInput = document.getElementById('specific-date-input');
+  const startDateInput = document.getElementById('start-date-input');
+  const endDateInput = document.getElementById('end-date-input');
+  const applyFilterBtn = document.getElementById('apply-date-filter');
+  const helpBtn = document.getElementById('date-filter-help');
+  
+  if (!dateFilterType || !applyFilterBtn) {
+    console.error('Date filter controls not found');
+    return;
+  }
+  
+  // Set default date to today
+  const today = getTodayDate();
+  if (specificDateInput) specificDateInput.value = today;
+  if (startDateInput) startDateInput.value = today;
+  if (endDateInput) endDateInput.value = today;
+  
+  // Initialize with today's date
+  specificDate = today;
+  startDate = today;
+  endDate = today;
+  selectedDateFilter = 'today';
+  
+  // Date filter type change handler
+  dateFilterType.addEventListener('change', function() {
+    const filterType = this.value;
+    console.log('Date filter changed to:', filterType);
+    
+    // Hide all conditional inputs first
+    if (dateInputsContainer) dateInputsContainer.style.display = 'none';
+    if (specificDateGroup) specificDateGroup.classList.remove('active');
+    if (dateRangeGroup) dateRangeGroup.classList.remove('active');
+    
+    // Show relevant inputs based on selection
+    if (filterType === 'specific') {
+      if (dateInputsContainer) dateInputsContainer.style.display = 'flex';
+      if (specificDateGroup) specificDateGroup.classList.add('active');
+      console.log('Showing specific date input');
+    } else if (filterType === 'range') {
+      if (dateInputsContainer) dateInputsContainer.style.display = 'flex';
+      if (dateRangeGroup) dateRangeGroup.classList.add('active');
+      console.log('Showing date range inputs');
+    }
+    
+    // Auto-apply for predefined ranges
+    if (['today', 'yesterday', 'last7days', 'last30days'].includes(filterType)) {
+      setTimeout(() => {
+        applyDateFilter();
+      }, 100);
+    }
+  });
+  
+  // Apply filter button
+  applyFilterBtn.addEventListener('click', applyDateFilter);
+  
+  // Help button
+  if (helpBtn) {
+    helpBtn.addEventListener('click', showDateFilterHelp);
+  }
+  
+  // Enter key handlers for date inputs
+  [specificDateInput, startDateInput, endDateInput].forEach(input => {
+    if (input) {
+      input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          applyDateFilter();
+        }
+      });
+      
+      // Add change listener for validation feedback
+      input.addEventListener('change', function() {
+        if (this.value) {
+          const validation = validateDateRange(this.value, this.value);
+          if (!validation.valid) {
+            this.style.borderColor = '#dc3545';
+            this.title = validation.message;
+          } else {
+            this.style.borderColor = '#28a745';
+            this.title = 'Valid date';
+          }
+        }
+      });
+    }
+  });
+  
+  // Add range validation for date range inputs
+  if (startDateInput && endDateInput) {
+    const validateRange = () => {
+      if (startDateInput.value && endDateInput.value) {
+        const validation = validateDateRange(startDateInput.value, endDateInput.value);
+        const borderColor = validation.valid ? '#28a745' : '#dc3545';
+        startDateInput.style.borderColor = borderColor;
+        endDateInput.style.borderColor = borderColor;
+        
+        if (!validation.valid) {
+          endDateInput.title = validation.message;
+        } else {
+          startDateInput.title = 'Valid start date';
+          endDateInput.title = 'Valid end date';
+        }
+      }
+    };
+    
+    startDateInput.addEventListener('change', validateRange);
+    endDateInput.addEventListener('change', validateRange);
+  }
+  
+  console.log('Date filter controls setup completed');
+}
+
+function validateDateRange(startDateStr, endDateStr) {
+  const start = new Date(startDateStr);
+  const end = new Date(endDateStr);
+  const today = new Date();
+  
+  // Check if start date is not in the future
+  if (start > today) {
+    return {
+      valid: false,
+      message: 'Start date cannot be in the future'
+    };
+  }
+  
+  // Check if end date is not in the future
+  if (end > today) {
+    return {
+      valid: false,
+      message: 'End date cannot be in the future'
+    };
+  }
+  
+  // Check if start date is not after end date
+  if (start > end) {
+    return {
+      valid: false,
+      message: 'Start date cannot be later than end date'
+    };
+  }
+  
+  // Check if date range is not too large (e.g., more than 90 days)
+  const diffTime = Math.abs(end - start);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays > 90) {
+    return {
+      valid: false,
+      message: 'Date range cannot exceed 90 days'
+    };
+  }
+  
+  return {
+    valid: true,
+    message: 'Date range is valid'
+  };
+}
+
+function applyDateFilter() {
+  const dateFilterType = document.getElementById('date-filter-type').value;
+  const specificDateInput = document.getElementById('specific-date-input');
+  const startDateInput = document.getElementById('start-date-input');
+  const endDateInput = document.getElementById('end-date-input');
+  
+  selectedDateFilter = dateFilterType;
+  
+  try {
+    switch (dateFilterType) {
+      case 'today':
+        specificDate = getTodayDate();
+        startDate = specificDate;
+        endDate = specificDate;
+        break;
+        
+      case 'yesterday':
+        specificDate = getYesterdayDate();
+        startDate = specificDate;
+        endDate = specificDate;
+        break;
+        
+      case 'last7days':
+        const last7 = getDateRange(7);
+        startDate = last7.start;
+        endDate = last7.end;
+        break;
+        
+      case 'last30days':
+        const last30 = getDateRange(30);
+        startDate = last30.start;
+        endDate = last30.end;
+        break;
+        
+      case 'specific':
+        if (!specificDateInput.value) {
+          throw new Error('Please select a specific date');
+        }
+        
+        const specificValidation = validateDateRange(specificDateInput.value, specificDateInput.value);
+        if (!specificValidation.valid) {
+          throw new Error(specificValidation.message);
+        }
+        
+        specificDate = specificDateInput.value;
+        startDate = specificDate;
+        endDate = specificDate;
+        break;
+        
+      case 'range':
+        if (!startDateInput.value || !endDateInput.value) {
+          throw new Error('Please select both start and end dates');
+        }
+        
+        const rangeValidation = validateDateRange(startDateInput.value, endDateInput.value);
+        if (!rangeValidation.valid) {
+          throw new Error(rangeValidation.message);
+        }
+        
+        startDate = startDateInput.value;
+        endDate = endDateInput.value;
+        break;
+        
+      default:
+        throw new Error('Invalid date filter type');
+    }
+    
+    // Update the section title to show current filter
+    updateSectionTitle();
+    
+    // Show loading state
+    showCombinedDispatchLoading();
+    
+    // Reload data with new date filter
+    loadCombinedDispatchData()
+      .then(() => {
+        console.log(`Date filter applied successfully: ${dateFilterType}`);
+      })
+      .catch(error => {
+        console.error('Error loading data with new date filter:', error);
+        showCombinedDispatchError('Failed to load data with the selected date filter. Please try again.');
+      });
+      
+  } catch (error) {
+    alert(`❌ Date Filter Error: ${error.message}`);
+    console.error('Date filter validation error:', error);
+  }
+}
+
+function updateSectionTitle() {
+  const titleElement = document.getElementById('dispatch-section-title-text');
+  if (!titleElement) return;
+  
+  let dateText = getCurrentDateFilterText();
+  titleElement.textContent = `📊 Dispatch Management & Analytics - ${dateText}`;
+}
+
+// Get current date filter text
+function getCurrentDateFilterText() {
+  switch (selectedDateFilter) {
+    case 'today':
+      return `Today (${formatDateForDisplay(getTodayDate())})`;
+    case 'yesterday':
+      return `Yesterday (${formatDateForDisplay(getYesterdayDate())})`;
+    case 'last7days':
+      return 'Last 7 Days';
+    case 'last30days':
+      return 'Last 30 Days';
+    case 'specific':
+      return formatDateForDisplay(specificDate);
+    case 'range':
+      return `${formatDateForDisplay(startDate)} - ${formatDateForDisplay(endDate)}`;
+    default:
+      return 'Current Filter';
+  }
+}
+
+// Show date filter help
+function showDateFilterHelp() {
+  alert(`📅 Date Filter Help:
+
+• Today: Shows today's picklists
+• Yesterday: Shows yesterday's picklists  
+• Last 7/30 Days: Shows range data
+• Specific Date: Pick any date
+• Date Range: Custom date range (max 90 days)
+
+⌨️ Keyboard shortcuts:
+• Ctrl+1: Today
+• Ctrl+2: Yesterday  
+• Ctrl+3: Last 7 days
+• Ctrl+4: Last 30 days
+• Ctrl+R: Refresh data
+
+📊 Export: Download current filtered data as CSV
+
+🔍 Tips:
+- Default view shows today's data
+- Date range cannot exceed 90 days
+- Future dates are not allowed
+- All times are in local timezone`);
+}
+
+
+
+// Inject date filter CSS
+function injectDateFilterCSS() {
+  const existingStyle = document.getElementById('date-filter-styles');
+  if (existingStyle) {
+    existingStyle.remove();
+  }
+  
+  const style = document.createElement('style');
+  style.id = 'date-filter-styles';
+  style.textContent = dateFilterCSS;
+  document.head.appendChild(style);
+}
+
     // Global variables
     let currentStatus = 'Ready to Process';
+    let selectedPlatformFilter = 'ALL';
     const platformNames = ['AMAZON', 'FLIPKART', 'FIRSTCRY', 'MEESHO'];
     const defaultBatchSize = 50;
 
@@ -1641,6 +2607,157 @@
         });
       }
     });
+
+    // Add these functions to your JavaScript section
+
+// Setup AWB search functionality
+function setupAwbSearch() {
+  // Wait for elements to be available
+  setTimeout(() => {
+    const awbSearchInput = document.getElementById('awb-search-input');
+    if (awbSearchInput) {
+      console.log('Setting up AWB search input listener');
+      
+      // Remove any existing listeners by cloning
+      const newInput = awbSearchInput.cloneNode(true);
+      awbSearchInput.parentNode.replaceChild(newInput, awbSearchInput);
+      
+      // Add the keypress listener
+      newInput.addEventListener('keypress', function(e) {
+        console.log('Key pressed:', e.key);
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          console.log('Enter pressed, processing AWB');
+          processAwbFromSearch();
+        }
+      });
+      
+      // Also add input event for real-time feedback
+      newInput.addEventListener('input', function(e) {
+        const value = e.target.value.trim();
+        if (value.length > 0) {
+          resetAwbInputState();
+        }
+      });
+      
+      console.log('AWB search setup completed');
+    } else {
+      console.error('AWB search input not found');
+    }
+  }, 100);
+}
+
+function processAwbFromSearch() {
+  const awbSearchInput = document.getElementById('awb-search-input');
+  if (!awbSearchInput) {
+    console.error('AWB search input not found');
+    return;
+  }
+  
+  const awbNumber = awbSearchInput.value.trim();
+  console.log('Processing AWB:', awbNumber);
+  
+  if (!awbNumber) {
+    alert('Please enter an AWB number');
+    showAwbInputState('error');
+    setTimeout(() => resetAwbInputState(), 2000);
+    return;
+  }
+
+  // Show processing state
+  showAwbInputState('processing');
+
+  // Search for orders with this AWB
+  fetch(`${baseApiUrl}/search-dispatch-awb/?awb=${encodeURIComponent(awbNumber)}`)
+    .then(response => {
+      console.log('AWB search response status:', response.status);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('AWB search data:', data);
+      
+      if (!data.orders || data.orders.length === 0) {
+        throw new Error('No orders found with this AWB number');
+      }
+
+      // Filter to only show orders in Complete status
+      const completeOrders = data.orders.filter(order => order.status === 'Complete');
+      
+      if (completeOrders.length === 0) {
+        throw new Error('No completed orders found with this AWB');
+      }
+
+      console.log(`Found ${completeOrders.length} complete orders`);
+      
+      // Automatically change all complete orders to dispatch
+      return changeAwbToDispatch(awbNumber);
+    })
+    .then(() => {
+      // Show success state
+      showAwbInputState('success');
+      
+      // AUTO-REFRESH: Immediately refresh the dispatch data
+      console.log('✅ AWB processed successfully, refreshing data...');
+      loadCombinedDispatchData();
+      
+      // Clear input and reset state after a short delay
+      setTimeout(() => {
+        awbSearchInput.value = '';
+        resetAwbInputState();
+      }, 1500);
+    })
+    .catch(error => {
+      console.error('Error processing AWB:', error);
+      showAwbInputState('error');
+      alert(`❌ Error: ${error.message}`);
+      
+      // Reset state after showing error
+      setTimeout(() => {
+        resetAwbInputState();
+      }, 3000);
+    });
+}
+
+// Show different states for AWB input
+function showAwbInputState(state) {
+  const awbSearchInput = document.getElementById('awb-search-input');
+  if (!awbSearchInput) return;
+
+  // Remove all state classes
+  awbSearchInput.classList.remove('awb-processing', 'awb-success', 'awb-error');
+
+  switch(state) {
+    case 'processing':
+      awbSearchInput.classList.add('awb-processing');
+      awbSearchInput.placeholder = '⏳ Processing AWB...';
+      awbSearchInput.disabled = true;
+      break;
+    case 'success':
+      awbSearchInput.classList.add('awb-success');
+      awbSearchInput.placeholder = '✅ Orders dispatched successfully!';
+      awbSearchInput.disabled = true;
+      break;
+    case 'error':
+      awbSearchInput.classList.add('awb-error');
+      awbSearchInput.placeholder = '❌ AWB not found or no complete orders';
+      awbSearchInput.disabled = false;
+      break;
+  }
+}
+
+// Reset AWB input to default state
+function resetAwbInputState() {
+  const awbSearchInput = document.getElementById('awb-search-input');
+  if (!awbSearchInput) return;
+
+  awbSearchInput.classList.remove('awb-processing', 'awb-success', 'awb-error');
+  awbSearchInput.placeholder = '📦 Dispatch by AWB - Enter AWB Number...';
+  awbSearchInput.disabled = false;
+  awbSearchInput.focus();
+}
 
     // Function to get the next status in the workflow
     function getNextStatus(currentStatus) {
@@ -1891,11 +3008,104 @@
     }
 
     // Combined Dispatch Dashboard Functions
-    function showCombinedDispatchDashboard() {
-      document.getElementById('status-content').style.display = 'none';
-      document.getElementById('dispatch-dashboard-content').style.display = 'block';
-      loadCombinedDispatchData();
-    }
+function showCombinedDispatchDashboard() {
+  // FORCE CSS INJECTION FIRST
+  injectDateFilterCSS();
+  injectDropdownCSS();
+  
+  document.getElementById('status-content').style.display = 'none';
+  document.getElementById('dispatch-dashboard-content').style.display = 'block';
+  
+  // Update HTML structure
+  const dispatchContent = document.getElementById('dispatch-dashboard-content');
+  if (dispatchContent) {
+    dispatchContent.innerHTML = getDispatchDashboardHTML();
+    console.log('HTML injected, checking for date filter elements...');
+    
+    // Debug: Check if elements exist
+    setTimeout(() => {
+      const dateFilterType = document.getElementById('date-filter-type');
+      const applyBtn = document.getElementById('apply-date-filter');
+      console.log('Date filter type element:', dateFilterType);
+      console.log('Apply button element:', applyBtn);
+    }, 100);
+  }
+  
+  // Initialize date filter
+  selectedDateFilter = 'today';
+  startDate = getTodayDate();
+  endDate = getTodayDate();
+  specificDate = getTodayDate();
+  
+  // Setup controls with delay
+  setTimeout(() => {
+  setupDateFilterControls();
+  setupPortalFilterDropdown();
+  setupKeyboardShortcuts();
+  setupAwbSearch(); // ADD THIS LINE
+  updateSectionTitle();
+}, 150);
+  
+  // Load data
+  setTimeout(() => {
+    loadCombinedDispatchData();
+  }, 200);
+}
+
+
+function setupPortalFilterDropdown() {
+  const dropdown = document.getElementById('portal-filter');
+  if (!dropdown) {
+    console.error('Portal filter dropdown not found');
+    return;
+  }
+
+  // Preserve the current selection before cloning
+  const currentValue = dropdown.value || selectedPlatformFilter;
+  
+  // Clone the node to remove all event listeners
+  const newDropdown = dropdown.cloneNode(true);
+  dropdown.parentNode.replaceChild(newDropdown, dropdown);
+  
+  // Restore the selected value
+  newDropdown.value = currentValue;
+  selectedPlatformFilter = currentValue;
+  
+  // Force visibility and positioning
+  newDropdown.style.pointerEvents = 'auto';
+  newDropdown.style.position = 'relative';
+  newDropdown.style.zIndex = '1000';
+  
+  // Add the change event listener
+  newDropdown.addEventListener('change', function(e) {
+    const newValue = e.target.value;
+    console.log('Portal filter changed from', selectedPlatformFilter, 'to:', newValue);
+    
+    // Update the global variable
+    selectedPlatformFilter = newValue;
+    
+    // Visual feedback
+    e.target.style.transform = 'scale(0.98)';
+    setTimeout(() => {
+      e.target.style.transform = '';
+    }, 150);
+    
+    // Reload data with new filter
+    loadCombinedDispatchData();
+  });
+  
+  // Add focus and click handlers for better interaction
+  newDropdown.addEventListener('focus', function(e) {
+    console.log('Dropdown focused, current value:', e.target.value);
+  });
+  
+  newDropdown.addEventListener('click', function(e) {
+    console.log('Dropdown clicked, current value:', e.target.value);
+    e.stopPropagation();
+  });
+  
+  console.log('Dropdown setup complete. Current value:', newDropdown.value);
+}
 
     function hideDispatchDashboard() {
       document.getElementById('status-content').style.display = 'block';
@@ -1903,243 +3113,285 @@
     }
 
     async function loadCombinedDispatchData() {
-      try {
-        showCombinedDispatchLoading();
-        
-        // Load both analytics data and dispatch picklists
-        const [analyticsResponse, picklistsResponse] = await Promise.all([
-          fetch(`${baseApiUrl}/picklists/dispatch/`),
-          fetch(`${baseApiUrl}/picklists/dispatch/`)
-        ]);
-        
-        if (!analyticsResponse.ok || !picklistsResponse.ok) {
-          throw new Error(`HTTP error! Analytics: ${analyticsResponse.status}, Picklists: ${picklistsResponse.status}`);
-        }
-        
-        const analyticsData = await analyticsResponse.json();
-        const picklistsData = await picklistsResponse.json();
-        
-        if (analyticsData.status === 'error' || picklistsData.status === 'error') {
-          showCombinedDispatchError(analyticsData.message || picklistsData.message);
-          return;
-        }
-        
-        // Update statistics
-        updateDispatchStatistics(analyticsData.picklists || []);
-        
-        // Display combined content
-        displayCombinedDispatchContent(picklistsData.picklists || []);
-        
-      } catch (error) {
-        console.error('Error loading combined dispatch data:', error);
-        showCombinedDispatchError('Failed to load dispatch data. Please try again.');
-      }
+  try {
+    showCombinedDispatchLoading();
+    
+    const selectedPlatform = selectedPlatformFilter;
+    console.log('Loading data for platform:', selectedPlatform, 'with date filter:', selectedDateFilter);
+    
+    // Build API URL with date parameters
+    let apiUrl = `${baseApiUrl}/picklists/dispatch/`;
+    const params = new URLSearchParams();
+    
+    if (selectedPlatform !== 'ALL') {
+      params.append('platform', selectedPlatform);
     }
+    
+    // Add date parameters
+    if (selectedDateFilter === 'range' || selectedDateFilter === 'last7days' || selectedDateFilter === 'last30days') {
+      params.append('start_date', startDate);
+      params.append('end_date', endDate);
+    } else {
+      params.append('date', startDate || getTodayDate());
+    }
+    
+    if (params.toString()) {
+      apiUrl += '?' + params.toString();
+    }
+    
+    console.log('API URL with date filter:', apiUrl);
+    
+    const [analyticsResponse, picklistsResponse] = await Promise.all([
+      fetch(apiUrl),
+      fetch(apiUrl)
+    ]);
+    
+    if (!analyticsResponse.ok || !picklistsResponse.ok) {
+      throw new Error(`HTTP error! Analytics: ${analyticsResponse.status}, Picklists: ${picklistsResponse.status}`);
+    }
+    
+    const analyticsData = await analyticsResponse.json();
+    const picklistsData = await picklistsResponse.json();
+    
+    if (analyticsData.status === 'error' || picklistsData.status === 'error') {
+      showCombinedDispatchError(analyticsData.message || picklistsData.message);
+      return Promise.reject(new Error(analyticsData.message || picklistsData.message));
+    }
+    
+    // Filter data by platform if needed (client-side backup filter)
+    let filteredPicklists = picklistsData.picklists || [];
+    if (selectedPlatform !== 'ALL') {
+      filteredPicklists = filteredPicklists.filter(picklist => 
+        picklist.platform.toUpperCase() === selectedPlatform.toUpperCase()
+      );
+    }
+    
+    // Update statistics with filtered data
+    updateDispatchStatistics(filteredPicklists);
+    
+    // Display combined content with filtered data
+    displayCombinedDispatchContent(filteredPicklists);
+    
+    return Promise.resolve();
+    
+  } catch (error) {
+    console.error('Error loading combined dispatch data:', error);
+    showCombinedDispatchError('Failed to load dispatch data. Please try again.');
+    return Promise.reject(error);
+  }
+}
 
-    function displayCombinedDispatchContent(picklists) {
-      const container = document.getElementById('combinedDispatchContent');
-      
-      if (!picklists || picklists.length === 0) {
-        container.innerHTML = `
-          <div class="dispatch-no-data">
-            <h3>📭 No Dispatch Data Available</h3>
-            <p>No picklists with Complete or Dispatch orders found. Orders need to be in 'Complete' or 'Dispatch' status to appear here.</p>
-          </div>
-        `;
-        return;
-      }
-      
-      // Sort picklists by dispatch percentage (descending)
-      picklists.sort((a, b) => (b.dispatch_percentage || 0) - (a.dispatch_percentage || 0));
-      
-      let html = `
-        <div style="display: grid; gap: 30px;">
-          <!-- Analytics Table -->
-          <div class="dispatch-analytics-section">
-            <h4 style="color: #333; margin-bottom: 20px; font-size: 1.4em;">📊 Dispatch Analytics Overview</h4>
-            <table class="dispatch-picklist-table">
-              <thead>
-                <tr>
-                  <th>Picklist ID</th>
-                  <th>Platform</th>
-                  <th>Type</th>
-                  <th>Progress</th>
-                  <th>Orders Status</th>
-                  <th>Dispatch %</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-      `;
-      
-      picklists.forEach(picklist => {
-        const platformClass = `dispatch-platform-${picklist.platform.toLowerCase()}`;
-        const percentage = picklist.dispatch_percentage || 0;
-        const completeOrders = picklist.complete_orders || 0;
-        const dispatchOrders = picklist.dispatch_orders || 0;
-        const totalRelevant = picklist.total_relevant_orders || (completeOrders + dispatchOrders);
-        
-        html += `
-          <tr>
-            <td>
-              <a href="#" class="dispatch-picklist-id" onclick="viewDispatchPicklistDetails('${picklist.picklist_id}')">
-                ${picklist.picklist_id}
-              </a>
-            </td>
-            <td>
-              <span class="dispatch-platform-badge ${platformClass}">
-                ${picklist.platform}
-              </span>
-            </td>
-            <td>${picklist.picklist_type || 'N/A'}</td>
-            <td>
-              <div class="dispatch-progress-wrapper">
-                <div class="dispatch-progress-container">
-                  <div class="dispatch-progress-bar" style="width: ${percentage}%"></div>
-                </div>
-                <span class="dispatch-progress-text">${percentage}%</span>
-              </div>
-            </td>
-            <td>
-              <div style="display: flex; flex-direction: column; gap: 3px;">
-                <div style="font-size: 0.85em;">
-                  <span style="color: #27ae60; font-weight: 600;">🚚 ${dispatchOrders}</span> dispatched
-                </div>
-                <div style="font-size: 0.85em;">
-                  <span style="color: #f39c12; font-weight: 600;">📦 ${completeOrders}</span> ready
-                </div>
-                <div style="font-size: 0.8em; color: #666;">
-                  ${totalRelevant}/${picklist.total_orders || 0} total
-                </div>
-              </div>
-            </td>
-            <td>
-              <strong style="color: ${percentage === 100 ? '#27ae60' : percentage > 50 ? '#f39c12' : '#e74c3c'}">
-                ${percentage}%
-              </strong>
-            </td>
-            <td>
-              <button 
-                class="dispatch-view-details-btn ${percentage === 100 ? 'csv-download-btn btn-success' : 'btn-primary'}" 
-                onclick="${percentage === 100 ? `downloadCSVReport('${picklist.picklist_id}')` : `viewDispatchPicklistDetails('${picklist.picklist_id}')`}">
-                ${percentage === 100 ? '📊 Download CSV' : '📊 View Details'}
-              </button>
-            </td>
-          </tr>
-        `;
-      });
-      
-      html += `
-              </tbody>
-            </table>
-          </div>
-          
-          <!-- Dispatch Management Section -->
-          <div class="dispatch-management-section">
-            <h4 style="color: #333; margin-bottom: 20px; font-size: 1.4em;">🚚 Dispatch Management</h4>
-            <table class="status-table">
-              <thead>
-                <tr>
-                  <th>Picklist ID</th>
-                  <th>Platform</th>
-                  <th>Type</th>
-                  <th>Order Status</th>
-                  <th>Workflow Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-      `;
-      
-      picklists.forEach(picklist => {
-        const dispatchPercentage = Math.round((picklist.dispatch_orders / picklist.total_orders) * 100) || 0;
-        const completeOrders = picklist.complete_orders || 0;
-        const dispatchOrders = picklist.dispatch_orders || 0;
-        
-        let statusBadgeClass = '';
-        let statusText = '';
-        
-        if (dispatchPercentage === 100) {
-          statusBadgeClass = 'status-dispatched';
-          statusText = '✅ Fully Dispatched';
-        } else if (dispatchOrders > 0 && completeOrders > 0) {
-          statusBadgeClass = 'status-packing';
-          statusText = '🔄 Partially Dispatched';
-        } else if (dispatchOrders === 0 && completeOrders > 0) {
-          statusBadgeClass = 'status-printed';
-          statusText = '📦 Ready to Dispatch';
-        } else if (dispatchOrders > 0 && completeOrders === 0) {
-          statusBadgeClass = 'status-dispatched';
-          statusText = '🚚 Some Dispatched';
-        } else {
-          statusBadgeClass = 'status-created';
-          statusText = '❌ No Dispatch Activity';
-        }
-        
-        html += `
-          <tr>
-            <td>
-              <a href="javascript:void(0)" onclick="viewDispatchPicklistDetails('${picklist.picklist_id}')" class="picklist-link">
-                ${picklist.picklist_id}
-              </a>
-            </td>
-            <td>
-              <span class="dispatch-platform-badge dispatch-platform-${picklist.platform.toLowerCase()}">
-                ${picklist.platform}
-              </span>
-            </td>
-            <td>${picklist.picklist_type || 'N/A'}</td>
-            <td>
-              <div style="display: flex; flex-direction: column; gap: 2px;">
-                <div style="font-size: 0.9em;">
-                  <strong>${picklist.total_orders || 0}</strong> total orders
-                </div>
-                <div style="font-size: 0.85em; color: #666;">
-                  🚚 ${dispatchOrders} dispatched | 📦 ${completeOrders} ready
-                </div>
-              </div>
-            </td>
-            <td>
-              <span class="status-badge ${statusBadgeClass}">${statusText}</span>
-            </td>
-            <td>
-              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button class="btn btn-primary" onclick="viewDispatchPicklistDetails('${picklist.picklist_id}')" style="font-size: 0.85em; padding: 6px 12px;">
-                  👁️ View Orders
-                </button>
-                <button 
-                  class="btn ${dispatchPercentage === 100 ? 'btn-success csv-download-btn' : 'btn-secondary csv-not-ready-btn'}" 
-                  onclick="${dispatchPercentage === 100 ? `downloadCSVReport('${picklist.picklist_id}')` : 'void(0)'}"
-                  ${dispatchPercentage === 100 ? '' : 'disabled'}
-                  style="font-size: 0.85em; padding: 6px 12px;">
-                  ${dispatchPercentage === 100 ? '📊 Download CSV Report' : `📊 CSV (${dispatchPercentage}%)`}
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
-      });
-      
-      html += `
-              </tbody>
-            </table>
-          </div>
+
+function displayCombinedDispatchContent(picklists) {
+  const container = document.getElementById('combinedDispatchContent');
+  
+  if (!picklists || picklists.length === 0) {
+    const dateText = getCurrentDateFilterText();
+    container.innerHTML = `
+      <div class="dispatch-no-data">
+        <h3>📭 No Dispatch Data Available</h3>
+        <p>No picklists with Complete or Dispatch orders found for <strong>${dateText}</strong>.</p>
+        <p>Orders need to be in 'Complete' or 'Dispatch' status to appear here.</p>
+        <div style="margin-top: 20px;">
+          <button onclick="clearDateFilter()" class="btn btn-primary">📅 View Today's Data</button>
+          <button onclick="loadCombinedDispatchData()" class="btn btn-secondary">🔄 Refresh</button>
         </div>
-      `;
-      
-      container.innerHTML = html;
-      
-      // Add event listener to the Complete Orders button
-      const dispatchOrdersBtn = document.getElementById('dispatch-orders-btn');
-      if (dispatchOrdersBtn) {
-        dispatchOrdersBtn.addEventListener('click', openAwbDispatchModal);
-      }
-      
-      // Refresh button states after a short delay to ensure DOM is ready
-      setTimeout(() => {
-        refreshAllButtonStates();
-      }, 500);
+      </div>
+    `;
+    return;
+  }
+  
+  // Sort picklists by dispatch percentage (descending)
+  picklists.sort((a, b) => {
+  const aDispatchPercentage = Math.round((a.dispatch_orders / a.total_orders) * 100) || 0;
+  const bDispatchPercentage = Math.round((b.dispatch_orders / b.total_orders) * 100) || 0;
+  
+  const aFullyDispatched = aDispatchPercentage === 100;
+  const bFullyDispatched = bDispatchPercentage === 100;
+  
+  // If one is fully dispatched and the other isn't, put incomplete first
+  if (aFullyDispatched !== bFullyDispatched) {
+    return aFullyDispatched ? 1 : -1; // Incomplete orders first
+  }
+  
+  // If both have same dispatch status, sort by picklist ID (ascending)
+  const aId = parseInt(a.picklist_id) || 0;
+  const bId = parseInt(b.picklist_id) || 0;
+  return aId - bId; // Smaller IDs first
+}); 
+  
+  const dateText = getCurrentDateFilterText();
+  
+  let html = `
+    <div class="dispatch-management-section">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h4 style="color: #333; font-size: 1.4em;">🚚 Dispatch Management & Analytics</h4>
+        <div class="date-info-badge" style="
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          color: white;
+          padding: 8px 16px;
+          border-radius: 20px;
+          font-size: 0.9em;
+          font-weight: 600;
+          box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+        ">
+          📅 ${dateText} | ${picklists.length} picklist(s)
+        </div>
+      </div>
+      <table class="status-table" style="table-layout: fixed; width: 100%;">
+        <thead>
+          <tr>
+            <th style="width: 8%;">Picklist ID</th>
+            <th style="width: 10%;">Platform</th>
+            <th style="width: 8%;">Type</th>
+            <th style="width: 10%;">Created</th>
+            <th style="width: 12%;">Progress</th>
+            <th style="width: 18%;">Order Status</th>
+            <th style="width: 15%;">Workflow Status</th>
+            <th style="width: 19%;">Actions</th> <!-- Increased from 10% to 19% -->
+          </tr>
+        </thead>
+        <tbody>
+  `;
+  
+  picklists.forEach(picklist => {
+    const dispatchPercentage = Math.round((picklist.dispatch_orders / picklist.total_orders) * 100) || 0;
+    const completeOrders = picklist.complete_orders || 0;
+    const dispatchOrders = picklist.dispatch_orders || 0;
+    const createdDate = picklist.created_date || picklist.created_at?.split(' ')[0] || 'N/A';
+    
+    let statusBadgeClass = '';
+    let statusText = '';
+    
+    if (dispatchPercentage === 100) {
+      statusBadgeClass = 'status-dispatched';
+      statusText = '✅ Fully Dispatched';
+    } else if (dispatchOrders > 0 && completeOrders > 0) {
+      statusBadgeClass = 'status-packing';
+      statusText = '🔄 Partially Dispatched';
+    } else if (dispatchOrders === 0 && completeOrders > 0) {
+      statusBadgeClass = 'status-printed';
+      statusText = '📦 Ready to Dispatch';
+    } else if (dispatchOrders > 0 && completeOrders === 0) {
+      statusBadgeClass = 'status-dispatched';
+      statusText = '🚚 Some Dispatched';
+    } else {
+      statusBadgeClass = 'status-created';
+      statusText = '❌ No Dispatch Activity';
     }
+    
+    html += `
+      <tr>
+        <td style="word-wrap: break-word;">
+          <a href="javascript:void(0)" onclick="viewDispatchPicklistDetails('${picklist.picklist_id}')" class="picklist-link">
+            ${picklist.picklist_id}
+          </a>
+        </td>
+        <td style="text-align: center;">
+          <span class="dispatch-platform-badge dispatch-platform-${picklist.platform.toLowerCase()}" style="font-size: 0.8em; padding: 4px 8px;">
+            ${picklist.platform}
+          </span>
+        </td>
+        <td style="text-align: center; font-size: 0.9em;">${picklist.picklist_type || 'N/A'}</td>
+        <td style="text-align: center; font-size: 0.85em; color: #666;">${formatDateForDisplay(createdDate)}</td>
+        <td style="text-align: center;">
+          <div class="dispatch-progress-wrapper" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <div class="dispatch-progress-container" style="width: 60px;">
+              <div class="dispatch-progress-bar" style="width: ${picklist.dispatch_percentage || 0}%"></div>
+            </div>
+            <span class="dispatch-progress-text" style="font-size: 0.85em; font-weight: 600;">${picklist.dispatch_percentage || 0}%</span>
+          </div>
+        </td>
+        <td>
+          <div style="display: flex; flex-direction: column; gap: 2px; font-size: 0.8em;">
+            <div>
+              <span style="color: #27ae60; font-weight: 600;">🚚 ${dispatchOrders}</span> dispatched
+            </div>
+            <div>
+              <span style="color: #f39c12; font-weight: 600;">📦 ${completeOrders}</span> ready
+            </div>
+            <div style="color: #666; font-size: 0.75em;">
+              ${picklist.total_relevant_orders || (completeOrders + dispatchOrders)}/${picklist.total_orders || 0} total
+            </div>
+          </div>
+        </td>
+        <td style="text-align: center;">
+          <span class="status-badge ${statusBadgeClass}" style="font-size: 0.75em; padding: 4px 8px;">${statusText}</span>
+        </td>
+        <td>
+          <div style="display: flex; gap: 4px; flex-direction: column;">
+            <button class="btn btn-primary" onclick="viewDispatchPicklistDetails('${picklist.picklist_id}')" style="font-size: 0.75em; padding: 4px 8px; white-space: nowrap;">
+              👁️ View Orders
+            </button>
+            <button 
+              class="btn ${dispatchPercentage === 100 ? 'btn-success csv-download-btn' : 'btn-secondary csv-not-ready-btn'}" 
+              onclick="${dispatchPercentage === 100 ? `downloadCSVReport('${picklist.picklist_id}')` : 'void(0)'}"
+              ${dispatchPercentage === 100 ? '' : 'disabled'}
+              style="font-size: 0.75em; padding: 4px 8px; white-space: nowrap;">
+              ${dispatchPercentage === 100 ? '📊 CSV Report' : `📊 CSV (${dispatchPercentage}%)`}
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+  
+ html += `
+        </tbody>
+      </table>
+      
+      <!-- Export button below table -->
+      <div style="margin-top: 20px; text-align: center;">
+        <button id="export-data-btn" class="btn btn-success" onclick="exportCurrentData()">📊 Export Data</button>
+      </div>
+    </div>
+  `;
+  container.innerHTML = html;
+  
+  // Add event listener to the Complete Orders button
+  const dispatchOrdersBtn = document.getElementById('dispatch-orders-btn');
+  if (dispatchOrdersBtn) {
+    dispatchOrdersBtn.addEventListener('click', openAwbDispatchModal);
+  }
+  
+  // Setup the dropdown after content is loaded
+  setTimeout(() => {
+    setupPortalFilterDropdown();
+    refreshAllButtonStates();
+  }, 100);
+}
+
+function clearDateFilter() {
+  // Reset to today's filter
+  selectedDateFilter = 'today';
+  startDate = getTodayDate();
+  endDate = getTodayDate();
+  specificDate = getTodayDate();
+  
+  // Update the dropdown
+  const dateFilterType = document.getElementById('date-filter-type');
+  if (dateFilterType) {
+    dateFilterType.value = 'today';
+  }
+  
+  // Hide conditional inputs
+  const specificDateGroup = document.getElementById('specific-date-group');
+  const dateRangeGroup = document.getElementById('date-range-group');
+  if (specificDateGroup) specificDateGroup.classList.remove('active');
+  if (dateRangeGroup) dateRangeGroup.classList.remove('active');
+  
+  // Update section title and reload data
+  updateSectionTitle();
+  loadCombinedDispatchData();
+}
+
+
+function injectDropdownCSS() {
+  const style = document.createElement('style');
+  style.textContent = dispatchDropdownCSS;
+  document.head.appendChild(style);
+}
+
 
     function showCombinedDispatchLoading() {
       document.getElementById('combinedDispatchContent').innerHTML = '<div class="dispatch-loading">Loading comprehensive dispatch data...</div>';
@@ -2257,24 +3509,99 @@
       });
     }
 
-    function updateDispatchStatistics(picklists) {
-      let totalPicklists = picklists.length;
-      let totalOrders = 0;
-      let totalDispatched = 0;
-      
-      picklists.forEach(picklist => {
-        totalOrders += picklist.total_orders || 0;
-        totalDispatched += picklist.dispatch_orders || 0;
-      });
-      
-      let overallPercentage = totalOrders > 0 ? Math.round((totalDispatched / totalOrders) * 100) : 0;
-      
-      // Animate the statistics
-      animateDispatchNumber('dispatchTotalPicklists', totalPicklists);
-      animateDispatchNumber('dispatchTotalOrders', totalOrders);
-      animateDispatchNumber('dispatchedOrdersCount', totalDispatched);
-      animateDispatchNumber('dispatchOverallPercentage', overallPercentage, '%');
+    // Update the updateDispatchStatistics function to display platform name
+function updateDispatchStatistics(picklists) {
+  let totalPicklists = picklists.length;
+  let totalOrders = 0;
+  let totalDispatched = 0;
+  let totalComplete = 0;
+  
+  picklists.forEach(picklist => {
+    totalOrders += picklist.total_orders || 0;
+    totalDispatched += picklist.dispatch_orders || 0;
+    totalComplete += picklist.complete_orders || 0;
+  });
+  
+  let overallPercentage = totalOrders > 0 ? Math.round((totalDispatched / totalOrders) * 100) : 0;
+  
+  // Use the global variable instead of reading from DOM
+  const selectedPlatform = selectedPlatformFilter;
+  const platformText = selectedPlatform === 'ALL' ? 'All Platforms' : selectedPlatform;
+  const dateText = getCurrentDateFilterText();
+  
+  // Add or update platform name display above analytics
+  let platformDisplayElement = document.getElementById('platform-display');
+  if (!platformDisplayElement) {
+    // Create the platform display element if it doesn't exist
+    const statsOverview = document.getElementById('dispatchStatsOverview');
+    if (statsOverview) {
+      platformDisplayElement = document.createElement('div');
+      platformDisplayElement.id = 'platform-display';
+      platformDisplayElement.style.cssText = `
+        text-align: center;
+        margin-bottom: 25px;
+        padding: 20px 25px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+      `;
+      statsOverview.parentNode.insertBefore(platformDisplayElement, statsOverview);
     }
+  }
+  
+  // Update platform display content with date info
+  if (platformDisplayElement) {
+    const platformEmoji = {
+      'ALL': '🌍',
+      'AMAZON': '📦',
+      'FLIPKART': '🛒',
+      'FIRSTCRY': '👶',
+      'MEESHO': '🛍️'
+    };
+    
+    platformDisplayElement.innerHTML = `
+      <h3 style="
+        color: white; 
+        font-size: 1.8em; 
+        font-weight: 700; 
+        margin: 0 0 8px 0;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        letter-spacing: 1px;
+      ">
+        ${platformEmoji[selectedPlatform] || '🌐'} ${platformText} Analytics
+      </h3>
+      <p style="
+        color: rgba(255, 255, 255, 0.9); 
+        margin: 0 0 8px 0; 
+        font-size: 1.1em;
+        font-weight: 500;
+      ">
+        📅 ${dateText}
+      </p>
+      <p style="
+        color: rgba(255, 255, 255, 0.8); 
+        margin: 0; 
+        font-size: 0.95em;
+        font-weight: 400;
+      ">
+        Real-time dispatch statistics and performance metrics
+      </p>
+    `;
+  }
+  
+  // Enhanced statistics with additional metrics
+  animateDispatchNumber('dispatchTotalPicklists', totalPicklists);
+  animateDispatchNumber('dispatchTotalOrders', totalOrders);
+  animateDispatchNumber('dispatchedOrdersCount', totalDispatched);
+  animateDispatchNumber('dispatchOverallPercentage', overallPercentage, '%');
+  
+  // Update the dashboard subtitle to show current filter
+  const subtitle = document.querySelector('.dispatch-dashboard-subtitle');
+  if (subtitle) {
+    subtitle.textContent = `Monitor dispatch progress and manage orders in real-time - ${platformText} | ${dateText}`;
+  }
+}
+
 
     function animateDispatchNumber(elementId, targetValue, suffix = '') {
       const element = document.getElementById(elementId);
@@ -2824,105 +4151,131 @@
     // These follow the same pattern as your original implementations
 
     // Event listener for tab navigation
-    document.addEventListener('DOMContentLoaded', function () {
-      // Setup for orderModal
-      const orderModal = document.getElementById('orderModal');
-      const orderCloseBtn = orderModal ? orderModal.querySelector('.close-modal') : null;
+document.addEventListener('DOMContentLoaded', function () {
+  // Inject CSS for date filtering
+  injectDropdownCSS();
+  injectDateFilterCSS();
+  
+  // Initialize dispatch dashboard HTML
+  const dispatchContent = document.getElementById('dispatch-dashboard-content');
+  if (dispatchContent) {
+    dispatchContent.innerHTML = getDispatchDashboardHTML();
+  }
+  
+  // Setup for orderModal
+  const orderModal = document.getElementById('orderModal');
+  const orderCloseBtn = orderModal ? orderModal.querySelector('.close-modal') : null;
 
-      if (orderCloseBtn) {
-        orderCloseBtn.onclick = function () {
-          orderModal.style.display = 'none';
-        }
-      }
+  if (orderCloseBtn) {
+    orderCloseBtn.onclick = function () {
+      orderModal.style.display = 'none';
+    }
+  }
 
-      // Setup for picklistModal
-      const picklistModal = document.getElementById('picklistModal');
-      const picklistCloseBtn = picklistModal ? picklistModal.querySelector('.close-modal') : null;
+  // Setup for picklistModal
+  const picklistModal = document.getElementById('picklistModal');
+  const picklistCloseBtn = picklistModal ? picklistModal.querySelector('.close-modal') : null;
 
-      if (picklistCloseBtn) {
-        picklistCloseBtn.onclick = function () {
-          picklistModal.style.display = 'none';
-        }
-      }
+  if (picklistCloseBtn) {
+    picklistCloseBtn.onclick = function () {
+      picklistModal.style.display = 'none';
+    }
+  }
 
-      // Setup for AWB dispatch modal
-      const awbDispatchModal = document.getElementById('awbDispatchModal');
-      if (awbDispatchModal) {
-        // Close button
-        const awbCloseBtn = awbDispatchModal.querySelector('.close-modal');
-        if (awbCloseBtn) {
-          awbCloseBtn.addEventListener('click', function() {
-            closeAwbDispatchModal();
-          });
-        }
-        
-        // Process AWB button
-        const processAwbBtn = document.getElementById('process-awb-btn');
-        if (processAwbBtn) {
-          processAwbBtn.addEventListener('click', processAwbNumber);
-        }
-        
-        // Enter key in AWB input field
-        const awbInput = document.getElementById('awb-number');
-        if (awbInput) {
-          awbInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              processAwbNumber();
-            }
-          });
-        }
-      }
-
-      // Close modals when clicking outside
-      window.onclick = function (event) {
-        if (event.target === orderModal) {
-          orderModal.style.display = 'none';
-        }
-        if (event.target === picklistModal) {
-          picklistModal.style.display = 'none';
-        }
-        if (event.target === awbDispatchModal) {
-          closeAwbDispatchModal();
-        }
-      }
-
-      // Initialize the tab functionality
-      document.querySelectorAll('.tab').forEach(tab => {
-        tab.addEventListener('click', function () {
-          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-          this.classList.add('active');
-          currentStatus = this.dataset.status;
-
-          switch (currentStatus) {
-            case 'Ready to Process':
-              updateOrderStatusTable(currentStatus);
-              break;
-            case 'Pick':
-              displayPicklists();
-              break;
-            case 'Pack':
-              displayPackingPicklists();
-              break;
-            case 'Dispatch':
-              displayDispatchPicklists();
-              break;
-            case 'Dispatch Dashboard':
-              showDispatchDashboard();
-              break;
-            default:
-              updateOrderStatusTable(currentStatus);
-              break;
-          }
-        });
+  // Setup for AWB dispatch modal
+  const awbDispatchModal = document.getElementById('awbDispatchModal');
+  if (awbDispatchModal) {
+    const awbCloseBtn = awbDispatchModal.querySelector('.close-modal');
+    if (awbCloseBtn) {
+      awbCloseBtn.addEventListener('click', function() {
+        closeAwbDispatchModal();
       });
+    }
+    
+    const processAwbBtn = document.getElementById('process-awb-btn');
+    if (processAwbBtn) {
+      processAwbBtn.addEventListener('click', processAwbNumber);
+    }
+    
+    const awbInput = document.getElementById('awb-number');
+    if (awbInput) {
+      awbInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          processAwbNumber();
+        }
+      });
+    }
+  }
 
-      // Initialize with the currently active tab
-      const activeTab = document.querySelector('.tab.active');
-      if (activeTab) {
-        activeTab.click();
+  // Close modals when clicking outside
+  window.onclick = function (event) {
+    if (event.target === orderModal) {
+      orderModal.style.display = 'none';
+    }
+    if (event.target === picklistModal) {
+      picklistModal.style.display = 'none';
+    }
+    if (event.target === awbDispatchModal) {
+      closeAwbDispatchModal();
+    }
+  }
+
+  // Initialize the tab functionality with date filtering support
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      this.classList.add('active');
+      currentStatus = this.dataset.status;
+
+      switch (currentStatus) {
+        case 'Ready to Process':
+          updateOrderStatusTable(currentStatus);
+          break;
+        case 'Pick':
+          displayPicklists();
+          break;
+        case 'Pack':
+          displayPackingPicklists();
+          break;
+        case 'Dispatch':
+          showCombinedDispatchDashboard();
+          break;
+        default:
+          updateOrderStatusTable(currentStatus);
+          break;
       }
     });
+  });
+
+  // Initialize keyboard shortcuts
+  setupKeyboardShortcuts();
+
+  // Initialize with the currently active tab
+  const activeTab = document.querySelector('.tab.active');
+  if (activeTab) {
+    activeTab.click();
+  }
+  
+  console.log('Enhanced dispatch dashboard with date filtering initialized');
+});
+
+// Portal filter change event listener (separate from DOMContentLoaded)
+document.addEventListener('change', function(event) {
+  if (event.target && event.target.id === 'portal-filter') {
+    const newValue = event.target.value;
+    console.log('Portal filter changed to:', newValue);
+    
+    selectedPlatformFilter = newValue;
+    
+    if (currentStatus === 'Dispatch') {
+      setTimeout(() => {
+        loadCombinedDispatchData();
+      }, 50);
+    }
+  }
+});
+
 
     // Include all remaining functions from your original code
     // (I'm abbreviating here due to length, but all functions should be included)
@@ -2974,7 +4327,6 @@
           return changeAwbToDispatch(awbNumber);
         })
         .then(() => {
-          alert(`Orders with AWB ${awbNumber} have been successfully changed to Dispatch status!`);
           closeAwbDispatchModal();
           
           // Refresh the current view
@@ -2993,44 +4345,51 @@
     }
 
     function changeAwbToDispatch(awbNumber) {
-      // Implementation for changing AWB to dispatch
-      return fetch(`${baseApiUrl}/search-dispatch-awb/?awb=${encodeURIComponent(awbNumber)}`)
-        .then(response => {
-          if (!response.ok) {
-            throw new Error('Failed to search orders');
-          }
-          return response.json();
+  console.log('Changing AWB to dispatch:', awbNumber);
+  
+  return fetch(`${baseApiUrl}/search-dispatch-awb/?awb=${encodeURIComponent(awbNumber)}`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to search orders');
+      }
+      return response.json();
+    })
+    .then(data => {
+      const completeOrders = data.orders.filter(order => order.status === 'Complete');
+      
+      if (completeOrders.length === 0) {
+        throw new Error('No complete orders found');
+      }
+      
+      const orderData = completeOrders.map(order => ({
+        order_number: order.order_number,
+        platform: order.platform
+      }));
+      
+      console.log('Sending orders to dispatch:', orderData);
+      
+      return fetch(`${baseApiUrl}/orders/bulk-change-to-dispatch/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          orders: orderData,
+          awb: awbNumber
         })
-        .then(data => {
-          const completeOrders = data.orders.filter(order => order.status === 'Complete');
-          
-          if (completeOrders.length === 0) {
-            throw new Error('No complete orders found');
-          }
-          
-          const orderData = completeOrders.map(order => ({
-            order_number: order.order_number,
-            platform: order.platform
-          }));
-          
-          return fetch(`${baseApiUrl}/orders/bulk-change-to-dispatch/`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              orders: orderData,
-              awb: awbNumber
-            })
-          });
-        })
-        .then(response => {
-          if (!response.ok) {
-            throw new Error('Failed to change orders to dispatch status');
-          }
-          return response.json();
-        });
-    }
+      });
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to change orders to dispatch status');
+      }
+      return response.json();
+    })
+    .then(result => {
+      console.log('Dispatch change result:', result);
+      return result;
+    });
+}
 
     function displayAwbSearchResults(orders, awbNumber) {
       const resultsContainer = document.getElementById('awb-search-results');
@@ -3308,7 +4667,7 @@
           let html = `
               <div class="picklist-header">
                   <h3>🚚 Picklists with Dispatched Orders (${data.picklists.length})</h3>
-                  <button id="dispatch-orders-btn" class="btn btn-success">📦 Complete Orders by AWB</button>
+                  <button id="dispatch-orders-btn" class="btn btn-success">📦 Dispatch Orders by AWB</button>
               </div>
               <table class="status-table">
                   <thead>
@@ -3381,152 +4740,352 @@
     }
 
     function viewDispatchPicklistDetails(picklistId) {
-      console.log(`Fetching dispatch orders details for picklist: ${picklistId}`);
-    
-      fetch(`${baseApiUrl}/picklists/${picklistId}/dispatch-orders/`)
-        .then(response => {
-          console.log("Dispatch orders details response status:", response.status);
-          if (!response.ok) {
-            return response.text().then(text => {
-              console.error("Error response:", text);
-              throw new Error(`Error fetching dispatch orders details: ${response.status} ${response.statusText}`);
-            });
-          }
-          return response.json();
-        })
-        .then(data => {
-          console.log("Dispatch orders details data:", data);
-    
-          document.getElementById('picklistModalTitle').textContent = `🚚 Dispatch Orders - Picklist ${picklistId}`;
-          document.getElementById('picklistPlatform').textContent = data.platform || 'Unknown';
-    
-          const dispatchPercentage = data.dispatch_percentage ||
-            (data.total_orders > 0 ? Math.round((data.dispatch_orders / data.total_orders) * 100) : 0);
-          
-          const completeOrders = data.complete_orders || 0;
-          const dispatchOrders = data.dispatch_orders || 0;
-          const totalRelevant = data.total_relevant_orders || (completeOrders + dispatchOrders);
-    
-          document.getElementById('picklistStatus').textContent = `${dispatchPercentage}% Dispatched (${dispatchOrders}/${data.total_orders || 0})`;
-          document.getElementById('picklistTotalItems').textContent = `${totalRelevant} orders ready/dispatched | ${completeOrders} ready, ${dispatchOrders} dispatched`;
-          document.getElementById('picklistCreatedAt').textContent = data.created_at || 'Unknown';
-    
-          const tableContainer = document.getElementById('picklistTableContainer');
-          tableContainer.innerHTML = `
-            <table class="order-table">
-                <thead>
-                    <tr>
-                        <th>Order Number</th>
-                        <th>SKUs</th>
-                        <th>AWB</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody id="picklistTableBody">
-                </tbody>
-            </table>
-        `;
-    
-          const tableBody = document.getElementById('picklistTableBody');
-          tableBody.innerHTML = '';
-    
-          if (!data.orders || data.orders.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="4" class="text-center">No Complete or Dispatch orders found for this picklist</td></tr>';
-          } else {
-            const groupedOrders = {};
-            
-            data.orders.forEach(order => {
-              const orderNumber = order.order_number;
-              
-              if (!groupedOrders[orderNumber]) {
-                groupedOrders[orderNumber] = {
-                  order_number: orderNumber,
-                  skus: [],
-                  status: order.status,
-                  awb: order.awb || 'N/A'
-                };
-              }
-              
-              const skuWithQty = `${order.sku} (${order.quantity})`;
-              if (!groupedOrders[orderNumber].skus.includes(skuWithQty)) {
-                groupedOrders[orderNumber].skus.push(skuWithQty);
-              }
-            });
-            
-            const sortedOrders = Object.values(groupedOrders).sort((a, b) => {
-              const statusPriority = {
-                'Dispatch': 1,
-                'Complete': 2,
-                'Pack': 3,
-                'Pick': 4,
-                'Ready to Process': 5
-              };
-              
-              const aPriority = statusPriority[a.status] || 99;
-              const bPriority = statusPriority[b.status] || 99;
-              
-              if (aPriority !== bPriority) {
-                return aPriority - bPriority;
-              }
-              
-              return a.order_number.localeCompare(b.order_number);
-            });
-    
-            sortedOrders.forEach(order => {
-              const row = document.createElement('tr');
-    
-              let statusBadgeClass = '';
-              let rowClass = '';
-              
-              if (order.status === 'Dispatch') {
-                statusBadgeClass = 'status-dispatched';
-                rowClass = 'dispatch-row';
-              } else if (order.status === 'Complete') {
-                statusBadgeClass = 'status-completed';
-                rowClass = 'completed-row';
-              } else if (order.status === 'Pack') {
-                statusBadgeClass = 'status-packing';
-                rowClass = 'packing-row';
-              } else {
-                statusBadgeClass = 'status-printed';
-                rowClass = 'other-row';
-              }
-              
-              if (rowClass) {
-                row.classList.add(rowClass);
-              }
-    
-              const skusList = order.skus.map(sku => `<div class="sku-item">${sku}</div>`).join('');
-    
-              row.innerHTML = `
-                    <td>${order.order_number || 'N/A'}</td>
-                    <td>
-                        <div class="sku-list">
-                            ${skusList}
-                        </div>
-                    </td>
-                    <td>${order.awb || 'N/A'}</td>
-                    <td><span class="status-badge ${statusBadgeClass}">${order.status || 'Unknown'}</span></td>
-                `;
-              tableBody.appendChild(row);
-            });
-          }
-    
-          const actionBtn = document.getElementById('picklistActionBtn');
-          const printBtn = document.getElementById('printPicklistBtn');
-          const packingBtn = document.getElementById('moveToPackingBtn');
-    
-          actionBtn.style.display = 'none';
-          printBtn.style.display = 'none';
-          packingBtn.style.display = 'none';
-    
-          document.getElementById('picklistModal').style.display = 'block';
-        })
-        .catch(error => {
-          console.error('Error fetching picklist dispatch orders details:', error);
-          alert('Error loading picklist dispatch orders details: ' + error.message);
+  console.log(`Fetching dispatch orders details for picklist: ${picklistId} with date context`);
+
+  // Build URL with current date filter parameters
+  let apiUrl = `${baseApiUrl}/picklists/${picklistId}/dispatch-orders/`;
+  const params = new URLSearchParams();
+  
+  // Add current date filter parameters for context
+  if (selectedDateFilter === 'range' || selectedDateFilter === 'last7days' || selectedDateFilter === 'last30days') {
+    params.append('start_date', startDate);
+    params.append('end_date', endDate);
+  } else {
+    params.append('date', startDate || getTodayDate());
+  }
+  
+  if (params.toString()) {
+    apiUrl += '?' + params.toString();
+  }
+
+  fetch(apiUrl)
+    .then(response => {
+      console.log("Dispatch orders details response status:", response.status);
+      if (!response.ok) {
+        return response.text().then(text => {
+          console.error("Error response:", text);
+          throw new Error(`Error fetching dispatch orders details: ${response.status} ${response.statusText}`);
         });
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log("Dispatch orders details data:", data);
+
+      // Enhanced modal title with date context
+      const dateContext = data.date_context?.picklist_date ? 
+        ` (Created: ${formatDateForDisplay(data.date_context.picklist_date)})` : '';
+      
+      document.getElementById('picklistModalTitle').textContent = 
+        `🚚 Dispatch Orders - Picklist ${picklistId}${dateContext}`;
+      
+      document.getElementById('picklistPlatform').textContent = data.platform || 'Unknown';
+
+      const dispatchPercentage = data.dispatch_percentage ||
+        (data.total_orders > 0 ? Math.round((data.dispatch_orders / data.total_orders) * 100) : 0);
+      
+      const completeOrders = data.complete_orders || 0;
+      const dispatchOrders = data.dispatch_orders || 0;
+      const totalRelevant = data.total_relevant_orders || (completeOrders + dispatchOrders);
+
+      document.getElementById('picklistStatus').textContent = 
+        `${dispatchPercentage}% Dispatched (${dispatchOrders}/${data.total_orders || 0})`;
+      
+      document.getElementById('picklistTotalItems').textContent = 
+        `${totalRelevant} orders ready/dispatched | ${completeOrders} ready, ${dispatchOrders} dispatched`;
+      
+      // Enhanced created date display
+      const createdAt = data.created_at || 'Unknown';
+      const createdDate = data.date_context?.picklist_date || data.created_date;
+      document.getElementById('picklistCreatedAt').textContent = 
+        `${createdAt}${createdDate ? ` (${createdDate})` : ''}`;
+
+      // Rest of the modal population code remains the same...
+      const tableContainer = document.getElementById('picklistTableContainer');
+      tableContainer.innerHTML = `
+        <table class="order-table">
+            <thead>
+                <tr>
+                    <th>Order Number</th>
+                    <th>SKUs</th>
+                    <th>AWB</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="picklistTableBody">
+            </tbody>
+        </table>
+    `;
+
+      const tableBody = document.getElementById('picklistTableBody');
+      tableBody.innerHTML = '';
+
+      if (!data.orders || data.orders.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="4" class="text-center">No Complete or Dispatch orders found for this picklist</td></tr>';
+      } else {
+        const groupedOrders = {};
+        
+        data.orders.forEach(order => {
+          const orderNumber = order.order_number;
+          
+          if (!groupedOrders[orderNumber]) {
+            groupedOrders[orderNumber] = {
+              order_number: orderNumber,
+              skus: [],
+              status: order.status,
+              awb: order.awb || 'N/A'
+            };
+          }
+          
+          const skuWithQty = `${order.sku} (${order.quantity})`;
+          if (!groupedOrders[orderNumber].skus.includes(skuWithQty)) {
+            groupedOrders[orderNumber].skus.push(skuWithQty);
+          }
+        });
+        
+        const sortedOrders = Object.values(groupedOrders).sort((a, b) => {
+          const statusPriority = {
+            'Dispatch': 1,
+            'Complete': 2,
+            'Pack': 3,
+            'Pick': 4,
+            'Ready to Process': 5
+          };
+          
+          const aPriority = statusPriority[a.status] || 99;
+          const bPriority = statusPriority[b.status] || 99;
+          
+          if (aPriority !== bPriority) {
+            return aPriority - bPriority;
+          }
+          
+          return a.order_number.localeCompare(b.order_number);
+        });
+
+        sortedOrders.forEach(order => {
+          const row = document.createElement('tr');
+
+          let statusBadgeClass = '';
+          let rowClass = '';
+          
+          if (order.status === 'Dispatch') {
+            statusBadgeClass = 'status-dispatched';
+            rowClass = 'dispatch-row';
+          } else if (order.status === 'Complete') {
+            statusBadgeClass = 'status-completed';
+            rowClass = 'completed-row';
+          } else if (order.status === 'Pack') {
+            statusBadgeClass = 'status-packing';
+            rowClass = 'packing-row';
+          } else {
+            statusBadgeClass = 'status-printed';
+            rowClass = 'other-row';
+          }
+          
+          if (rowClass) {
+            row.classList.add(rowClass);
+          }
+
+          const skusList = order.skus.map(sku => `<div class="sku-item">${sku}</div>`).join('');
+
+          row.innerHTML = `
+                <td>${order.order_number || 'N/A'}</td>
+                <td>
+                    <div class="sku-list">
+                        ${skusList}
+                    </div>
+                </td>
+                <td>${order.awb || 'N/A'}</td>
+                <td><span class="status-badge ${statusBadgeClass}">${order.status || 'Unknown'}</span></td>
+            `;
+          tableBody.appendChild(row);
+        });
+      }
+
+      const actionBtn = document.getElementById('picklistActionBtn');
+      const printBtn = document.getElementById('printPicklistBtn');
+      const packingBtn = document.getElementById('moveToPackingBtn');
+
+      actionBtn.style.display = 'none';
+      printBtn.style.display = 'none';
+      packingBtn.style.display = 'none';
+
+      document.getElementById('picklistModal').style.display = 'block';
+    })
+    .catch(error => {
+      console.error('Error fetching picklist dispatch orders details:', error);
+      alert('Error loading picklist dispatch orders details: ' + error.message);
+    });
+}
+
+function buildDispatchApiUrl() {
+  let apiUrl = `${baseApiUrl}/picklists/dispatch/`;
+  const params = new URLSearchParams();
+  
+  if (selectedPlatformFilter !== 'ALL') {
+    params.append('platform', selectedPlatformFilter);
+  }
+  
+  // Add date parameters
+  if (selectedDateFilter === 'range' || selectedDateFilter === 'last7days' || selectedDateFilter === 'last30days') {
+    params.append('start_date', startDate);
+    params.append('end_date', endDate);
+  } else {
+    params.append('date', startDate || getTodayDate());
+  }
+  
+  if (params.toString()) {
+    apiUrl += '?' + params.toString();
+  }
+  
+  return apiUrl;
+}
+
+// Convert dispatch data to CSV format
+function convertDispatchDataToCSV(picklists) {
+  const headers = [
+    'Picklist ID',
+    'Platform',
+    'Type',
+    'Created Date',
+    'Total Orders',
+    'Dispatched Orders',
+    'Complete Orders',
+    'Dispatch Percentage',
+    'Status',
+    'Total Relevant Orders'
+  ];
+  
+  let csvContent = headers.join(',') + '\n';
+  
+  picklists.forEach(picklist => {
+    const row = [
+      picklist.picklist_id || '',
+      picklist.platform || '',
+      picklist.picklist_type || '',
+      picklist.created_date || picklist.created_at?.split(' ')[0] || '',
+      picklist.total_orders || 0,
+      picklist.dispatch_orders || 0,
+      picklist.complete_orders || 0,
+      (picklist.dispatch_percentage || 0) + '%',
+      picklist.status || '',
+      picklist.total_relevant_orders || 0
+    ];
+    
+    // Escape quotes and add quotes around fields that might contain commas
+    const escapedRow = row.map(field => {
+      const stringField = String(field);
+      if (stringField.includes(',') || stringField.includes('"') || stringField.includes('\n')) {
+        return '"' + stringField.replace(/"/g, '""') + '"';
+      }
+      return stringField;
+    });
+    
+    csvContent += escapedRow.join(',') + '\n';
+  });
+  
+  return csvContent;
+}
+
+// Keyboard shortcuts for quick date filtering
+function setupKeyboardShortcuts() {
+  document.addEventListener('keydown', function(e) {
+    // Only activate shortcuts when not typing in input fields
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
+      return;
     }
+    
+    // Check if we're in the dispatch dashboard
+    if (currentStatus !== 'Dispatch') {
+      return;
+    }
+    
+    // Ctrl/Cmd + number keys for quick date filters
+    if (e.ctrlKey || e.metaKey) {
+      switch(e.key) {
+        case '1':
+          e.preventDefault();
+          quickSetDateFilter('today');
+          break;
+        case '2':
+          e.preventDefault();
+          quickSetDateFilter('yesterday');
+          break;
+        case '3':
+          e.preventDefault();
+          quickSetDateFilter('last7days');
+          break;
+        case '4':
+          e.preventDefault();
+          quickSetDateFilter('last30days');
+          break;
+        case 'r':
+        case 'R':
+          e.preventDefault();
+          loadCombinedDispatchData();
+          break;
+      }
+    }
+  });
+}
+
+// Quick set date filter function
+function quickSetDateFilter(filterType) {
+  const dateFilterType = document.getElementById('date-filter-type');
+  if (!dateFilterType) return;
+  
+  dateFilterType.value = filterType;
+  
+  // Trigger the change event to update the UI
+  dateFilterType.dispatchEvent(new Event('change'));
+  
+  // Apply the filter automatically
+  setTimeout(() => {
+    applyDateFilter();
+  }, 100);
+}
+
+function exportCurrentData() {
+  const dateText = getCurrentDateFilterText();
+  const platformText = selectedPlatformFilter === 'ALL' ? 'All_Platforms' : selectedPlatformFilter;
+  
+  // Get current data
+  const apiUrl = buildDispatchApiUrl();
+  
+  fetch(apiUrl)
+    .then(response => response.json())
+    .then(data => {
+      if (data.status === 'error') {
+        throw new Error(data.message);
+      }
+      
+      // Convert to CSV
+      const csvData = convertDispatchDataToCSV(data.picklists || []);
+      
+      // Create download
+      const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      
+      // Generate filename with date and platform info
+      const timestamp = new Date().toISOString().split('T')[0];
+      const filename = `dispatch_data_${platformText}_${selectedDateFilter}_${timestamp}.csv`;
+      link.setAttribute('download', filename);
+      
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      alert(`✅ Data exported successfully!\nFile: ${filename}\nPeriod: ${dateText}\nPlatform: ${platformText}`);
+    })
+    .catch(error => {
+      console.error('Error exporting data:', error);
+      alert(`❌ Export failed: ${error.message}`);
+    });
+}
+
 
     function confirmDeletePicklist(picklistId) {
       if (confirm(`WARNING: Are you sure you want to delete picklist ${picklistId}?\n\nThis will PERMANENTLY DELETE the picklist and all associated orders from the database.\n\nThis action cannot be undone.`)) {
@@ -3728,7 +5287,7 @@
         });
     }
 
-  </script>
+</script>
 </body>
 
 </html>

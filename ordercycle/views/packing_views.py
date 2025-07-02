@@ -22,7 +22,8 @@ from ..models import (
 def search_picklist(request):
     """
     Enhanced search for a picklist by ID with quantity-based validation status
-    Now properly filters out Complete orders to prevent caching issues
+    Now allows searching for picklists in PACKING, COMPLETED, or DISPATCH status
+    to handle processed orders that still need AWB verification
     """
     picklist_id = request.GET.get('picklist_id', '')
     if not picklist_id:
@@ -32,8 +33,12 @@ def search_picklist(request):
         }, status=400)
     
     try:
-        # Get picklist with PACKING status
-        picklist = Picklist.objects.get(picklist_id=picklist_id, status='PACKING')
+        # FIXED: Allow multiple statuses - not just PACKING
+        # This allows access to picklists that have progressed beyond packing
+        picklist = Picklist.objects.get(
+            picklist_id=picklist_id, 
+            status__in=['PACKING', 'COMPLETED', 'DISPATCH']
+        )
         
         # Get picklist items with their details
         items = PicklistItem.objects.filter(picklist=picklist).select_related('location_info')
@@ -49,7 +54,7 @@ def search_picklist(request):
                 location = item.location_info.location
                 picker_id = item.location_info.picker.picker_id if item.location_info.picker else None
             
-            # Check order status across platforms to exclude Dispatch AND Complete orders
+            # Check order status across platforms
             order_number = item.order_number
             order_status = None
             awb = None
@@ -62,8 +67,8 @@ def search_picklist(request):
                     awb = order.AWB
                     break
             
-            # UPDATED: Only include orders that are NOT in Dispatch OR Complete status
-            # This fixes the caching issue by excluding completed orders from the response
+            # IMPORTANT: Only exclude 'Dispatch' orders
+            # Keep Complete, Processed, and other statuses visible
             if order_status != 'Dispatch':
                 # Get product_id from master table
                 product = MasterTable.objects.filter(sku=item.sku).first()
@@ -104,6 +109,9 @@ def search_picklist(request):
                 # Get validation progress details
                 validation_progress = sku_validation.get_validation_progress()
                 
+                # Add is_sku_complete flag for frontend logic
+                is_sku_complete = sku_validation.is_fully_validated()
+                
                 items_data.append({
                     'id': item.id,
                     'order_number': item.order_number,
@@ -115,12 +123,18 @@ def search_picklist(request):
                     'awb': awb,
                     'order_status': order_status,
                     'validated': sku_validation.validated,
+                    'is_sku_complete': is_sku_complete,
                     'product_id': sku_validation.product_id,
-                    'validation_progress': validation_progress
+                    'validation_progress': validation_progress,
+                    'validated_count': sku_validation.validated_count,
+                    'required_quantity': sku_validation.quantity
                 })
         
         # Get enhanced validation status
         validation_status = picklist.get_validation_status()
+        
+        # ENHANCED: Check if all remaining orders are dispatched
+        all_orders_dispatched = len(items_data) == 0  # No items means all are dispatched
         
         # Add no-cache headers to prevent browser caching
         response = JsonResponse({
@@ -134,7 +148,8 @@ def search_picklist(request):
                 'created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'items': items_data,
                 'validation_status': validation_status,
-                'last_updated': timezone.now().isoformat()  # Add timestamp for debugging
+                'all_orders_dispatched': all_orders_dispatched,  # Add this flag
+                'last_updated': timezone.now().isoformat()
             }
         })
         
@@ -148,7 +163,7 @@ def search_picklist(request):
     except Picklist.DoesNotExist:
         return JsonResponse({
             'status': 'error',
-            'message': f'Picklist with ID {picklist_id} not found or not in PACKING status'
+            'message': f'Picklist with ID {picklist_id} not found or has been fully processed (all orders dispatched)'
         }, status=404)
     except Exception as e:
         print(f"Error in search_picklist: {str(e)}")
@@ -157,8 +172,6 @@ def search_picklist(request):
             'status': 'error',
             'message': f'Error searching picklist: {str(e)}'
         }, status=500)
-
-
 @csrf_exempt
 @require_http_methods(["POST"])
 def validate_sku(request):

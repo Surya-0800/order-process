@@ -17,8 +17,9 @@ def clean_text(text):
     text = text.replace("—", "-")  # Replace OCR misrecognized dashes
     return text
 
-def extract_text_from_page(page, pdf_path, ocr=False, poppler_path=None):
+def extract_text_from_page(page, pdf_path, ocr=False, poppler_path=r"C:\poppler\poppler-24.08.0\Library\bin"):
     """Extract text using PyMuPDF or OCR if necessary."""
+    poppler_path=r"C:\poppler\poppler-24.08.0\Library\bin"
     text = page.get_text("text")
     if not text.strip() and ocr:
         # Convert page to image and apply OCR
@@ -39,6 +40,7 @@ def extract_text_from_page(page, pdf_path, ocr=False, poppler_path=None):
 
 def extract_text_from_first_page(pdf_path, ocr=False, poppler_path=None):
     """Extract text from the first page of a PDF for platform identification."""
+    poppler_path=r"C:\poppler\poppler-24.08.0\Library\bin"
     try:
         doc = fitz.open(pdf_path)
         if doc.page_count > 0:

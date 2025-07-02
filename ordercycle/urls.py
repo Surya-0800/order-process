@@ -40,10 +40,21 @@ from .views.picklist_views import PicklistViewSet
 from .views import dispatch_views as views
 from .views.base import image_processor_view
 from .views.pdf_upload import check_pdf_path
-
+from .views.order_management import (
+    order_management_view, 
+    search_order_api, 
+    search_picklist_api,
+    process_order_api, 
+    process_picklist_api,
+    mark_order_complete_api,
+    get_order_status_api
+)
 urlpatterns = [
     # Base views
     path('', home, name='home'),
+
+    path('api/orders/mark-complete/',mark_order_complete_api, name='mark_order_complete_api'),
+    path('api/orders/status/', get_order_status_api, name='get_order_status_api'),
 
     path('admin-dashboard/', admin_dashboard_view, name='admin_dashboard'),
 
@@ -113,6 +124,11 @@ urlpatterns = [
     path('api/picklists/dispatch/', views.get_dispatch_picklists, name='get_dispatch_picklists'),
     path('api/picklists/<str:picklist_id>/dispatch-orders/', views.get_dispatch_orders, name='get_dispatch_orders'),
     path('api/picklists/<str:picklist_id>/mark-dispatched/', views.mark_orders_as_dispatched, name='mark_orders_as_dispatched'),
+
+    path('api/dispatch/analytics/', views.get_dispatch_analytics_by_date, name='dispatch_analytics_by_date'),
+    path('api/dispatch/statistics/', views.get_date_range_statistics, name='date_range_statistics'),
+
+    path('api/picklists/<str:picklist_id>/download-csv-and-cleanup/', views.download_dispatch_csv_and_cleanup, name='download_csv_cleanup'),
     
     # Include API routes - make sure this comes after individual API routes
     path('api/', include('ordercycle.api.urls')),
@@ -124,10 +140,21 @@ urlpatterns = [
     path('api/orders/change-to-dispatch/', views.change_to_dispatch, name='change-to-dispatch'),
     path('api/orders/bulk-change-to-dispatch/', views.bulk_change_to_dispatch, name='bulk-change-to-dispatch'),
     path('api/picklists/<str:picklist_id>/check-fully-dispatched/', views.check_picklist_fully_dispatched, name='check_picklist_fully_dispatched'),
-path('api/picklists/<str:picklist_id>/download-csv-and-cleanup/', views.download_dispatch_csv_and_cleanup, name='download_dispatch_csv_and_cleanup'),
+    path('api/picklists/<str:picklist_id>/download-csv-and-cleanup/', views.download_dispatch_csv_and_cleanup, name='download_dispatch_csv_and_cleanup'),
 
     path('api/check-pdf-path/', check_pdf_path, name='check_pdf_path'),
     path('api/orders/<str:order_id>/download/', download_pdf, name='order_pdf_download'),
+
+    path('order-management/', order_management_view, name='order_management'),
+    
+    # Search APIs
+    path('api/orders/search/', search_order_api, name='search_order_api'),
+    path('api/picklists/<str:picklist_id>/', search_picklist_api, name='search_picklist_api'),
+    
+    # Processing APIs  
+    path('api/orders/process/', process_order_api, name='process_order_api'),
+    path('api/picklists/process/', process_picklist_api, name='process_picklist_api'),
+
 
 ]
 
