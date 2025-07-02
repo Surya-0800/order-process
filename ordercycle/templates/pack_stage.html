@@ -4155,6 +4155,7 @@ async function printPageWithPrintService(pdfUrl, printerName, pageRange, pageTyp
             if (pageType === 'Label') {
                 // Flipkart labels need specific scaling
                 printRequest.settings.scaling = "fit_to_paper";
+                printRequest.settings.force_orientation = true;
             } else {
                 // Flipkart invoices
                 printRequest.settings.scaling = "fit_to_paper";
