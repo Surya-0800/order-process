@@ -103,6 +103,7 @@ def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio=0.46
     saved_orders = []
 
     for page_num, page in enumerate(doc):
+        
         if result_dict := extract_text_with_fitz(input_pdf, page_num):
             if not result_dict.get("Order No.", None):
               result_dict = extract_text_with_camelot(input_pdf, page_num+1)
@@ -115,9 +116,13 @@ def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio=0.46
             top_height = rect.height * top_ratio  # Calculate top section height
             bottom_height = rect.height +1 - top_height  # Remaining height for the bottom section
 
-            # --- Create Top Part (Custom Height) ---
-            top_rect = fitz.Rect(0, 0, rect.width, top_height-3)
-            top_page = new_doc.new_page(width=rect.width, height=top_height)
+            if page_num == 0:
+              side_margin = 175
+              top_rect = fitz.Rect(side_margin, 0, rect.width - side_margin, top_height - 3)
+              
+              # Create page with reduced width to eliminate margins
+              cropped_width = rect.width - (2 * side_margin)  # New width without margins
+              top_page = new_doc.new_page(width=cropped_width, height=top_height)
             top_page.show_pdf_page(top_page.rect, doc, page_num, clip=top_rect)
 
             # --- Create Bottom Part (Custom Height) ---
