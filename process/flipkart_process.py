@@ -123,7 +123,7 @@ def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio=0.46
               # Create page with reduced width to eliminate margins
               cropped_width = rect.width - (2 * side_margin)  # New width without margins
               top_page = new_doc.new_page(width=cropped_width, height=top_height)
-            top_page.show_pdf_page(top_page.rect, doc, page_num, clip=top_rect)
+              top_page.show_pdf_page(top_page.rect, doc, page_num, clip=top_rect)
 
             # --- Create Bottom Part (Custom Height) ---
             bottom_rect = fitz.Rect(0, top_height, rect.width, rect.height)
