@@ -567,6 +567,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
         }
 
         .orders-header h2 {
@@ -622,8 +624,8 @@
         .filter-btn {
             padding: 14px 28px;
             border: 2px solid transparent;
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            color: #495057;
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            color: white;
             border-radius: 25px;
             cursor: pointer;
             font-weight: 600;
@@ -633,7 +635,7 @@
             align-items: center;
             justify-content: center;
             gap: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
             position: relative;
             overflow: hidden;
         }
@@ -654,18 +656,18 @@
         }
 
         .filter-btn.active {
-            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-            color: white;
-            box-shadow: 0 6px 20px rgba(23, 162, 184, 0.4);
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            color: #495057;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
             transform: translateY(-2px);
-            border-color: #0c7489;
+            border-color: #dee2e6;
         }
 
         .filter-btn:hover:not(.active) {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-            color: #17a2b8;
+            box-shadow: 0 8px 25px rgba(23, 162, 184, 0.4);
+            color: white;
         }
 
         .count-badge {
@@ -682,7 +684,7 @@
         }
 
         .filter-btn.active .count-badge {
-            background: rgba(255, 255, 255, 0.2);
+            background: #17a2b8;
             color: white;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
         }
@@ -2203,10 +2205,36 @@
 .picklist-info-bar {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    padding: 16px 24px;
+    padding: 18px 28px;
     border-radius: 12px;
     margin-bottom: 20px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.picklist-info-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 25px;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.info-item strong {
+    font-weight: 700;
+    opacity: 1;
+    letter-spacing: 0.5px;
+    color: rgba(255, 255, 255, 0.95);
 }
 
 .picklist-info-content {
@@ -2267,7 +2295,7 @@
 
 .status-badge.status-progress {
     background: rgba(0, 123, 255, 0.2);
-    color: #007bff;
+    color:rgb(255, 255, 255);
     border: 1px solid rgba(0, 123, 255, 0.3);
     animation: pulse 2s infinite;
 }
@@ -2402,6 +2430,28 @@
     margin: 0 !important;
 }
 
+.service-group .btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 15px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+    background: rgba(0, 81, 255, 0.9);
+    color:rgb(255, 255, 255);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    margin-left: 8px;
+}
+
+.service-group .btn:hover {
+    background: rgb(58, 141, 25);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .picklist-info-content {
@@ -2436,14 +2486,26 @@
 <!-- Replace the entire header section with this -->
 <div class="header-section">
     <div class="header-top-row">
-        <h1>Packing Stage</h1>
+    <h1>Packing Stage</h1>
+    
+    <!-- Combined Printer Selection and Print Service Status -->
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <!-- Print Service Status -->
+        <!-- Print Service Status -->
+        <div class="service-group">
+            <span class="service-icon">🖨️</span>
+            <span class="service-label">Print Service:</span>
+            <span id="print-service-status" class="status status-connecting">Checking...</span>
+            <button id="connect-print-service" class="btn">Connect</button>
+        </div>
         
-        <!-- Move Printer Selection to top right -->
-        <div class="printer-selection-trigger">
-            <button id="printer-settings-btn" class="printer-settings-btn" onclick="togglePrinterSelection()">
-                <span class="printer-icon">🖨️</span>
-                <span class="printer-text">Select Printers</span>
-            </button>
+            <!-- Printer Selection Button -->
+            <div class="printer-selection-trigger">
+                <button id="printer-settings-btn" class="printer-settings-btn" onclick="togglePrinterSelection()">
+                    <span class="printer-icon">🖨️</span>
+                    <span class="printer-text">Select Printers</span>
+                </button>
+            </div>
         </div>
     </div>
     
@@ -2475,24 +2537,6 @@
         </div>
     </div>
 
-    <!-- Print Services Status Bar -->
-    <div class="print-services-bar">
-        <div class="services-container">
-            <div class="service-group">
-                <span class="service-icon">🖨️</span>
-                <span class="service-label">Print Service:</span>
-                <span id="print-service-status" class="status status-connecting">Checking...</span>
-                <button id="connect-print-service" class="btn" style="display: none;">Connect</button>
-            </div>
-            
-            {% comment %} <div class="service-group">
-                <span class="service-icon">📄</span>
-                <span class="service-label">QZ Tray:</span>
-                <span id="qz-status" class="status status-connecting">Loading...</span>
-                <button id="connect-qz" class="btn" style="display: none;">Connect</button>
-            </div> {% endcomment %}
-        </div>
-    </div>
 </div>
 
 <!-- Printer Selection Popup (add before closing body tag) -->
@@ -2685,24 +2729,25 @@
         <div id="orders-section" class="orders-section" style="display: none;">
             <div class="orders-header">
                 <h2>📦 Picklist Orders</h2>
+                
+                <!-- Filter Buttons moved to header -->
+                <div class="orders-filter-buttons" style="margin: 0; padding: 0; background: transparent; border: none;">
+                    <button class="filter-btn active" id="unprocessed-filter-btn" data-filter="unprocessed">
+                        <span>⏳ Unprocessed Orders</span>
+                        <span class="count-badge" id="unprocessed-count-badge">0</span>
+                    </button>
+                    <button class="filter-btn" id="processed-filter-btn" data-filter="processed">
+                        <span>✅ Processed Orders</span>
+                        <span class="count-badge" id="processed-count-badge">0</span>
+                    </button>
+                </div>
+                
                 <div class="orders-summary" id="orders-summary">
                     <span class="summary-item">
                         <span class="summary-label">Total:</span>
                         <span class="summary-value" id="total-orders-count">0</span>
                     </span>
                 </div>
-            </div>
-
-            <!-- Filter Buttons -->
-            <div class="orders-filter-buttons">
-                <button class="filter-btn active" id="unprocessed-filter-btn" data-filter="unprocessed">
-                    <span>⏳ Unprocessed Orders</span>
-                    <span class="count-badge" id="unprocessed-count-badge">0</span>
-                </button>
-                <button class="filter-btn" id="processed-filter-btn" data-filter="processed">
-                    <span>✅ Processed Orders</span>
-                    <span class="count-badge" id="processed-count-badge">0</span>
-                </button>
             </div>
 
             <div class="orders-container">
@@ -4683,7 +4728,6 @@ function showAwbDialog(orderNumber) {
     } else {
         // User cancelled - order stays in Processed status for later verification
         console.log(`AWB verification skipped for order ${orderNumber}. Order will remain in Processed status.`);
-        alert(`Order ${orderNumber} is marked as Processed.\n\nPlease verify the AWB later from the Processed Orders section.`);
     }
 }
 
@@ -4894,9 +4938,7 @@ function skipAwbValidation(orderNumber) {
         }
         return response.json();
     })
-    .then(data => {
-        alert(`📋 Order ${orderNumber} marked as Processed.\n\nAWB validation can be done later from the Processed Orders section.`);
-        
+    .then(data => {        
         // Refresh from database
         refreshPicklistFromDatabase();
     })
@@ -6902,7 +6944,6 @@ function getAllUnvalidatedProductsInOrder(orderNumber) {
 function showMessage(message, type) {
     // You can implement this or use your existing message function
     console.log(`${type.toUpperCase()}: ${message}`);
-    alert(message); // Simple alert for now
 }
 
 function handleProductSearchResult(data) {

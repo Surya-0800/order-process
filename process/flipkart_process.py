@@ -117,7 +117,7 @@ def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio=0.46
             bottom_height = rect.height +1 - top_height  # Remaining height for the bottom section
 
             side_margin = 180
-            top_margin = 20  
+            top_margin = 25  
 
             top_rect = fitz.Rect(side_margin, top_margin, rect.width - side_margin, top_height - 3)
 
@@ -166,7 +166,7 @@ def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio=0.46
             new_doc.insert_page(-1) 
             output_pdf_path_temp = os.path.join(output_folder, f"Order_{orderid_name}_temp.pdf")
             new_doc.save(output_pdf_path_temp)
-            # os.remove(output_pdf_path)
+            os.remove(output_pdf_path)
             os.rename(output_pdf_path_temp, output_pdf_path)
         new_doc.close()
         

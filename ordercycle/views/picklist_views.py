@@ -256,30 +256,33 @@ class PicklistViewSet(ViewSet):
             
             order_model = model_mapping[platform]
             
-            # Get the order
-            try:
-                order = order_model.objects.get(order_number=order_number)
-            except order_model.DoesNotExist:
+            # Get all matching orders (handles duplicates)
+            # Get all matching orders
+            matching_orders = order_model.objects.filter(order_number=order_number)
+
+            if not matching_orders.exists():
                 return Response({
                     'status': 'error',
                     'message': f'Order {order_number} not found'
                 }, status=404)
-            
-            # Validate AWB against existing AWB in database
-            if hasattr(order, 'awb') and order.awb:
-                if order.awb.strip() != awb.strip():
+
+            # Validate AWB against existing AWB in database (use correct field name)
+            first_order = matching_orders.first()
+            if hasattr(first_order, 'AWB') and first_order.AWB:  # Changed from 'awb' to 'AWB'
+                if first_order.AWB.strip() != awb.strip():
                     return Response({
                         'status': 'error',
-                        'message': f'AWB mismatch. Expected: {order.awb}, Provided: {awb}',
+                        'message': f'AWB mismatch. Expected: {first_order.AWB}, Provided: {awb}',
                         'awb_match': False
                     }, status=400)
-            
-            # AWB validation passed - mark as complete
-            order.status = 'Complete'
-            order.is_validated = True
-            order.awb = awb.strip()
-            order.validated_at = timezone.now()
-            order.save()
+
+            # AWB validation passed - mark ALL matching orders as complete
+            updated_count = matching_orders.update(
+                status='Complete',
+                is_validated=True,
+                AWB=awb.strip(),  # Changed from 'awb' to 'AWB'
+                validated_at=timezone.now()
+            )
             
             # Check if all orders in picklist are complete and update picklist status
             self._update_picklist_status(picklist)
@@ -318,18 +321,22 @@ class PicklistViewSet(ViewSet):
         
         order_model = model_mapping[platform]
         
-        # Get all order numbers in this picklist
+        # Get all unique order numbers in this picklist
         picklist_order_numbers = list(
             picklist.items.values_list('order_number', flat=True).distinct()
         )
         
-        # Get order status counts
-        order_statuses = order_model.objects.filter(
-            order_number__in=picklist_order_numbers
-        ).values_list('status', flat=True)
+        # Get status for each unique order number (taking the first occurrence for duplicates)
+        order_status_map = {}
+        for order_number in picklist_order_numbers:
+            # Get the first order record for this order number
+            order = order_model.objects.filter(order_number=order_number).first()
+            if order:
+                order_status_map[order_number] = order.status
         
+        # Count statuses by unique order numbers
         status_counts = {}
-        for status in order_statuses:
+        for order_number, status in order_status_map.items():
             status_counts[status] = status_counts.get(status, 0) + 1
         
         total_orders = len(picklist_order_numbers)
@@ -350,15 +357,22 @@ class PicklistViewSet(ViewSet):
         elif (complete_orders + processed_orders) == total_orders:
             # All orders are either complete or processed
             if complete_orders > 0:
-                picklist.status = 'PARTIAL_DISPATCH'
+                if complete_orders == total_orders:
+                    # All are complete
+                    picklist.status = 'DISPATCH'
+                else:
+                    # Mix of complete and processed
+                    picklist.status = 'PARTIAL_DISPATCH'
             else:
-                picklist.status = 'PACKING'  # All processed but none complete
+                # All processed but none complete
+                picklist.status = 'PACKING'
         else:
-            # Still have pending orders
+            # Still have pending orders (Pick status or other)
             picklist.status = 'PACKING'
         
         picklist.save()
-    
+
+
     @action(detail=True, methods=['post'])
     def skip_awb_validation(self, request, pk=None):
         """

@@ -153,13 +153,15 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
                 qty = int(item["Qty"])
                 if qty > 1:
                     order_type = "Multiple"
-                FlipkarOrders.objects.create(
+                FlipkarOrders.objects.update_or_create(
                     order_number=order_number,
-                    order_type=order_type,
                     sku=item['sku'].replace("\n", ""),
-                    quantity=qty,
-                    pdf_url=pdf_url,
-                    AWB = item["AWB"]
+                    defaults={
+                        'order_type': order_type,
+                        'quantity': qty,
+                        'pdf_url': pdf_url,
+                        'AWB': item["AWB"]
+                    }
                 )
             results['flipkart_processed'] += 1
     
@@ -193,14 +195,18 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
                   if qty > 1:
                       order_type = "Multiple"
                   if not FirstcryOrders.objects.filter(order_number=order_number, sku=item['sku'].replace("\n", "")).exists():
-                    FirstcryOrders.objects.create(
+                    FirstcryOrders.objects.update_or_create(
+                        # These are the fields to match on (unique identifier)
                         order_number=order_number,
-                        order_type=order_type,
                         sku=item['sku'].replace("\n", ""),
-                        quantity=qty,
-                        pdf_url=pdf_url,
-                        AWB = item["shipment_id"]
-
+                        
+                        # These are the fields to update if record exists, or create if it doesn't
+                        defaults={
+                            'order_type': order_type,
+                            'quantity': qty,
+                            'pdf_url': pdf_url,
+                            'AWB': item["shipment_id"]  # Note: FirstCry uses shipment_id for AWB
+                        }
                     )
                     results['firstcry_processed'] += 1
                     print(results['firstcry_processed'])
@@ -234,13 +240,17 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
                 qty = int(item["Qty"])
                 if qty > 1:
                     order_type = "Multiple"
-                AmazonOrders.objects.create(
+                AmazonOrders.objects.update_or_create(
                     order_number=order_number,
-                    order_type=order_type,
                     sku=item['sku'].replace("\n", ""),
-                    quantity=qty,
-                    # pdf_url=pdf_url,
-                    AWB=item["AWB"]
+                    
+                    # These are the fields to update if record exists, or create if it doesn't
+                    defaults={
+                        'order_type': order_type,
+                        'quantity': qty,
+                        # 'pdf_url': pdf_url,  # Commented out as in original
+                        'AWB': item["AWB"]
+                    }
                 )
             results['amazon_processed'] += 1
     
@@ -272,14 +282,17 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
                 qty = int(item["Qty"])
                 if qty > 1:
                     order_type = "Multiple"
-                MeeshoOrders.objects.create(
-                    order_number=order_number,
-                    order_type=order_type,
-                    sku=item['sku'].replace("\n", ""),
-                    quantity=qty,
-                    pdf_url=pdf_url,
-                    AWB=item["AWB"]
-                )
+                MeeshoOrders.objects.update_or_create(
+                order_number=order_number,
+                sku=item['sku'].replace("\n", ""),
+            
+                defaults={
+                    'order_type': order_type,
+                    'quantity': qty,
+                    'pdf_url': pdf_url,
+                    'AWB': item["AWB"]
+                }
+            )
             results['meesho_processed'] += 1
 
 
