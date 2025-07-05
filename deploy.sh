@@ -16,12 +16,29 @@ if ! command -v docker compose &> /dev/null; then
     exit 1
 fi
 
+# Configure system for file uploads (minimal changes)
+echo "Configuring system for file uploads..."
+if [ "$EUID" -eq 0 ]; then
+    echo "* soft nofile 65536" >> /etc/security/limits.conf
+    echo "* hard nofile 65536" >> /etc/security/limits.conf
+    echo "* soft fsize unlimited" >> /etc/security/limits.conf
+    echo "* hard fsize unlimited" >> /etc/security/limits.conf
+    chmod 1777 /tmp
+    systemctl restart docker || true
+    sleep 3
+fi
+
 # Create necessary directories if they don't exist
 echo "Creating necessary directories..."
 mkdir -p logs
 mkdir -p media
 mkdir -p staticfiles
 mkdir -p nginx
+mkdir -p uploads
+mkdir -p tmp/django_uploads
+
+# Set permissions for upload directories
+chmod 777 media uploads tmp/django_uploads 2>/dev/null || true
 
 # Check if .env file exists
 if [ ! -f .env ]; then
@@ -58,7 +75,7 @@ fi
 # Build and start the containers
 echo "Building and starting containers..."
 docker compose build
-docker compose up -d
+sudo docker compose up -d
 
 # Wait for the database to be ready
 echo "Waiting for database to be ready..."
