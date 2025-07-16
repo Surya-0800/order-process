@@ -284,7 +284,7 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
                     order_type = "Multiple"
                 MeeshoOrders.objects.update_or_create(
                 order_number=order_number,
-                sku=item['sku'].replace("\n", ""),
+                sku=str(item['sku']).replace("\n", ""),
             
                 defaults={
                     'order_type': order_type,
