@@ -117,7 +117,10 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
                 
         finally:
             # Clean up temporary files
-            shutil.rmtree(temp_dir)
+            try:
+                shutil.rmtree(temp_dir)
+            except Exception:
+                pass
         
         return Response({
             'status': 'success',
@@ -284,7 +287,7 @@ class PDFUploadViewSet(viewsets.ModelViewSet):
                     order_type = "Multiple"
                 MeeshoOrders.objects.update_or_create(
                 order_number=order_number,
-                sku=item['sku'].replace("\n", ""),
+                sku=str(item['sku']).replace("\n", ""),
             
                 defaults={
                     'order_type': order_type,
