@@ -4,11 +4,12 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q
+from django.conf import settings
 import json
 from django.utils import timezone
 from ..models import (
     AmazonOrders, FlipkarOrders, FirstcryOrders, MeeshoOrders,
-    Picklist, PicklistItem, MasterTable,PicklistDispatchStatus
+    Picklist, PicklistItem, MasterTable, PicklistDispatchStatus
 )
 
 
@@ -18,7 +19,6 @@ def order_management_view(request):
     """
     return render(request, 'order_management.html')
 
-# ADD THIS TO views/order_management.py
 
 @require_http_methods(["GET"])
 def get_order_status_api(request):
@@ -75,6 +75,7 @@ def get_order_status_api(request):
     }
     
     return JsonResponse(response_data)
+
 
 @require_http_methods(["GET"])
 def search_order_api(request):
@@ -133,36 +134,280 @@ def search_order_api(request):
     return JsonResponse(response_data)
 
 
+def find_order_across_platforms(order_number):
+    """
+    Helper function to find order across all platforms
+    Returns tuple of (order_data, platform)
+    """
+    print(f"DEBUG: Searching for order {order_number} across all platforms")
+    
+    # Try Amazon orders
+    try:
+        amazon_order = AmazonOrders.objects.filter(order_number=order_number).first()
+        if amazon_order:
+            print(f"DEBUG: Found order {order_number} in Amazon")
+            return amazon_order, 'Amazon'
+    except Exception as e:
+        print(f"DEBUG: Error searching Amazon orders: {e}")
+    
+    # Try Flipkart orders
+    try:
+        flipkart_order = FlipkarOrders.objects.filter(order_number=order_number).first()
+        if flipkart_order:
+            print(f"DEBUG: Found order {order_number} in Flipkart")
+            return flipkart_order, 'Flipkart'
+    except Exception as e:
+        print(f"DEBUG: Error searching Flipkart orders: {e}")
+    
+    # Try FirstCry orders
+    try:
+        firstcry_order = FirstcryOrders.objects.filter(order_number=order_number).first()
+        if firstcry_order:
+            print(f"DEBUG: Found order {order_number} in FirstCry")
+            return firstcry_order, 'FirstCry'
+    except Exception as e:
+        print(f"DEBUG: Error searching FirstCry orders: {e}")
+    
+    # Try Meesho orders
+    try:
+        meesho_order = MeeshoOrders.objects.filter(order_number=order_number).first()
+        if meesho_order:
+            print(f"DEBUG: Found order {order_number} in Meesho")
+            return meesho_order, 'Meesho'
+    except Exception as e:
+        print(f"DEBUG: Error searching Meesho orders: {e}")
+    
+    print(f"DEBUG: Order {order_number} not found in any platform")
+    return None, None
+
+
 @require_http_methods(["GET"])
 def search_picklist_api(request, picklist_id):
     """
-    API endpoint to search for picklist by ID
+    API endpoint to search for picklist by ID with detailed orders
     """
     try:
         picklist = Picklist.objects.get(picklist_id=picklist_id)
+        print(f"DEBUG: Found picklist: {picklist}")
     except Picklist.DoesNotExist:
+        print(f"DEBUG: Picklist {picklist_id} not found")
         return JsonResponse({'error': 'Picklist not found'}, status=404)
     
-    # Get all picklist items
-    picklist_items = PicklistItem.objects.filter(picklist=picklist)
+    # Get all picklist items - try different possible field names
+    try:
+        picklist_items = PicklistItem.objects.filter(picklist=picklist)
+        print(f"DEBUG: Found {picklist_items.count()} picklist items using 'picklist' field")
+    except:
+        try:
+            picklist_items = PicklistItem.objects.filter(picklist_id=picklist.id)
+            print(f"DEBUG: Found {picklist_items.count()} picklist items using 'picklist_id' field")
+        except:
+            try:
+                picklist_items = PicklistItem.objects.filter(picklist__picklist_id=picklist_id)
+                print(f"DEBUG: Found {picklist_items.count()} picklist items using 'picklist__picklist_id' field")
+            except Exception as e:
+                print(f"DEBUG: Error finding picklist items: {e}")
+                picklist_items = PicklistItem.objects.none()
     
-    # Count unique orders and total items
-    unique_orders = list(set(item.order_number for item in picklist_items))
+    if not picklist_items.exists():
+        print(f"DEBUG: No picklist items found for picklist {picklist_id}")
+        # Return empty orders but still valid response
+        response_data = {
+            'picklist_id': picklist.picklist_id,
+            'picklist_type': getattr(picklist, 'picklist_type', 'SINGLE'),
+            'status': getattr(picklist, 'status', 'CREATED'),
+            'platform': getattr(picklist, 'platform', 'UNKNOWN'),
+            'total_orders': 0,
+            'total_items': 0,
+            'created_at': picklist.created_at.isoformat() if hasattr(picklist, 'created_at') else '',
+            'orders': []  # Empty orders list
+        }
+        print(f"DEBUG: Returning empty response: {response_data}")
+        return JsonResponse(response_data)
+    
+    # Extract order numbers - try different possible field names for order_number
+    unique_orders = []
+    for item in picklist_items:
+        order_num = None
+        # Try different possible field names
+        for field_name in ['order_number', 'order_id', 'order', 'order_ref']:
+            if hasattr(item, field_name):
+                order_num = getattr(item, field_name)
+                if order_num:
+                    break
+        
+        if order_num and order_num not in unique_orders:
+            unique_orders.append(order_num)
+    
+    print(f"DEBUG: Found unique orders: {unique_orders}")
+    
     total_orders = len(unique_orders)
     total_items = picklist_items.count()
     
-    # Return only essential picklist data
+    # Get detailed order information
+    orders_detail = []
+    processed_orders = set()
+    
+    for order_number in unique_orders:
+        if order_number not in processed_orders:
+            print(f"DEBUG: Processing order {order_number}")
+            order_data, platform = find_order_across_platforms(order_number)
+            if order_data:
+                print(f"DEBUG: Found order {order_number} on platform {platform}")
+                
+                # Try to get fields safely with fallbacks
+                sku = getattr(order_data, 'sku', getattr(order_data, 'SKU', 'N/A'))
+                quantity = getattr(order_data, 'quantity', getattr(order_data, 'qty', 1))
+                status = getattr(order_data, 'status', 'Unknown')
+                awb = getattr(order_data, 'AWB', getattr(order_data, 'awb', getattr(order_data, 'tracking_number', 'Not assigned')))
+                
+                orders_detail.append({
+                    'order_number': order_number,
+                    'sku': str(sku),
+                    'quantity': str(quantity),
+                    'status': str(status),
+                    'platform': platform,
+                    'AWB': str(awb) if awb else 'Not assigned'
+                })
+            else:
+                print(f"DEBUG: Order {order_number} not found in any platform")
+                # If order not found in any platform, still show it
+                orders_detail.append({
+                    'order_number': str(order_number),
+                    'sku': 'N/A',
+                    'quantity': 'N/A',
+                    'status': 'Unknown',
+                    'platform': 'Unknown',
+                    'AWB': 'N/A'
+                })
+            processed_orders.add(order_number)
+    
+    print(f"DEBUG: Final orders_detail has {len(orders_detail)} orders")
+    
+    # Return detailed picklist data with orders
     response_data = {
         'picklist_id': picklist.picklist_id,
-        'picklist_type': picklist.picklist_type,
-        'status': picklist.status,
-        'platform': picklist.platform,
+        'picklist_type': getattr(picklist, 'picklist_type', 'SINGLE'),
+        'status': getattr(picklist, 'status', 'CREATED'),
+        'platform': getattr(picklist, 'platform', 'UNKNOWN'),
         'total_orders': total_orders,
         'total_items': total_items,
-        'created_at': picklist.created_at.isoformat(),
+        'created_at': picklist.created_at.isoformat() if hasattr(picklist, 'created_at') else '',
+        'orders': orders_detail  # Detailed orders list
     }
     
+    print(f"DEBUG: Final response data: {response_data}")
     return JsonResponse(response_data)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def validate_admin_password_api(request):
+    """
+    API endpoint to validate administrator password
+    """
+    try:
+        data = json.loads(request.body)
+        password = data.get('password', '').strip()
+        
+        if not password:
+            return JsonResponse({'valid': False, 'message': 'Password is required'}, status=400)
+        
+        # Get admin password from settings (default: 'admin123')
+        admin_password = getattr(settings, 'ADMIN_PROCESS_PASSWORD', 'admin123')
+        
+        is_valid = password == admin_password
+        
+        return JsonResponse({
+            'valid': is_valid,
+            'message': 'Password correct' if is_valid else 'Invalid password'
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'valid': False, 'message': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'valid': False, 'message': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def process_selected_orders_api(request):
+    """
+    API endpoint to process selected orders from a picklist
+    """
+    try:
+        data = json.loads(request.body)
+        selected_orders = data.get('selected_orders', [])
+        picklist_id = data.get('picklist_id', '').strip()
+        
+        if not selected_orders:
+            return JsonResponse({'error': 'No orders selected'}, status=400)
+        
+        if not picklist_id:
+            return JsonResponse({'error': 'Picklist ID is required'}, status=400)
+        
+        # Verify picklist exists
+        try:
+            picklist = Picklist.objects.get(picklist_id=picklist_id)
+        except Picklist.DoesNotExist:
+            return JsonResponse({'error': 'Picklist not found'}, status=404)
+        
+        processing_results = []
+        successful_orders = []
+        failed_orders = []
+        
+        # Process each selected order
+        for order_number in selected_orders:
+            try:
+                # Find the order across all platforms
+                order_data, platform = find_order_across_platforms(order_number)
+                
+                if order_data:
+                    # Here you'll implement the actual processing logic for each order
+                    processing_results.append({
+                        'order_number': order_number,
+                        'platform': platform,
+                        'status': 'processed',
+                        'message': f'Order {order_number} processed successfully'
+                    })
+                    successful_orders.append(order_number)
+                else:
+                    processing_results.append({
+                        'order_number': order_number,
+                        'status': 'failed',
+                        'message': f'Order {order_number} not found in any platform'
+                    })
+                    failed_orders.append(order_number)
+                    
+            except Exception as e:
+                processing_results.append({
+                    'order_number': order_number,
+                    'status': 'failed',
+                    'message': f'Error processing order {order_number}: {str(e)}'
+                })
+                failed_orders.append(order_number)
+        
+        response_data = {
+            'success': len(failed_orders) == 0,
+            'message': f'Processed {len(successful_orders)} out of {len(selected_orders)} selected orders',
+            'picklist_id': picklist_id,
+            'selected_orders': len(selected_orders),
+            'successful_orders': len(successful_orders),
+            'failed_orders': len(failed_orders),
+            'processing_results': processing_results,
+            'summary': {
+                'picklist_status': picklist.status,
+                'picklist_type': picklist.picklist_type,
+                'platform': picklist.platform,
+            }
+        }
+        
+        return JsonResponse(response_data)
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 @csrf_exempt
@@ -179,23 +424,7 @@ def process_order_api(request):
             return JsonResponse({'error': 'Order number is required'}, status=400)
         
         # Find the order across all platforms
-        order_data = None
-        platform = None
-        order_model = None
-        
-        # Search across all order models
-        for model, platform_name in [
-            (AmazonOrders, 'Amazon'),
-            (FlipkarOrders, 'Flipkart'),
-            (FirstcryOrders, 'FirstCry'),
-            (MeeshoOrders, 'Meesho')
-        ]:
-            order = model.objects.filter(order_number=order_number).first()
-            if order:
-                order_data = order
-                platform = platform_name
-                order_model = model
-                break
+        order_data, platform = find_order_across_platforms(order_number)
         
         if not order_data:
             return JsonResponse({'error': 'Order not found'}, status=404)
@@ -244,6 +473,9 @@ def process_picklist_api(request):
         
         # Get all orders in the picklist
         picklist_items = PicklistItem.objects.filter(picklist=picklist)
+        print(picklist_items)
+
+        print(")+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
         unique_orders = list(set(item.order_number for item in picklist_items))
         
         processing_results = []
@@ -254,20 +486,7 @@ def process_picklist_api(request):
         for order_number in unique_orders:
             try:
                 # Find the order across all platforms
-                order_data = None
-                platform = None
-                
-                for model, platform_name in [
-                    (AmazonOrders, 'Amazon'),
-                    (FlipkarOrders, 'Flipkart'),
-                    (FirstcryOrders, 'FirstCry'),
-                    (MeeshoOrders, 'Meesho')
-                ]:
-                    order = model.objects.filter(order_number=order_number).first()
-                    if order:
-                        order_data = order
-                        platform = platform_name
-                        break
+                order_data, platform = find_order_across_platforms(order_number)
                 
                 if order_data:
                     # Here you'll implement the actual processing logic for each order
@@ -316,8 +535,7 @@ def process_picklist_api(request):
         return JsonResponse({'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-    
-# ADD THIS TO views/order_management.py
+
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -334,36 +552,32 @@ def mark_order_complete_api(request):
             return JsonResponse({'error': 'Order number is required'}, status=400)
         
         # Find the order across all platforms
-        order_data = None
-        platform = None
-        order_model = None
-        
-        # Search across all order models
-        for model, platform_name in [
-            (AmazonOrders, 'Amazon'),
-            (FlipkarOrders, 'Flipkart'), 
-            (FirstcryOrders, 'FirstCry'),
-            (MeeshoOrders, 'Meesho')
-        ]:
-            order = model.objects.filter(order_number=order_number).first()
-            if order:
-                order_data = order
-                platform = platform_name
-                order_model = model
-                break
+        order_data, platform = find_order_across_platforms(order_number)
         
         if not order_data:
             return JsonResponse({'error': 'Order not found'}, status=404)
         
-        # Update order status to Complete
-        order_model.objects.filter(order_number=order_number).update(
-            status='Complete',
-            is_printed=True,
-            printed_at=timezone.now(),
-            is_validated=True,
-            validated_at=timezone.now(),
-            processed_at=timezone.now()
-        )
+        # Get the correct model for updating
+        order_model = None
+        if platform == 'Amazon':
+            order_model = AmazonOrders
+        elif platform == 'Flipkart':
+            order_model = FlipkarOrders
+        elif platform == 'FirstCry':
+            order_model = FirstcryOrders
+        elif platform == 'Meesho':
+            order_model = MeeshoOrders
+        
+        if order_model:
+            # Update order status to Complete
+            order_model.objects.filter(order_number=order_number).update(
+                status='Complete',
+                is_printed=True,
+                printed_at=timezone.now(),
+                is_validated=True,
+                validated_at=timezone.now(),
+                processed_at=timezone.now()
+            )
         
         # Delete OrderPDF record if it exists (cleanup)
         try:

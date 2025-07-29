@@ -47,7 +47,9 @@ from .views.order_management import (
     process_order_api, 
     process_picklist_api,
     mark_order_complete_api,
-    get_order_status_api
+    get_order_status_api,
+    validate_admin_password_api,
+    process_selected_orders_api
 )
 urlpatterns = [
     # Base views
@@ -137,6 +139,11 @@ urlpatterns = [
     path('api/search-dispatch-awb/', views.search_by_awb, name='search_by_awb'),
     path('api/orders/complete-by-awb/', views.complete_orders_by_awb, name='complete_orders_by_awb'),
 
+    path('api/validate-password/', validate_admin_password_api, name='validate_admin_password_api'),
+
+    # Process selected orders API  
+    path('api/picklists/process-selected/', process_selected_orders_api, name='process_selected_orders_api'),
+
     path('api/orders/change-to-dispatch/', views.change_to_dispatch, name='change-to-dispatch'),
     path('api/orders/bulk-change-to-dispatch/', views.bulk_change_to_dispatch, name='bulk-change-to-dispatch'),
     path('api/picklists/<str:picklist_id>/check-fully-dispatched/', views.check_picklist_fully_dispatched, name='check_picklist_fully_dispatched'),
@@ -149,7 +156,7 @@ urlpatterns = [
     
     # Search APIs
     path('api/orders/search/', search_order_api, name='search_order_api'),
-    path('api/picklists/<str:picklist_id>/', search_picklist_api, name='search_picklist_api'),
+    path('api/search_picklists/<str:picklist_id>/', search_picklist_api, name='search_picklist_api'),
     
     # Processing APIs  
     path('api/orders/process/', process_order_api, name='process_order_api'),

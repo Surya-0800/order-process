@@ -281,3 +281,5 @@ else:
     # Development-specific CORS settings
     # You can be more permissive in development
     pass
+
+ADMIN_PROCESS_PASSWORD = 'admin123'

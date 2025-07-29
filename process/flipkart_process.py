@@ -116,8 +116,8 @@ def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio=0.46
             top_height = rect.height * top_ratio  # Calculate top section height
             bottom_height = rect.height +1 - top_height  # Remaining height for the bottom section
 
-            side_margin = 180
-            top_margin = 25  
+            side_margin = 190
+            top_margin = 27  
 
             top_rect = fitz.Rect(side_margin, top_margin, rect.width - side_margin, top_height - 3)
 
@@ -159,7 +159,7 @@ def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio=0.46
                 source_type="flipkart"
             )
             saved_orders.append(order_pdf)
-            # os.remove(output_pdf_path)
+            os.remove(output_pdf_path)
         else:
             new_doc = fitz.open(output_pdf_path)
             new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)

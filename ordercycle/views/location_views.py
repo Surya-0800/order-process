@@ -1,5 +1,5 @@
 """
-Views for handling location-based order processing.
+Views for handling location-based order processing with location grouping.
 """
 from django.db.models import Count, Q
 from rest_framework.viewsets import ViewSet
@@ -14,10 +14,16 @@ from ..models import (
 class LocationOrdersViewSet(ViewSet):
     """API for location-based order processing."""
     
+    def _get_location_prefix(self, location):
+        """Extract location prefix (everything before first hyphen)"""
+        if not location or location == "Unknown":
+            return location
+        return location.split('-')[0] if '-' in location else location
+    
     @action(detail=False, methods=['get'])
     def location_counts(self, request):
         """
-        Get order counts by location including unknown locations
+        Get order counts by location prefix including unknown locations
         """
         platform = request.query_params.get('platform', 'AMAZON')
         order_type = request.query_params.get('order_type', 'single')
@@ -57,9 +63,8 @@ class LocationOrdersViewSet(ViewSet):
         # Get unknown SKUs (not in MasterTable)
         unknown_skus = set(all_order_skus) - set(known_skus)
         
-        # Join with MasterTable to get locations
-        # We'll use a subquery for each SKU
-        location_data = {}
+        # Group by location prefix
+        location_prefix_data = {}
         
         # Process known locations
         for order in orders:
@@ -68,26 +73,33 @@ class LocationOrdersViewSet(ViewSet):
             
             if locations.exists():
                 for loc in locations:
-                    if loc.location not in location_data:
-                        location_data[loc.location] = {
+                    # Get location prefix
+                    location_prefix = self._get_location_prefix(loc.location)
+                    
+                    if location_prefix not in location_prefix_data:
+                        location_prefix_data[location_prefix] = {
                             'count': 1,
-                            'order_ids': [order.order_number]
+                            'order_ids': [order.order_number],
+                            'full_locations': [loc.location]
                         }
                     else:
-                        location_data[loc.location]['count'] += 1
-                        if order.order_number not in location_data[loc.location]['order_ids']:
-                            location_data[loc.location]['order_ids'].append(order.order_number)
+                        location_prefix_data[location_prefix]['count'] += 1
+                        if order.order_number not in location_prefix_data[location_prefix]['order_ids']:
+                            location_prefix_data[location_prefix]['order_ids'].append(order.order_number)
+                        if loc.location not in location_prefix_data[location_prefix]['full_locations']:
+                            location_prefix_data[location_prefix]['full_locations'].append(loc.location)
             else:
                 # Add to "Unknown" location
-                if "Unknown" not in location_data:
-                    location_data["Unknown"] = {
+                if "Unknown" not in location_prefix_data:
+                    location_prefix_data["Unknown"] = {
                         'count': 1,
-                        'order_ids': [order.order_number]
+                        'order_ids': [order.order_number],
+                        'full_locations': ["Unknown"]
                     }
                 else:
-                    location_data["Unknown"]['count'] += 1
-                    if order.order_number not in location_data["Unknown"]['order_ids']:
-                        location_data["Unknown"]['order_ids'].append(order.order_number)
+                    location_prefix_data["Unknown"]['count'] += 1
+                    if order.order_number not in location_prefix_data["Unknown"]['order_ids']:
+                        location_prefix_data["Unknown"]['order_ids'].append(order.order_number)
         
         # Format the response
         response_data = {
@@ -95,11 +107,13 @@ class LocationOrdersViewSet(ViewSet):
             'locations': []
         }
         
-        for location, data in location_data.items():
+        for location_prefix, data in location_prefix_data.items():
             response_data['locations'].append({
-                'location': location,
+                'location': location_prefix,
                 'count': data['count'],
-                'order_count': len(data['order_ids'])
+                'order_count': len(data['order_ids']),
+                'full_locations': data['full_locations'],  # Include all specific locations in this prefix
+                'specific_location_count': len(data['full_locations'])  # How many specific locations are grouped here
             })
         
         # Sort by count descending
@@ -114,12 +128,12 @@ class LocationOrdersViewSet(ViewSet):
     @action(detail=False, methods=['get'])
     def orders_by_location(self, request):
         """
-        Get orders for specific locations, including unknown locations
+        Get orders for specific location prefixes, including unknown locations
         """
         platform = request.query_params.get('platform', 'AMAZON')
         order_type = request.query_params.get('order_type', 'single')
         status = request.query_params.get('status', 'Ready to Process')
-        locations = request.query_params.getlist('locations', [])
+        location_prefixes = request.query_params.getlist('locations', [])  # Now expecting prefixes
         include_unknown = request.query_params.get('include_unknown', 'true').lower() == 'true'
         
         # Determine which model to use based on platform
@@ -145,9 +159,18 @@ class LocationOrdersViewSet(ViewSet):
             status=status
         )
         
-        # Find all SKUs in the specified locations
+        # Find all full locations that match the selected prefixes
+        matching_locations = []
+        if location_prefixes:
+            all_locations = MasterTable.objects.values_list('location', flat=True).distinct()
+            for loc in all_locations:
+                location_prefix = self._get_location_prefix(loc)
+                if location_prefix in location_prefixes:
+                    matching_locations.append(loc)
+        
+        # Find all SKUs in the matching locations
         skus_in_locations = MasterTable.objects.filter(
-            location__in=locations
+            location__in=matching_locations
         ).values_list('sku', flat=True).distinct()
         
         # Get all SKUs in orders
@@ -163,9 +186,9 @@ class LocationOrdersViewSet(ViewSet):
         else:
             unknown_skus = set()
         
-        # Filter orders to include those with SKUs in specified locations or unknown locations
-        if locations or include_unknown:
-            # If locations are specified or include_unknown is true
+        # Filter orders to include those with SKUs in specified location prefixes or unknown locations
+        if location_prefixes or include_unknown:
+            # If location prefixes are specified or include_unknown is true
             filtered_orders = orders.filter(
                 Q(sku__in=skus_in_locations) | Q(sku__in=unknown_skus)
             )
@@ -183,15 +206,18 @@ class LocationOrdersViewSet(ViewSet):
             if sku_locations.exists():
                 # SKU has known locations
                 for loc in sku_locations:
+                    location_prefix = self._get_location_prefix(loc.location)
                     location_info.append({
-                        'location': loc.location,
+                        'location': loc.location,  # Full location
+                        'location_prefix': location_prefix,  # Grouped prefix
                         'box_no': loc.box_no,
-                        'selected': loc.location in locations
+                        'selected': location_prefix in location_prefixes
                     })
             else:
                 # SKU has unknown location
                 location_info.append({
                     'location': "Unknown",
+                    'location_prefix': "Unknown",
                     'box_no': "",
                     'selected': include_unknown
                 })
@@ -203,13 +229,13 @@ class LocationOrdersViewSet(ViewSet):
                 'locations': location_info
             })
         
-        # Sort by location (prioritizing selected locations)
+        # Sort by location prefix (prioritizing selected prefixes)
         def location_sort_key(order):
-            # First sort by whether any location is selected
+            # First sort by whether any location prefix is selected
             has_selected = any(loc['selected'] for loc in order['locations'])
-            # Then by the first selected location if any
-            selected_location = next((loc['location'] for loc in order['locations'] if loc['selected']), "ZZZZZ")
-            return (not has_selected, selected_location)
+            # Then by the first selected location prefix if any
+            selected_prefix = next((loc['location_prefix'] for loc in order['locations'] if loc['selected']), "ZZZZZ")
+            return (not has_selected, selected_prefix)
         
         result = sorted(result, key=location_sort_key)
         
@@ -218,23 +244,23 @@ class LocationOrdersViewSet(ViewSet):
     @action(detail=False, methods=['post'])
     def process_location_orders(self, request):
         """
-        Process orders from specific locations with batch and SKU limits
+        Process orders from specific location prefixes with batch and SKU limits
         """
         try:
             # Get data from request
             platform = request.data.get('platform', 'UNKNOWN').upper()
             order_type = request.data.get('order_type', 'SINGLE').upper()
-            locations = request.data.get('locations', [])
+            location_prefixes = request.data.get('locations', [])  # Now expecting prefixes
             include_unknown = request.data.get('include_unknown', True)
             batch_limit = request.data.get('batch_limit', 50)
             sku_limit = request.data.get('sku_limit', 0)
             next_status = request.data.get('next_status', 'Pick')
             
             # Validate inputs
-            if not locations and not include_unknown:
+            if not location_prefixes and not include_unknown:
                 return Response({
                     'status': 'error',
-                    'message': 'No locations specified and unknown locations not included'
+                    'message': 'No location prefixes specified and unknown locations not included'
                 }, status=400)
             
             # Convert limits to integers
@@ -261,12 +287,21 @@ class LocationOrdersViewSet(ViewSet):
                 
             order_model = model_mapping[platform]
             
-            # Get orders for the specified locations
+            # Get orders for the specified location prefixes
             db_order_type = 'Single' if order_type == 'SINGLE' else 'Multiple'
             
-            # Find all SKUs in the specified locations
+            # Find all full locations that match the selected prefixes
+            matching_locations = []
+            if location_prefixes:
+                all_locations = MasterTable.objects.values_list('location', flat=True).distinct()
+                for loc in all_locations:
+                    location_prefix = self._get_location_prefix(loc)
+                    if location_prefix in location_prefixes:
+                        matching_locations.append(loc)
+            
+            # Find all SKUs in the matching locations
             skus_in_locations = MasterTable.objects.filter(
-                location__in=locations
+                location__in=matching_locations
             ).values_list('sku', flat=True).distinct()
             
             # Get all SKUs in orders
@@ -374,7 +409,8 @@ class LocationOrdersViewSet(ViewSet):
                 'total_count': len(orders),
                 'batch_limit': batch_limit,
                 'sku_limit': sku_limit,
-                'locations': locations,
+                'location_prefixes': location_prefixes,  # Updated field name
+                'matching_full_locations': matching_locations,  # Show which full locations were included
                 'include_unknown': include_unknown,
                 'processed_orders': processed_orders,
                 'picklist_ids': created_picklists,

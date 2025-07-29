@@ -67,7 +67,7 @@ def clean_text(text):
 def extract_text_from_page(page,pdf_path, ocr=False):
     """Extract text using PyMuPDF or OCR if necessary."""
     text = page.get_text("text")
-    if not text.strip() and ocr:
+    if not text.strip():
         # Convert page to image and apply OCR
         pix = page.get_pixmap()
         image = convert_from_path(pdf_path, first_page=page.number+1, last_page=page.number+1)[0]
@@ -86,16 +86,20 @@ def split_pdf_by_orderid(pdf_path, output_folder, final_output_dict,data_exists)
     prev_order_id= ""
     order_details = {}
     saved_orders = []
-    
+    awb_value = None
     for i, page in enumerate(doc):
         text = extract_text_from_page(page,pdf_path)
-        if not text and not data_exists:
+        if not text:
           text_ocr = extract_text_from_page(page, pdf_path,ocr=True)
           awb = re.search(r"AWB (\w+)", text_ocr)
           if awb:
             awb_value = awb.group(1)
         #if first page text is empty which is always empty go find order id on the next page or skip that page for now with detals of the page in 
         if text:
+            if not awb_value:
+                awb = re.search(r"AWB (\w+)", text)
+                if awb:
+                    awb_value = awb.group(1)
             orderid, number_or_id, first_page_match = extract_order_details(text)
             if orderid:
                 orderid = orderid.replace("-","")
