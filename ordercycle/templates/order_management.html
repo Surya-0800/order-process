@@ -371,124 +371,7 @@
         border: 1px solid #6c757d;
       }
 
-      /* Password Modal Styles */
-      .password-modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.6);
-        display: none;
-        z-index: 2000;
-        backdrop-filter: blur(5px);
-      }
-
-      .password-modal-overlay.show {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        animation: fadeIn 0.3s ease;
-      }
-
-      @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-      }
-
-      .password-modal {
-        background: white;
-        border-radius: 20px;
-        padding: 40px;
-        max-width: 500px;
-        width: 90%;
-        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
-        transform: scale(0.9);
-        animation: modalSlideIn 0.3s ease forwards;
-      }
-
-      @keyframes modalSlideIn {
-        to {
-          transform: scale(1);
-        }
-      }
-
-      .password-modal h3 {
-        color: #333;
-        margin-bottom: 15px;
-        font-size: 1.5rem;
-        text-align: center;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-      }
-
-      .password-modal p {
-        color: #666;
-        margin-bottom: 25px;
-        text-align: center;
-        line-height: 1.5;
-      }
-
-      .password-input {
-        width: 100%;
-        padding: 15px 20px;
-        border: 2px solid rgba(102, 126, 234, 0.3);
-        border-radius: 15px;
-        font-size: 1.1rem;
-        margin-bottom: 25px;
-        outline: none;
-        transition: all 0.3s ease;
-      }
-
-      .password-input:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 20px rgba(102, 126, 234, 0.2);
-      }
-
-      .password-modal-buttons {
-        display: flex;
-        gap: 15px;
-        justify-content: center;
-      }
-
-      .modal-btn {
-        padding: 12px 30px;
-        border: none;
-        border-radius: 12px;
-        font-size: 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        min-width: 120px;
-      }
-
-      .modal-btn.cancel {
-        background: #6c757d;
-        color: white;
-      }
-
-      .modal-btn.cancel:hover {
-        background: #5a6268;
-        transform: translateY(-2px);
-      }
-
-      .modal-btn.confirm {
-        background: linear-gradient(135deg, #28a745, #20c997);
-        color: white;
-      }
-
-      .modal-btn.confirm:hover {
-        background: linear-gradient(135deg, #20c997, #17a2b8);
-        transform: translateY(-2px);
-      }
-
-      .modal-btn:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-        transform: none;
-      }
+      /* Password Modal Styles - REMOVED */
 
       .process-btn {
         background: linear-gradient(135deg, #28a745, #20c997);
@@ -999,28 +882,7 @@
       </div>
     </div>
 
-    <!-- Password Modal -->
-    <div id="password-modal" class="password-modal-overlay">
-      <div class="password-modal">
-        <h3>🔒 Administrator Password Required</h3>
-        <p id="password-modal-message">Please enter the administrator password to proceed with processing orders:</p>
-        <input
-          type="password"
-          id="admin-password"
-          class="password-input"
-          placeholder="Enter administrator password"
-          autocomplete="off"
-        />
-        <div class="password-modal-buttons">
-          <button class="modal-btn cancel" onclick="cancelPasswordModal()">
-            Cancel
-          </button>
-          <button class="modal-btn confirm" id="confirm-password-btn" onclick="submitPassword()">
-            Confirm
-          </button>
-        </div>
-      </div>
-    </div>
+    
 
     <!-- Printer Selection Popup -->
     <div
@@ -1096,7 +958,6 @@
       let invoicePrinter = "";
       let currentSearchType = "order";
       let currentPicklistId = "";
-      let currentProcessAction = "";
       let selectedOrderNumbers = [];
       let printServiceAvailable = false;
       let printServiceStatus = 'disconnected';
@@ -1487,103 +1348,36 @@
         }
       }
 
-      // Password Modal Functions
+      // Password Modal Functions - REMOVED
       function showPasswordForSelected() {
         if (selectedOrderNumbers.length === 0) {
           alert('Please select at least one order to process');
           return;
         }
         
-        currentProcessAction = 'selected';
-        const modalMessage = document.getElementById('password-modal-message');
-        modalMessage.textContent = `You are about to process ${selectedOrderNumbers.length} selected orders. Please enter the administrator password to continue:`;
-        
-        showPasswordModal();
+        processSelectedOrders();
       }
 
       function showPasswordForAll() {
-        currentProcessAction = 'all';
-        const modalMessage = document.getElementById('password-modal-message');
-        modalMessage.textContent = `You are about to process ALL orders in this picklist. Please enter the administrator password to continue:`;
-        
-        showPasswordModal();
+        processAllOrders();
       }
 
-      function showPasswordModal() {
-        const modal = document.getElementById('password-modal');
-        const passwordInput = document.getElementById('admin-password');
-        
-        modal.classList.add('show');
-        passwordInput.value = '';
-        passwordInput.focus();
+      // Direct processing like the old code
+      function processOrder(orderNumber) {
+        processSingleOrder(orderNumber);
       }
 
-      function cancelPasswordModal() {
-        const modal = document.getElementById('password-modal');
-        modal.classList.remove('show');
-        currentProcessAction = '';
-      }
+      // FIXED: Simple single order processing like the old code
+      async function processSingleOrder(orderNumber) {
+        console.log('Processing order:', orderNumber);
 
-      async function submitPassword() {
-        const passwordInput = document.getElementById('admin-password');
-        const confirmBtn = document.getElementById('confirm-password-btn');
-        const password = passwordInput.value.trim();
-        
-        if (!password) {
-          alert('Please enter a password');
-          return;
-        }
-        
-        // Disable button and show loading
-        confirmBtn.disabled = true;
-        confirmBtn.innerHTML = '<div class="spinner"></div> Validating...';
-        
-        try {
-          const response = await fetch('/api/validate-password/', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRFToken': getCSRFToken(),
-            },
-            body: JSON.stringify({ password: password })
-          });
-          
-          const result = await response.json();
-          
-          if (result.valid) {
-            // Password is correct, proceed with the action
-            cancelPasswordModal();
-            
-            if (currentProcessAction === 'selected') {
-              processSelectedOrders();
-            } else if (currentProcessAction === 'all') {
-              processAllOrders();
-            }
-          } else {
-            alert('Invalid password. Please try again.');
-            passwordInput.value = '';
-            passwordInput.focus();
-          }
-          
-        } catch (error) {
-          console.error('Password validation error:', error);
-          alert('Error validating password. Please try again.');
-        } finally {
-          // Reset button
-          confirmBtn.disabled = false;
-          confirmBtn.innerHTML = 'Confirm';
-        }
-      }
-
-      async function processSelectedOrders() {
-        if (selectedOrderNumbers.length === 0) {
-          alert('No orders selected');
-          return;
-        }
-        
-        // Check printer availability
+        // Auto-initialize print service if not available
         if (!printServiceAvailable) {
-          alert('Print Service is required but not available. Please start the Print Service.');
+          await checkPrintServiceAvailability();
+        }
+
+        if (!printServiceAvailable) {
+          alert('Print Service is not available. Please start the Print Service.');
           return;
         }
 
@@ -1593,13 +1387,67 @@
           return;
         }
 
-        const confirmMessage = `This will process ${selectedOrderNumbers.length} selected orders:\n\n` +
-                             `• Print labels and invoices\n` +
-                             `• Mark orders with "Pick" status as Complete\n` +
-                             `• Orders with other statuses will only be printed\n\n` +
-                             `Continue?`;
+        try {
+          // First get the order details to determine platform
+          const orderResponse = await fetch(`/api/orders/search/?order_number=${encodeURIComponent(orderNumber)}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCSRFToken()
+            }
+          });
+
+          if (!orderResponse.ok) {
+            throw new Error('Order not found');
+          }
+
+          const orderData = await orderResponse.json();
+          const platform = orderData.platform;
+
+          // Check order status first
+          const orderStatus = await getOrderStatus(orderNumber);
+          console.log(`Order ${orderNumber} current status: ${orderStatus}`);
+          
+          // Print the order (label + invoice)
+          const printSuccess = await printOrderComplete(platform, orderNumber);
+          
+          if (printSuccess) {
+            // Only mark as complete if status is "Pick"
+            if (orderStatus === 'Pick') {
+              await markOrderAsComplete(orderNumber);
+              showSuccess(`Order ${orderNumber} printed and marked as Complete!`);
+            } else {
+              showSuccess(`Order ${orderNumber} printed successfully! (Status: ${orderStatus} - not changed)`);
+            }
+          } else {
+            showError(`Failed to print order ${orderNumber}`);
+          }
+          
+        } catch (error) {
+          console.error('Error processing order:', error);
+          showError(`Failed to process order ${orderNumber}. Error: ${error.message}`);
+        }
+      }
+
+      async function processSelectedOrders() {
+        if (selectedOrderNumbers.length === 0) {
+          alert('No orders selected');
+          return;
+        }
         
-        if (!confirm(confirmMessage)) {
+        // Auto-initialize print service if not available
+        if (!printServiceAvailable) {
+          await checkPrintServiceAvailability();
+        }
+
+        if (!printServiceAvailable) {
+          alert('Print Service is required but not available. Please start the Print Service.');
+          return;
+        }
+
+        if (!labelPrinter) {
+          alert('Please select a label printer first.');
+          togglePrinterSelection();
           return;
         }
 
@@ -1681,7 +1529,11 @@
       }
 
       async function processAllOrders() {
-        // Check printer availability
+        // Auto-initialize print service if not available
+        if (!printServiceAvailable) {
+          await checkPrintServiceAvailability();
+        }
+
         if (!printServiceAvailable) {
           alert('Print Service is required but not available. Please start the Print Service.');
           return;
@@ -1699,16 +1551,6 @@
         
         if (allOrders.length === 0) {
           alert('No orders found in this picklist');
-          return;
-        }
-
-        const confirmMessage = `This will process ALL ${allOrders.length} orders in this picklist:\n\n` +
-                             `• Print labels and invoices\n` +
-                             `• Mark orders with "Pick" status as Complete\n` +
-                             `• Orders with other statuses will only be printed\n\n` +
-                             `Continue?`;
-        
-        if (!confirm(confirmMessage)) {
           return;
         }
 
@@ -1788,75 +1630,6 @@
         }
       }
 
-      // Single Order Processing (existing function)
-      async function processOrder(orderNumber) {
-        console.log('Processing order:', orderNumber);
-
-        // Check if Print Service is available
-        if (!printServiceAvailable) {
-          alert('Print Service is not available. Please start the Print Service.');
-          return;
-        }
-
-        if (!labelPrinter) {
-          alert('Please select a label printer first.');
-          togglePrinterSelection();
-          return;
-        }
-
-        const button = event.target;
-        const originalText = button.innerHTML;
-
-        // Disable the button and show loading state
-        button.disabled = true;
-        button.innerHTML = '<div class="spinner"></div> Processing...';
-
-        try {
-          // First get the order details to determine platform
-          const orderResponse = await fetch(`/api/orders/search/?order_number=${encodeURIComponent(orderNumber)}`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRFToken': getCSRFToken()
-            }
-          });
-
-          if (!orderResponse.ok) {
-            throw new Error('Order not found');
-          }
-
-          const orderData = await orderResponse.json();
-          const platform = orderData.platform;
-
-          // Check order status first
-          const orderStatus = await getOrderStatus(orderNumber);
-          console.log(`Order ${orderNumber} current status: ${orderStatus}`);
-          
-          // Print the order (label + invoice)
-          const printSuccess = await printOrderComplete(platform, orderNumber);
-          
-          if (printSuccess) {
-            // Only mark as complete if status is "Pick"
-            if (orderStatus === 'Pick') {
-              await markOrderAsComplete(orderNumber);
-              showSuccess(`Order ${orderNumber} printed and marked as Complete!`);
-            } else {
-              showSuccess(`Order ${orderNumber} printed successfully! (Status: ${orderStatus} - not changed)`);
-            }
-          } else {
-            showError(`Failed to print order ${orderNumber}`);
-          }
-          
-        } catch (error) {
-          console.error('Error processing order:', error);
-          showError(`Failed to process order ${orderNumber}. Error: ${error.message}`);
-        } finally {
-          // Reset button
-          button.disabled = false;
-          button.innerHTML = originalText;
-        }
-      }
-
       async function getOrderStatus(orderNumber) {
         try {
           const response = await fetch(`/api/orders/status/?order_number=${encodeURIComponent(orderNumber)}`);
@@ -1909,7 +1682,7 @@
         return result;
       }
 
-      // Printer and Print Functions (existing functions)
+      // Printer and Print Functions (keeping all existing printer code)
       async function printOrderComplete(platform, orderNumber) {
         console.log(`🖨️ Starting complete print workflow for ${platform} - Order: ${orderNumber}`);
 
@@ -2622,13 +2395,6 @@
       document.getElementById("searchInput").addEventListener("keypress", function (e) {
         if (e.key === "Enter") {
           performSearch();
-        }
-      });
-
-      // Allow Enter key to submit password
-      document.getElementById("admin-password").addEventListener("keypress", function (e) {
-        if (e.key === "Enter") {
-          submitPassword();
         }
       });
     </script>
