@@ -3,7 +3,7 @@ version: '3.8'
 services:
   web:
     build: .
-    command: gunicorn orderCycleProject.wsgi:application --bind 0.0.0.0:8000 --timeout 1000
+    command: gunicorn orderCycleProject.wsgi:application --bind 0.0.0.0:8000 --timeout 1000 --keep-alive 1200 --graceful-timeout 900 --workers 2
     volumes:
       - .:/app
       - static_volume:/app/staticfiles

@@ -70,7 +70,7 @@ def extract_text_with_camelot(pdf_path, page_number):
         filtered_df = df.loc[extended_indices].reset_index(drop=True)
         if filtered_df.empty:
           return {}
-        filtered_df = filtered_df.replace(r'^\s*$', np.nan, regex=True)
+        filtered_df = filtered_df.replace(r'^\s*$', np.nan, regex=True).infer_objects(copy=False)
         filtered_df = filtered_df.where(pd.notnull(filtered_df), np.nan)
         filtered_df.dropna(how='all', inplace=True)  
         filtered_df.dropna(axis=1, how='all', inplace=True)
