@@ -4,6 +4,7 @@ Views for handling packing stage functionality.
 import os
 import json
 import traceback
+from pathlib import Path
 from django.utils import timezone
 from django.conf import settings
 from django.shortcuts import get_object_or_404
@@ -134,7 +135,7 @@ def search_picklist(request):
         validation_status = picklist.get_validation_status()
         
         # ENHANCED: Check if all remaining orders are dispatched
-        all_orders_dispatched = len(items_data) == 0  # No items means all are dispatched
+        all_orders_dispatched = len(items_data) == 0
         
         # Add no-cache headers to prevent browser caching
         response = JsonResponse({
@@ -148,7 +149,7 @@ def search_picklist(request):
                 'created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'items': items_data,
                 'validation_status': validation_status,
-                'all_orders_dispatched': all_orders_dispatched,  # Add this flag
+                'all_orders_dispatched': all_orders_dispatched,
                 'last_updated': timezone.now().isoformat()
             }
         })
@@ -172,6 +173,8 @@ def search_picklist(request):
             'status': 'error',
             'message': f'Error searching picklist: {str(e)}'
         }, status=500)
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def validate_sku(request):
@@ -183,7 +186,7 @@ def validate_sku(request):
         picklist_id = data.get('picklist_id')
         sku = data.get('sku')
         order_number = data.get('order_number')
-        validation_mode = data.get('validation_mode', 'order_specific')  # 'order_specific' or 'product_search'
+        validation_mode = data.get('validation_mode', 'order_specific')
         
         if not all([picklist_id, sku]):
             return JsonResponse({
@@ -234,12 +237,13 @@ def validate_sku(request):
             'message': f'Error validating SKU: {str(e)}'
         }, status=500)  
     
+
 def _validate_sku_for_specific_order(picklist, sku, order_number, user=None):
     """
     Enhanced validation with automatic creation of missing validation records
     """
     try:
-        print(f"🔍 Looking for PicklistItem: picklist={picklist.picklist_id}, sku={sku}, order={order_number}")
+        print(f"Looking for PicklistItem: picklist={picklist.picklist_id}, sku={sku}, order={order_number}")
         
         # Get the picklist item to ensure it exists
         picklist_item = PicklistItem.objects.filter(
@@ -260,14 +264,14 @@ def _validate_sku_for_specific_order(picklist, sku, order_number, user=None):
                 'debug_info': {
                     'total_skus_in_picklist': len(all_skus_in_picklist),
                     'total_orders_in_picklist': len(all_orders_in_picklist),
-                    'orders_with_this_sku': items_with_sku[:5],  # Limit to first 5
-                    'skus_in_this_order': items_with_order[:5],  # Limit to first 5
+                    'orders_with_this_sku': items_with_sku[:5],
+                    'skus_in_this_order': items_with_order[:5],
                     'requested_sku': sku,
                     'requested_order': order_number
                 }
             }
             
-            print(f"❌ PicklistItem not found. Debug info: {error_details['debug_info']}")
+            print(f"PicklistItem not found. Debug info: {error_details['debug_info']}")
             
             return {
                 'status': 'error',
@@ -275,7 +279,7 @@ def _validate_sku_for_specific_order(picklist, sku, order_number, user=None):
                 'debug_info': error_details['debug_info']
             }
         
-        print(f"✅ PicklistItem found: qty={picklist_item.quantity}, picked={picklist_item.picked}")
+        print(f"PicklistItem found: qty={picklist_item.quantity}, picked={picklist_item.picked}")
         
         # Get product_id from master table
         product = MasterTable.objects.filter(sku=sku).first()
@@ -296,32 +300,32 @@ def _validate_sku_for_specific_order(picklist, sku, order_number, user=None):
         )
         
         if created:
-            print(f"🆕 Created missing validation record for {sku} in order {order_number}")
+            print(f"Created missing validation record for {sku} in order {order_number}")
         else:
-            print(f"📝 Found existing validation record: count={validation_record.validated_count}, qty={validation_record.quantity}")
+            print(f"Found existing validation record: count={validation_record.validated_count}, qty={validation_record.quantity}")
         
         # Update record if needed (ensure data consistency)
         update_needed = False
         if validation_record.quantity != picklist_item.quantity:
-            print(f"🔄 Updating quantity from {validation_record.quantity} to {picklist_item.quantity}")
+            print(f"Updating quantity from {validation_record.quantity} to {picklist_item.quantity}")
             validation_record.quantity = picklist_item.quantity
             update_needed = True
             
         if not validation_record.product_id and product_id:
-            print(f"🔄 Adding missing product_id: {product_id}")
+            print(f"Adding missing product_id: {product_id}")
             validation_record.product_id = product_id
             update_needed = True
             
         # Recalculate validated status based on count vs quantity
         new_validated_status = validation_record.validated_count >= validation_record.quantity
         if validation_record.validated != new_validated_status:
-            print(f"🔄 Updating validated status from {validation_record.validated} to {new_validated_status}")
+            print(f"Updating validated status from {validation_record.validated} to {new_validated_status}")
             validation_record.validated = new_validated_status
             update_needed = True
         
         if update_needed:
             validation_record.save()
-            print(f"💾 Saved updates to validation record")
+            print(f"Saved updates to validation record")
         
         # Check if already fully validated
         if validation_record.is_fully_validated():
@@ -348,7 +352,7 @@ def _validate_sku_for_specific_order(picklist, sku, order_number, user=None):
         else:
             message = f'SKU {sku} validation progress: {progress["validated_count"]}/{progress["required_quantity"]} for order {order_number}'
         
-        print(f"✅ Validation successful: {message}")
+        print(f"Validation successful: {message}")
         
         return {
             'status': 'success',
@@ -357,19 +361,20 @@ def _validate_sku_for_specific_order(picklist, sku, order_number, user=None):
         }
         
     except Exception as e:
-        print(f"💥 Error in _validate_sku_for_specific_order: {str(e)}")
+        print(f"Error in _validate_sku_for_specific_order: {str(e)}")
         traceback.print_exc()
         return {
             'status': 'error',
             'message': f'Error validating SKU for specific order: {str(e)}'
         }
     
+
 def _validate_sku_any_order(picklist, sku, user=None):
     """
     Enhanced product search validation with automatic record creation
     """
     try:
-        print(f"🔍 Looking for any unvalidated orders with SKU {sku} in picklist {picklist.picklist_id}")
+        print(f"Looking for any unvalidated orders with SKU {sku} in picklist {picklist.picklist_id}")
         
         # First, ensure all PicklistItems for this SKU have validation records
         picklist_items = PicklistItem.objects.filter(picklist=picklist, sku=sku)
@@ -400,7 +405,7 @@ def _validate_sku_any_order(picklist, sku, user=None):
             
             if created:
                 created_records += 1
-                print(f"🆕 Created validation record for {sku} in order {item.order_number}")
+                print(f"Created validation record for {sku} in order {item.order_number}")
             else:
                 # Ensure data consistency
                 update_needed = False
@@ -420,7 +425,7 @@ def _validate_sku_any_order(picklist, sku, user=None):
                     validation_record.save()
         
         if created_records > 0:
-            print(f"🆕 Created {created_records} missing validation records")
+            print(f"Created {created_records} missing validation records")
         
         # Now find unvalidated records
         unvalidated_records = PicklistSKUValidation.objects.filter(
@@ -466,11 +471,11 @@ def _validate_sku_any_order(picklist, sku, user=None):
             if remaining_orders > 0:
                 message = f'Order {target_record.order_number} completed! SKU {sku} validation: {validated_orders_count}/{total_orders_with_sku} orders done'
             else:
-                message = f'All orders with SKU {sku} are now fully validated! ✅'
+                message = f'All orders with SKU {sku} are now fully validated!'
         else:
             message = f'SKU {sku} progress in order {target_record.order_number}: {progress["validated_count"]}/{progress["required_quantity"]} (Order {validated_orders_count + 1}/{total_orders_with_sku})'
         
-        print(f"✅ Product search validation successful: {message}")
+        print(f"Product search validation successful: {message}")
         
         return {
             'status': 'success',
@@ -485,7 +490,7 @@ def _validate_sku_any_order(picklist, sku, user=None):
         }
         
     except Exception as e:
-        print(f"💥 Error in _validate_sku_any_order: {str(e)}")
+        print(f"Error in _validate_sku_any_order: {str(e)}")
         traceback.print_exc()
         return {
             'status': 'error',
@@ -548,13 +553,14 @@ def get_validation_status(request):
             'message': f'Error getting validation status: {str(e)}'
         }, status=500)
     
+
 @require_http_methods(["GET"])
 def search_product(request):
     """
     Enhanced sequential validation logic with quantity-based validation
     Now supports searching by product_id OR sku
     """
-    search_query = request.GET.get('product_id', '')  # Keep same parameter name for compatibility
+    search_query = request.GET.get('product_id', '')
     picklist_id = request.GET.get('picklist_id', '')
     
     if not search_query:
@@ -577,15 +583,8 @@ def search_product(request):
                 'message': f'Product with ID/SKU "{search_query}" not found'
             }, status=404)
         
-        # Check if image exists in database (using the found product's product_id)
-        image_upload = ImageUpload.objects.filter(file_name=f"{product.product_id}.jpg").first()
-        
-        if image_upload:
-            import base64
-            image_base64 = base64.b64encode(image_upload.image).decode('utf-8')
-            image_url = f"data:{image_upload.content_type};base64,{image_base64}"
-        else:
-            image_url = "/static/images/no_image_found.jpg"
+        # Check if image exists on file system
+        image_url = _get_product_image_url(product.product_id)
         
         # Enhanced sequential validation logic
         validation_info = None
@@ -595,11 +594,11 @@ def search_product(request):
             try:
                 picklist = Picklist.objects.get(picklist_id=picklist_id)
                 
-                # Find ALL orders with this SKU in the picklist (using the found product's SKU)
+                # Find ALL orders with this SKU in the picklist
                 picklist_items = PicklistItem.objects.filter(
                     picklist=picklist, 
                     sku=product.sku,
-                    picked = False
+                    picked=False
                 ).order_by('order_number')
                 
                 if picklist_items.exists():
@@ -666,7 +665,6 @@ def search_product(request):
                             'quantity': current_order['quantity'],
                             'validated_count': current_order['validated_count'],
                             'validation_progress': current_order['validation_progress'],
-                            # Statistics for display
                             'total_orders_with_sku': len(all_orders_with_sku),
                             'validated_orders_count': len(all_orders_with_sku) - len(orders_needing_validation),
                             'remaining_orders': len(orders_needing_validation),
@@ -684,13 +682,13 @@ def search_product(request):
                             'total_orders_with_sku': len(all_orders_with_sku),
                             'validated_orders_count': len(all_orders_with_sku),
                             'remaining_orders': 0,
-                            'progress_message': f"All {len(all_orders_with_sku)} orders fully validated ✅"
+                            'progress_message': f"All {len(all_orders_with_sku)} orders fully validated"
                         }
                     
             except Picklist.DoesNotExist:
                 pass
         
-        # Return enhanced product details (always using the found product's actual values)
+        # Return enhanced product details
         response_data = {
             'status': 'success',
             'product': {
@@ -705,8 +703,8 @@ def search_product(request):
                 'pack_remarks': product.pack_remarks or ''
             },
             'in_current_picklist': in_current_picklist,
-            'search_query': search_query,  # Include what was searched for
-            'found_by': 'product_id' if product.product_id == search_query else 'sku'  # Indicate how it was found
+            'search_query': search_query,
+            'found_by': 'product_id' if product.product_id == search_query else 'sku'
         }
         
         if validation_info:
@@ -722,6 +720,7 @@ def search_product(request):
             'message': f'Error searching for product: {str(e)}'
         }, status=500)  
 
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def mark_picklist_completed(request, picklist_id):
@@ -729,7 +728,6 @@ def mark_picklist_completed(request, picklist_id):
     Mark a picklist as completed
     """
     try:
-        # Print request details for debugging
         print("Headers:", request.headers)
         print("CSRF Token:", request.META.get('HTTP_X_CSRFTOKEN', 'Not provided'))
         
@@ -800,12 +798,10 @@ def mark_product_packed(request):
                 location_info.save()
             except Exception as e:
                 print(f"Error updating location info: {str(e)}")
-                # Continue anyway - the PicklistItem is already updated
             
             packed_items += 1
         
-        # Check if all items are now packed by looking at PicklistItem model
-        # This fixes the issue where we were using location_info.picked
+        # Check if all items are now packed
         all_packed = not PicklistItem.objects.filter(picklist=picklist, picked=False).exists()
         
         return JsonResponse({
@@ -826,13 +822,10 @@ def mark_product_packed(request):
 def get_picklist_barcode(request, picklist_id):
     """
     API endpoint to generate barcode data for a picklist
-    This could be used as an alternative to client-side barcode generation
     """
     try:
-        # Check if picklist exists
         picklist = Picklist.objects.get(picklist_id=picklist_id)
         
-        # Return barcode data
         return JsonResponse({
             'status': 'success',
             'picklist_id': picklist_id,
@@ -844,13 +837,10 @@ def get_picklist_barcode(request, picklist_id):
             'message': 'Picklist not found'
         }, status=404)
 
+
 @require_http_methods(["GET"])
 def get_product_image_by_sku(request):
     """API endpoint to get product image URL and other details by SKU"""
-    from django.conf import settings
-    from django.http import HttpResponse
-    import base64
-    
     sku = request.GET.get('sku')
     
     if not sku:
@@ -862,53 +852,12 @@ def get_product_image_by_sku(request):
         
         # Initialize variables
         product_id = ''
-        image_data = None
-        content_type = None
         
         if product:
             product_id = product.product_id or ''
-            
-            # Extract filename from the product's image_url (if available)
-            if product.image_url:
-                # Handle different formats: could be "ASINWISEIMAGES/B0CM5Z6HJG.jpg" or just "B0CM5Z6HJG.jpg"
-                image_filename = os.path.basename(product.image_url)
-            else:
-                # If no image_url in product, try to use product_id as the filename
-                image_filename = f"{product_id}.jpg" if product_id else f"{sku}.jpg"
-        else:
-            # If product not found, use SKU as filename
-            image_filename = f"{sku}.jpg"
-        # Check if image exists in database by filename
-        image_upload = ImageUpload.objects.filter(file_name=image_filename).first()
         
-        # If not found, try with product_id as filename
-        if not image_upload and product_id:
-            image_upload = ImageUpload.objects.filter(file_name=f"{product_id}.jpg").first()
-            
-        # If still not found, try with SKU as filename
-        if not image_upload:
-            image_upload = ImageUpload.objects.filter(file_name=f"{sku}.jpg").first()
-        
-        # Set image data and content type if found
-        if image_upload:
-            image_data = image_upload.image
-            content_type = image_upload.content_type
-            
-            # Convert binary data to base64 string for JSON response
-            image_base64 = base64.b64encode(image_data).decode('utf-8')
-            image_url = f"data:{content_type};base64,{image_base64}"
-        else:
-            # Use "NO PICTURE.jpg" as fallback
-            default_image_path = os.path.join(settings.STATIC_ROOT, 'images', 'NO PICTURE.jpg')
-            try:
-                with open(default_image_path, 'rb') as f:
-                    default_image_data = f.read()
-                    # Convert binary data to base64 string for JSON response
-                    image_base64 = base64.b64encode(default_image_data).decode('utf-8')
-                    image_url = f"data:image/jpeg;base64,{image_base64}"
-            except FileNotFoundError:
-                # If default image file doesn't exist, fall back to static URL
-                image_url = f"{settings.STATIC_URL}images/no_image_found.jpg"
+        # Get image URL using helper function
+        image_url = _get_product_image_url(product_id if product else sku)
         
         # Prepare and return product details with image URL
         response_data = {
@@ -927,9 +876,9 @@ def get_product_image_by_sku(request):
         
     except Exception as e:
         print(f"Error retrieving product data: {str(e)}")
-        import traceback
         traceback.print_exc()
         return JsonResponse({'error': f'Error retrieving product data: {str(e)}'}, status=500)
+
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -944,7 +893,7 @@ def save_awb_and_dispatch(request):
         data = json.loads(request.body)
         order_number = data.get('order_number')
         awb = data.get('awb')
-        picklist_id = data.get('picklist_id')  # Get picklist_id from request
+        picklist_id = data.get('picklist_id')
         
         if not order_number or not awb:
             return JsonResponse({
@@ -982,7 +931,7 @@ def save_awb_and_dispatch(request):
                 # If AWB matches or there isn't an existing AWB, update order status
                 result = model.objects.filter(order_number=order_number).update(
                     AWB=awb,
-                    status='Complete'  # Changed from 'Dispatch' to 'Complete'
+                    status='Complete'
                 )
                 updated = result
                 
@@ -990,14 +939,14 @@ def save_awb_and_dispatch(request):
                 try:
                     from ..models import OrderPDF
                     order_pdf = OrderPDF.objects.get(order_id=order_number)
-                    order_pdf.delete()
+                    order_pdf.deleteƒ()
                     print(f"Deleted OrderPDF record for order {order_number}")
                 except OrderPDF.DoesNotExist:
                     print(f"No OrderPDF record found for order {order_number}")
                 except Exception as pdf_error:
                     print(f"Error deleting OrderPDF for order {order_number}: {str(pdf_error)}")
                 
-                # Verify the update was successful by retrieving the order
+                # Verify the update was successful
                 updated_order = model.objects.filter(order_number=order_number).first()
                 if updated_order:
                     print(f"Order {order_number} updated. Status: {updated_order.status}")
@@ -1014,9 +963,7 @@ def save_awb_and_dispatch(request):
         dispatch_status = None
         if picklist_id:
             try:
-                # Find the picklist
                 picklist = Picklist.objects.get(picklist_id=picklist_id)
-                # Get or create dispatch status record
                 dispatch_status, created = PicklistDispatchStatus.objects.get_or_create(
                     picklist=picklist,
                     defaults={
@@ -1039,7 +986,6 @@ def save_awb_and_dispatch(request):
             except Exception as e:
                 print(f"Error updating dispatch status: {str(e)}")
                 traceback.print_exc()
-                # Continue anyway - the order status is already updated
         
         # Prepare response
         response_data = {
@@ -1049,8 +995,8 @@ def save_awb_and_dispatch(request):
             'updated': updated > 0,
             'order_number': order_number,
             'awb': awb,
-            'order_status': 'Complete',  # Update the status in the response as well
-            'awb_match': True  # Indicate AWB validation was successful
+            'order_status': 'Complete',
+            'awb_match': True
         }
         
         # Include dispatch status info if available
@@ -1077,3 +1023,56 @@ def save_awb_and_dispatch(request):
             'status': 'error',
             'message': f'Error saving AWB number: {str(e)}'
         }, status=500)
+
+
+import unicodedata
+from pathlib import Path
+from django.conf import settings
+import os
+
+
+import os
+import sys
+import unicodedata
+from pathlib import Path
+from django.conf import settings
+
+def _get_product_image_url(identifier):
+    """
+    Cross-platform image URL resolver (macOS, Linux, Windows).
+    Handles Unicode normalization, case-insensitive matching,
+    and macOS filesystem quirks like decomposed filenames.
+    """
+    product_images_dir = Path(settings.MEDIA_ROOT) / 'product_images'
+
+    # Return default if the directory doesn't exist
+    if not product_images_dir.exists():
+        return f"{settings.STATIC_URL}images/no_image_found.jpg"
+
+    try:
+        # Normalize identifier depending on OS
+        norm_form = "NFD" if sys.platform == "darwin" else "NFC"
+        identifier_normalized = unicodedata.normalize(norm_form, str(identifier))
+        identifier_lower = os.path.splitext(identifier_normalized.lower().strip())[0]
+
+        for entry in os.scandir(product_images_dir):
+            # Skip system/hidden files
+            if entry.name.startswith('.') or not entry.is_file() or entry.name.lower() == '.ds_store':
+                continue
+
+            filename_normalized = unicodedata.normalize(norm_form, entry.name)
+            name_without_ext, ext = os.path.splitext(filename_normalized)
+            name_lower = name_without_ext.lower().strip()
+
+            # Match by name (ignoring case and extension)
+            if name_lower == identifier_lower:
+                return f"{settings.MEDIA_URL}product_images/{entry.name}"
+
+        # No match found
+        return f"{settings.STATIC_URL}images/no_image_found.jpg"
+
+    except Exception as e:
+        print(f"[ERROR] _get_product_image_url failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return f"{settings.STATIC_URL}images/no_image_found.jpg"

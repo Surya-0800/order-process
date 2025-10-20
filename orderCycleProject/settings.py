@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-pjb*#lswi*gdq7b6nkh2%vt6&7_3rw+oz3l6ibl1&trbu#=(6i')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+DEBUG = os.environ.get('DEBUG', 'True')
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',  # Added for CORS support
     'ordercycle',
+    "django_crontab",
     'rest_framework',
     'whitenoise.runserver_nostatic',  # Using whitenoise in development too
 ]
@@ -75,6 +76,10 @@ TEMPLATES = [
     },
 ]
 
+CRONJOBS = [
+    ('0 20 * * *', 'django.core.management.call_command', ['cleanup_old_pdfs', '--hours=24'], '>> /tmp/cleanup_pdfs.log 2>&1'),
+]
+
 WSGI_APPLICATION = 'orderCycleProject.wsgi.application'
 
 
@@ -84,11 +89,11 @@ WSGI_APPLICATION = 'orderCycleProject.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('POSTGRES_DB', 'orderProcessProject'),
-        'USER': os.environ.get('POSTGRES_USER', 'postgres'),
-        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', '1234'),
-        'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
-        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+        'NAME':  'orderProcessProject',
+        'USER': 'surya',
+        'PASSWORD': '1234',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 

@@ -1,26 +1,32 @@
 """
 Views for handling product image uploads and processing.
+Images are stored on the file system instead of database.
 """
-import uuid
 import os
+from pathlib import Path
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 
-from ..models import ImageUpload  # Import the model after you create it
+from ..models import ImageUpload
 from ..serializers import (
     ImageUploadSerializer, 
     ImageUploadCreateSerializer, 
     ImageDetailSerializer
-)  # Import serializers after you create them
+)
+
 
 class ImageUploadViewSet(viewsets.ModelViewSet):
     """
     ViewSet for handling image uploads, retrievals, and downloads.
+    Images are stored on the file system under MEDIA_ROOT/product_images/
     """
     queryset = ImageUpload.objects.all().order_by('-uploaded_at')
     parser_classes = (MultiPartParser, FormParser)
@@ -66,7 +72,6 @@ class ImageUploadViewSet(viewsets.ModelViewSet):
                 image = serializer.save()
                 uploaded_images.append(ImageUploadSerializer(image).data)
             else:
-                # Skip invalid files but continue processing
                 continue
         
         return Response(
@@ -78,9 +83,21 @@ class ImageUploadViewSet(viewsets.ModelViewSet):
     def download(self, request, pk=None):
         """Download an image by its ID"""
         image = self.get_object()
-        response = HttpResponse(image.image, content_type=image.content_type)
-        response['Content-Disposition'] = f'attachment; filename="{image.file_name}"'
-        return response
+        
+        # Construct file path
+        file_path = Path(settings.MEDIA_ROOT) / 'product_images' / image.file_name
+        
+        if not file_path.exists():
+            return Response(
+                {'error': 'Image file not found on disk'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Read file and return as response
+        with open(file_path, 'rb') as f:
+            response = HttpResponse(f.read(), content_type=image.content_type)
+            response['Content-Disposition'] = f'attachment; filename="{image.file_name}"'
+            return response
         
     @action(detail=False, methods=['post'])
     def process_folder(self, request):
@@ -99,18 +116,18 @@ class ImageUploadViewSet(viewsets.ModelViewSet):
         valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
         uploaded_images = []
         
+        # Ensure product_images directory exists
+        product_images_dir = Path(settings.MEDIA_ROOT) / 'product_images'
+        product_images_dir.mkdir(parents=True, exist_ok=True)
+        
         try:
             for filename in os.listdir(folder_path):
-                file_path = os.path.join(folder_path, filename)
-                file_ext = os.path.splitext(filename)[1].lower()
+                file_path = Path(folder_path) / filename
+                file_ext = file_path.suffix.lower()
                 
                 # Skip if not a file or not an image file
-                if not os.path.isfile(file_path) or file_ext not in valid_extensions:
+                if not file_path.is_file() or file_ext not in valid_extensions:
                     continue
-                
-                # Read file content
-                with open(file_path, 'rb') as file:
-                    file_content = file.read()
                 
                 # Determine content type based on extension
                 content_type_map = {
@@ -122,11 +139,18 @@ class ImageUploadViewSet(viewsets.ModelViewSet):
                 }
                 content_type = content_type_map.get(file_ext, 'application/octet-stream')
                 
-                # Create image record
+                # Copy file to media directory
+                destination_path = product_images_dir / filename
+                
+                # Read and write file
+                with open(file_path, 'rb') as src_file:
+                    with open(destination_path, 'wb') as dest_file:
+                        dest_file.write(src_file.read())
+                
+                # Create database record
                 image = ImageUpload.objects.create(
-                    title=os.path.splitext(filename)[0],
+                    title=file_path.stem,
                     file_name=filename,
-                    image=file_content,
                     content_type=content_type
                 )
                 
@@ -141,6 +165,7 @@ class ImageUploadViewSet(viewsets.ModelViewSet):
                 {'error': f'Error processing folder: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
 
 @csrf_exempt
 def upload_multiple_images(request):
@@ -157,17 +182,25 @@ def upload_multiple_images(request):
     if not files:
         return JsonResponse({'error': 'No files provided'}, status=400)
     
+    # Ensure product_images directory exists
+    product_images_dir = Path(settings.MEDIA_ROOT) / 'product_images'
+    product_images_dir.mkdir(parents=True, exist_ok=True)
+    
     uploaded_images = []
     for i, file in enumerate(files):
         try:
-            # Read the file content
-            file_content = file.read()
+            # Save file to disk
+            file_path = product_images_dir / file.name
             
-            # Create and save the image upload
+            # Write file content
+            with open(file_path, 'wb') as destination:
+                for chunk in file.chunks():
+                    destination.write(chunk)
+            
+            # Create database record
             image_upload = ImageUpload.objects.create(
                 title=f"{title_prefix} {i+1}" if title_prefix else "",
                 file_name=file.name,
-                image=file_content,
                 content_type=file.content_type
             )
             
@@ -175,14 +208,14 @@ def upload_multiple_images(request):
                 'id': str(image_upload.id),
                 'title': image_upload.title,
                 'file_name': image_upload.file_name,
-                'uploaded_at': image_upload.uploaded_at
+                'uploaded_at': image_upload.uploaded_at.isoformat()
             })
         except Exception as e:
-            # Log the error and continue with other files
             print(f"Error uploading file {file.name}: {str(e)}")
             continue
     
     return JsonResponse({'images': uploaded_images}, status=201)
+
 
 def upload_image_view(request):
     """

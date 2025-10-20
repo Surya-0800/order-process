@@ -26,3 +26,4 @@ ghostscript>=0.7
 PyPDF2
 
 django-cors-headers
+django-crontab

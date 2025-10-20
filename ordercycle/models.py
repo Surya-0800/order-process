@@ -418,27 +418,45 @@ class ImageUpload(models.Model):
         return self.file_name or str(self.id)
     
 class OrderPDF(models.Model):
-    # Primary key field using order_id
-    order_id = models.CharField(max_length=100, primary_key=True)
+    """
+    Stores order PDFs on file system for performance.
+    PDFs are automatically cleaned up after 8-12 hours.
+    """
+    order_id = models.CharField(max_length=255, unique=True, db_index=True, primary_key=True)
     
-    # Store the PDF content directly in PostgreSQL
-    pdf_content = models.BinaryField()
+    # CHANGED: From BinaryField to FileField
+    pdf_file = models.FileField(upload_to='order_pdfs/', null=True, blank=True)
     
-    # Additional metadata
     filename = models.CharField(max_length=255)
-    created_at = models.DateTimeField(auto_now_add=True)
-    source_type = models.CharField(max_length=50, default="unknown")  # To track which script processed this
-    
-    # Store additional info as JSON
+    source_type = models.CharField(max_length=50, default='upload')
     metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Order PDF"
+        verbose_name_plural = "Order PDFs"
+        ordering = ['-created_at']
     
     def __str__(self):
-        return f"Order {self.order_id}"
-        
-    class Meta:
-        indexes = [
-            models.Index(fields=['created_at']),
-        ]
+        return f"PDF for Order {self.order_id}"
+    
+    @property
+    def pdf_url(self):
+        """Get the URL for the PDF file."""
+        if self.pdf_file:
+            return self.pdf_file.url
+        return None
+    
+    def delete(self, *args, **kwargs):
+        """Override delete to also remove the physical file."""
+        if self.pdf_file:
+            try:
+                if self.pdf_file.storage.exists(self.pdf_file.name):
+                    self.pdf_file.delete(save=False)
+            except Exception as e:
+                print(f"Error deleting PDF file: {str(e)}")
+        super().delete(*args, **kwargs)
 
 class PicklistSKUValidation(models.Model):
     """
