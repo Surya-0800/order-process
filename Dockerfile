@@ -5,7 +5,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # Ensure apt works with PPAs and HTTPS
     curl\
     gnupg \
-    software-properties-common \
     # OCR and PDF tools
     tesseract-ocr \
     tesseract-ocr-eng \
