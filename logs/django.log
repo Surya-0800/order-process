@@ -13944,3 +13944,9 @@ INFO 2025-10-20 16:12:33,620 basehttp "GET /api/products/image-by-sku/?sku=BC-17
 INFO 2025-10-20 16:12:33,625 basehttp "GET /api/products/image-by-sku/?sku=BC-179 HTTP/1.1" 200 215
 INFO 2025-10-20 16:12:49,851 autoreload /Users/suryareddy/Documents/code/orderprocess/order-process/orderCycleProject/settings.py changed, reloading.
 INFO 2025-10-20 16:12:50,355 autoreload Watching for file changes with StatReloader
+INFO 2025-10-20 16:46:28,911 autoreload /Users/suryareddy/Documents/code/orderprocess/order-process/ordercycle/urls.py changed, reloading.
+INFO 2025-10-20 16:46:29,546 autoreload Watching for file changes with StatReloader
+INFO 2025-10-20 16:46:31,685 autoreload /Users/suryareddy/Documents/code/orderprocess/order-process/ordercycle/urls.py changed, reloading.
+INFO 2025-10-20 16:46:31,878 autoreload Watching for file changes with StatReloader
+INFO 2025-10-20 16:46:37,921 autoreload /Users/suryareddy/Documents/code/orderprocess/order-process/ordercycle/urls.py changed, reloading.
+INFO 2025-10-20 16:46:38,179 autoreload Watching for file changes with StatReloader
