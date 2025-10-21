@@ -6,8 +6,8 @@ services:
     command: gunicorn orderCycleProject.wsgi:application --bind 0.0.0.0:8000 --timeout 1000 --keep-alive 1200 --graceful-timeout 900 --workers 2
     volumes:
       - .:/app
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
+      - /mnt/data/static:/app/staticfiles
+      - /mnt/data/media:/app/media
     ports:
       - "8000:8000"
     depends_on:
@@ -25,7 +25,7 @@ services:
   db:
     image: postgres:14
     volumes:
-      - postgres_data:/var/lib/postgresql/data/
+      - /mnt/data/postgresql:/var/lib/postgresql/data
     environment:
       - POSTGRES_DB=orderProcess
       - POSTGRES_USER=postgres
@@ -38,13 +38,8 @@ services:
       - "8080:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
-      - static_volume:/home/app/staticfiles
-      - media_volume:/home/app/media
+      - /mnt/data/static:/home/app/staticfiles
+      - /mnt/data/media:/home/app/media
     depends_on:
       - web
     restart: always
-
-volumes:
-  postgres_data:
-  static_volume:
-  media_volume:
