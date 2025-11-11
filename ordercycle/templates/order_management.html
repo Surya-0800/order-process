@@ -438,6 +438,60 @@
         background: #6c757d;
       }
 
+      /* Download Button Styles */
+      .download-btn {
+        background: linear-gradient(135deg, #fd7e14, #e83e8c);
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        border-radius: 15px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin: 10px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 6px 20px rgba(253, 126, 20, 0.3);
+      }
+
+      .download-btn::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.2),
+          transparent
+        );
+        transition: left 0.5s;
+      }
+
+      .download-btn:hover::before {
+        left: 100%;
+      }
+
+      .download-btn:hover {
+        background: linear-gradient(135deg, #e83e8c, #6f42c1);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(253, 126, 20, 0.4);
+      }
+
+      .download-btn:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .download-btn:disabled::before {
+        display: none;
+      }
+
       .process-buttons {
         display: flex;
         justify-content: center;
@@ -782,7 +836,7 @@
           align-items: center;
         }
 
-        .process-btn {
+        .process-btn, .download-btn {
           width: 100%;
           max-width: 300px;
         }
@@ -1129,146 +1183,88 @@
         resultsContainer.classList.add("show");
       }
 
-      function displayPicklistResults(picklistData) {
-        console.log("DEBUG: Received picklist data:", picklistData);
-        
-        currentPicklistId = picklistData.picklist_id;
-        const resultsContainer = document.getElementById("resultsContainer");
+function displayPicklistResults(picklistData) {
+  console.log("DEBUG: Received picklist data:", picklistData);
+  
+  currentPicklistId = picklistData.picklist_id;
+  var resultsContainer = document.getElementById("resultsContainer");
+  var ordersTableHTML = '';
+  
+  if (picklistData.orders && picklistData.orders.length > 0) {
+    ordersTableHTML = 
+      '<div class="orders-section">' +
+        '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">' +
+          '<h3 style="margin: 0;">📦 Orders in this Picklist</h3>' +
+          '<div style="display: flex; flex-wrap: wrap; gap: 10px; margin: 0;">' +
+            '<button class="process-btn process-selected-btn" id="process-selected-btn" onclick="showPasswordForSelected()" disabled style="margin: 5px;">' +
+              '<span id="process-selected-text">Process Selected (0)</span>' +
+            '</button>' +
+            '<button class="process-btn" onclick="showPasswordForAll()" style="margin: 5px;">Process All Orders</button>' +
+            '<button class="download-btn" onclick="downloadPicklistDocuments()" style="margin: 5px;">Download Labels and Invoices</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="orders-controls">' +
+          '<div class="selection-controls">' +
+            '<button class="control-btn" onclick="selectAllOrders()">Select All</button>' +
+            '<button class="control-btn" onclick="selectNoneOrders()">Select None</button>' +
+          '</div>' +
+          '<div class="selected-count" id="selected-count">0 orders selected</div>' +
+        '</div>' +
+        '<div style="overflow-x: auto;">' +
+          '<table class="orders-table">' +
+            '<thead>' +
+              '<tr>' +
+                '<th style="width: 50px;"><input type="checkbox" id="select-all-checkbox" class="order-checkbox" onchange="toggleSelectAll()"></th>' +
+                '<th>Order Number</th><th>SKU</th><th>Qty</th><th>Status</th><th>Platform</th><th>AWB</th>' +
+              '</tr>' +
+            '</thead>' +
+            '<tbody id="orders-table-body">';
 
-        let ordersTableHTML = '';
-        
-        console.log("DEBUG: picklistData.orders:", picklistData.orders);
-        console.log("DEBUG: orders array length:", picklistData.orders ? picklistData.orders.length : 'undefined');
-        
-        if (picklistData.orders && picklistData.orders.length > 0) {
-          console.log("DEBUG: Building orders table with", picklistData.orders.length, "orders");
-          
-          ordersTableHTML = `
-            <div class="orders-section">
-              <!-- Header with Process Buttons on the right -->
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
-                <h3 style="margin: 0;">📦 Orders in this Picklist</h3>
-                <div class="process-buttons" style="margin: 0;">
-                  <button class="process-btn process-selected-btn" id="process-selected-btn" onclick="showPasswordForSelected()" disabled style="margin: 5px;">
-                      <span id="process-selected-text">Process Selected (0)</span>
-                  </button>
-                  <button class="process-btn" onclick="showPasswordForAll()" style="margin: 5px;">
-                      Process All Orders
-                  </button>
-                </div>
-              </div>
-              
-              <div class="orders-controls">
-                <div class="selection-controls">
-                  <button class="control-btn" onclick="selectAllOrders()">Select All</button>
-                  <button class="control-btn" onclick="selectNoneOrders()">Select None</button>
-                </div>
-                <div class="selected-count" id="selected-count">0 orders selected</div>
-              </div>
-              <div style="overflow-x: auto;">
-                <table class="orders-table">
-                  <thead>
-                    <tr>
-                      <th style="width: 50px;">
-                        <input type="checkbox" id="select-all-checkbox" class="order-checkbox" onchange="toggleSelectAll()">
-                      </th>
-                      <th>Order Number</th>
-                      <th>SKU</th>
-                      <th>Qty</th>
-                      <th>Status</th>
-                      <th>Platform</th>
-                      <th>AWB</th>
-                    </tr>
-                  </thead>
-                  <tbody id="orders-table-body">`;
+    for (var i = 0; i < picklistData.orders.length; i++) {
+      var order = picklistData.orders[i];
+      var statusClass = getStatusClass(order.status);
+      ordersTableHTML += 
+        '<tr>' +
+          '<td><input type="checkbox" class="order-checkbox" value="' + order.order_number + '" onchange="updateSelectedCount()"></td>' +
+          '<td><strong>' + order.order_number + '</strong></td>' +
+          '<td>' + order.sku + '</td>' +
+          '<td>' + order.quantity + '</td>' +
+          '<td><span class="status-badge ' + statusClass + '">' + order.status + '</span></td>' +
+          '<td>' + order.platform + '</td>' +
+          '<td>' + order.AWB + '</td>' +
+        '</tr>';
+    }
 
-          picklistData.orders.forEach((order, index) => {
-            console.log(`DEBUG: Processing order ${index + 1}:`, order);
-            const statusClass = getStatusClass(order.status);
-            ordersTableHTML += `
-              <tr>
-                <td>
-                  <input type="checkbox" class="order-checkbox" value="${order.order_number}" onchange="updateSelectedCount()">
-                </td>
-                <td><strong>${order.order_number}</strong></td>
-                <td>${order.sku}</td>
-                <td>${order.quantity}</td>
-                <td><span class="status-badge ${statusClass}">${order.status}</span></td>
-                <td>${order.platform}</td>
-                <td>${order.AWB}</td>
-              </tr>`;
-          });
+    ordersTableHTML += '</tbody></table></div></div>';
+  } else {
+    ordersTableHTML = 
+      '<div class="orders-section">' +
+        '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">' +
+          '<h3 style="margin: 0;">📦 Orders in this Picklist</h3>' +
+          '<button class="download-btn" onclick="downloadPicklistDocuments()" style="margin: 5px;">📄📋 Download All Documents</button>' +
+        '</div>' +
+        '<p style="text-align: center; color: #666; padding: 20px;"><strong>No orders found in this picklist.</strong></p>' +
+      '</div>';
+  }
 
-          ordersTableHTML += `
-                  </tbody>
-                </table>
-              </div>
-            </div>`;
-        } else {
-          console.log("DEBUG: No orders found or orders array is empty");
-          ordersTableHTML = `
-            <div class="orders-section">
-              <!-- Header with Process Buttons on the right (even when no orders) -->
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
-                <h3 style="margin: 0;">📦 Orders in this Picklist</h3>
-                <div class="process-buttons" style="margin: 0;">
-                  <button class="process-btn process-selected-btn" id="process-selected-btn" onclick="showPasswordForSelected()" disabled style="margin: 5px;">
-                      <span id="process-selected-text">Process Selected (0)</span>
-                  </button>
-                  <button class="process-btn" onclick="showPasswordForAll()" style="margin: 5px;">
-                      Process All Orders
-                  </button>
-                </div>
-              </div>
-              <p style="text-align: center; color: #666; padding: 20px;">
-                <strong>No orders found in this picklist.</strong><br>
-                This could mean the picklist is empty or there's an issue loading the order data.
-              </p>
-            </div>`;
-        }
+  resultsContainer.innerHTML = 
+    '<div class="result-header">' +
+      '<h2 class="result-title">Picklist Details</h2>' +
+      '<span class="result-badge badge-picklist">Picklist</span>' +
+    '</div>' +
+    '<div class="details-grid">' +
+      '<div class="detail-card"><div class="detail-title">Picklist ID</div><div class="detail-value">' + picklistData.picklist_id + '</div></div>' +
+      '<div class="detail-card"><div class="detail-title">Type</div><div class="detail-value">' + picklistData.picklist_type + '</div></div>' +
+      '<div class="detail-card"><div class="detail-title">Total Orders</div><div class="detail-value">' + picklistData.total_orders + '</div></div>' +
+      '<div class="detail-card"><div class="detail-title">Total Items</div><div class="detail-value">' + picklistData.total_items + '</div></div>' +
+      '<div class="detail-card"><div class="detail-title">Status</div><div class="detail-value">' + picklistData.status + '</div></div>' +
+      '<div class="detail-card"><div class="detail-title">Platform</div><div class="detail-value">' + picklistData.platform + '</div></div>' +
+    '</div>' + ordersTableHTML;
 
-        resultsContainer.innerHTML = `
-          <div class="result-header">
-              <h2 class="result-title">Picklist Details</h2>
-              <span class="result-badge badge-picklist">Picklist</span>
-          </div>
-          
-          <div class="details-grid">
-              <div class="detail-card">
-                  <div class="detail-title">Picklist ID</div>
-                  <div class="detail-value">${picklistData.picklist_id}</div>
-              </div>
-              <div class="detail-card">
-                  <div class="detail-title">Type</div>
-                  <div class="detail-value">${picklistData.picklist_type}</div>
-              </div>
-              <div class="detail-card">
-                  <div class="detail-title">Total Orders</div>
-                  <div class="detail-value">${picklistData.total_orders}</div>
-              </div>
-              <div class="detail-card">
-                  <div class="detail-title">Total Items</div>
-                  <div class="detail-value">${picklistData.total_items}</div>
-              </div>
-              <div class="detail-card">
-                  <div class="detail-title">Status</div>
-                  <div class="detail-value">${picklistData.status}</div>
-              </div>
-              <div class="detail-card">
-                  <div class="detail-title">Platform</div>
-                  <div class="detail-value">${picklistData.platform}</div>
-              </div>
-          </div>
-          
-          ${ordersTableHTML}
-        `;
-
-        resultsContainer.classList.add("show");
-        
-        // Reset selected orders
-        selectedOrderNumbers = [];
-        updateSelectedCount();
-      }
+  resultsContainer.classList.add("show");
+  selectedOrderNumbers = [];
+  updateSelectedCount();
+}
 
       function getStatusClass(status) {
         switch (status?.toLowerCase()) {
@@ -1347,6 +1343,71 @@
           }
         }
       }
+
+      // NEW: Combined Download Function
+function downloadPicklistDocuments() {
+  if (!currentPicklistId) {
+    alert('No picklist selected');
+    return;
+  }
+  
+  var btn = document.querySelector('button[onclick="downloadPicklistDocuments()"]');
+  var original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Downloading...';
+  
+  // Download labels first
+  var xhr1 = new XMLHttpRequest();
+  xhr1.open('POST', '/api/download-picklist-labels/');
+  xhr1.setRequestHeader('Content-Type', 'application/json');
+  xhr1.setRequestHeader('X-CSRFToken', getCSRFToken());
+  xhr1.responseType = 'blob';
+  
+  xhr1.onload = function() {
+    if (xhr1.status === 200) {
+      var url = URL.createObjectURL(xhr1.response);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = currentPicklistId + '_labels.pdf';
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      // Download invoices after 1 second
+      setTimeout(function() {
+        var xhr2 = new XMLHttpRequest();
+        xhr2.open('POST', '/api/download-picklist-invoices/');
+        xhr2.setRequestHeader('Content-Type', 'application/json');
+        xhr2.setRequestHeader('X-CSRFToken', getCSRFToken());
+        xhr2.responseType = 'blob';
+        
+        xhr2.onload = function() {
+          if (xhr2.status === 200) {
+            var url2 = URL.createObjectURL(xhr2.response);
+            var a2 = document.createElement('a');
+            a2.href = url2;
+            a2.download = currentPicklistId + '_invoices.pdf';
+            a2.click();
+            URL.revokeObjectURL(url2);
+            
+            setTimeout(function() { location.reload(); }, 2000);
+          } else {
+            alert('Failed to download invoices');
+          }
+          btn.disabled = false;
+          btn.innerHTML = original;
+        };
+        
+        xhr2.send('{"picklist_id":"' + currentPicklistId + '"}');
+      }, 1000);
+    } else {
+      alert('Failed to download labels');
+      btn.disabled = false;
+      btn.innerHTML = original;
+    }
+  };
+  
+  xhr1.send('{"picklist_id":"' + currentPicklistId + '"}');
+}
 
       // Password Modal Functions - REMOVED
       function showPasswordForSelected() {

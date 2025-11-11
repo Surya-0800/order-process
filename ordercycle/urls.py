@@ -49,7 +49,9 @@ from .views.order_management import (
     mark_order_complete_api,
     get_order_status_api,
     validate_admin_password_api,
-    process_selected_orders_api
+    process_selected_orders_api,
+    download_picklist_labels_pdf_api,
+    download_picklist_invoices_pdf_api
 )
 urlpatterns = [
     # Base views
@@ -111,6 +113,9 @@ urlpatterns = [
     path('api/picklist/<str:picklist_id>/barcode/', get_picklist_barcode, name='get_picklist_barcode'),
     path('api/product-image-by-sku/', get_product_image_by_sku, name='get_product_image_by_sku'),
     path('api/products/image-by-sku/', get_product_image_by_sku, name='products_image_by_sku'),
+
+    path('api/download-picklist-labels/', download_picklist_labels_pdf_api, name='download_picklist_labels'),
+    path('api/download-picklist-invoices/', download_picklist_invoices_pdf_api, name='download_picklist_invoices'),
     
     # Printing views
     path('api/printer/list/', get_printer_list, name='get_printer_list'),
