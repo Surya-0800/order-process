@@ -1,4 +1,6 @@
 # views/order_management.py
+# Complete PyMuPDF Migration with SKU-based Order Sorting
+
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
@@ -9,19 +11,20 @@ import json
 from django.utils import timezone
 from ..models import (
     AmazonOrders, FlipkarOrders, FirstcryOrders, MeeshoOrders,
-    Picklist, PicklistItem, MasterTable, PicklistDispatchStatus,OrderPDF,PicklistItemLocation
+    Picklist, PicklistItem, MasterTable, PicklistDispatchStatus, OrderPDF, PicklistItemLocation
 )
 from django.http import JsonResponse, HttpResponse
-import io,traceback,os
+import io, traceback, os
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, A4
+
+# PyMuPDF import (replaces PyPDF2/PyPDF4)
 try:
-    from PyPDF2 import PdfReader, PdfWriter
+    import pymupdf as fitz  # PyMuPDF
+    PDF_LIBRARY_AVAILABLE = True
 except ImportError:
-    try:
-        from PyPDF4 import PdfFileReader as PdfReader, PdfFileWriter as PdfWriter
-    except ImportError:
-        PdfReader = PdfWriter = None
+    fitz = None
+    PDF_LIBRARY_AVAILABLE = False
 
 
 def order_management_view(request):
@@ -192,6 +195,230 @@ def find_order_across_platforms(order_number):
     return None, None
 
 
+def extract_and_sort_orders_from_picklist(picklist_items, sort_by_sku=True):
+    """
+    Extract unique orders from picklist items with optional SKU-based sorting
+    Args:
+        picklist_items: QuerySet of PicklistItem objects
+        sort_by_sku: Boolean, if True sorts orders by SKU alphabetically
+    Returns:
+        tuple: (unique_orders_list, orders_data_list)
+    """
+    unique_orders_data = []
+    seen_orders = set()
+    
+    for item in picklist_items:
+        order_num = None
+        # Try different possible field names
+        for field_name in ['order_number', 'order_id', 'order', 'order_ref']:
+            if hasattr(item, field_name):
+                order_num = getattr(item, field_name)
+                if order_num:
+                    break
+        
+        if order_num and order_num not in seen_orders:
+            seen_orders.add(order_num)
+            
+            if sort_by_sku:
+                # Find order details to get SKU for sorting
+                order_data, platform = find_order_across_platforms(order_num)
+                if order_data:
+                    sku = getattr(order_data, 'sku', getattr(order_data, 'SKU', 'ZZZZ'))
+                    unique_orders_data.append({
+                        'order_number': order_num,
+                        'sku': str(sku).upper(),  # Normalize SKU for consistent sorting
+                        'platform': platform
+                    })
+                    print(f"Found order {order_num} with SKU: {sku}")
+                else:
+                    unique_orders_data.append({
+                        'order_number': order_num,
+                        'sku': 'ZZZZ_UNKNOWN',  # Sort unknown orders last
+                        'platform': 'Unknown'
+                    })
+                    print(f"Order {order_num} not found in any platform")
+            else:
+                # No sorting needed, just collect order numbers
+                unique_orders_data.append({
+                    'order_number': order_num,
+                    'sku': None,
+                    'platform': None
+                })
+    
+    if sort_by_sku:
+        # Sort orders by SKU (alphabetically)
+        unique_orders_data.sort(key=lambda x: x['sku'])
+    
+    # Extract just the order numbers for processing
+    unique_orders = [order['order_number'] for order in unique_orders_data]
+    
+    return unique_orders, unique_orders_data
+
+
+def extract_pages_from_pdf(pdf_content, page_indices, is_label_extraction=True):
+    """
+    Extract specific pages from PDF content using PyMuPDF
+    Args:
+        pdf_content: bytes of the PDF file
+        page_indices: list of page indices to extract (0-based)
+        is_label_extraction: if True, extract only specified pages; if False, extract all except specified pages
+    Returns:
+        bytes of the new PDF with extracted pages
+    """
+    if not PDF_LIBRARY_AVAILABLE:
+        print("ERROR: PyMuPDF not available for PDF manipulation")
+        return pdf_content  # Return original PDF if can't manipulate
+    
+    try:
+        # Open PDF from binary data
+        doc = fitz.open(stream=pdf_content, filetype="pdf")
+        total_pages = doc.page_count
+        
+        # Handle -1 index (last page)
+        processed_indices = []
+        for idx in page_indices:
+            if idx == -1:
+                processed_indices.append(total_pages - 1)
+            else:
+                processed_indices.append(idx)
+        
+        # Create new document for output
+        output_doc = fitz.open()
+        
+        if is_label_extraction:
+            # Extract only the specified pages (for labels)
+            for page_idx in processed_indices:
+                if 0 <= page_idx < total_pages:
+                    output_doc.insert_pdf(doc, from_page=page_idx, to_page=page_idx)
+        else:
+            # Extract all pages except the specified ones (for invoices)
+            for page_idx in range(total_pages):
+                if page_idx not in processed_indices:
+                    output_doc.insert_pdf(doc, from_page=page_idx, to_page=page_idx)
+        
+        # Convert to bytes
+        output_bytes = output_doc.write()
+        
+        # Close documents
+        output_doc.close()
+        doc.close()
+        
+        return output_bytes
+        
+    except Exception as e:
+        print(f"Error in extract_pages_from_pdf: {str(e)}")
+        traceback.print_exc()
+        return pdf_content  # Return original PDF if extraction fails
+
+
+def combine_pdfs(pdf_contents_list):
+    """
+    Combine multiple PDF contents into a single PDF using PyMuPDF
+    Args:
+        pdf_contents_list: list of PDF content bytes
+    Returns:
+        bytes of the combined PDF
+    """
+    if not PDF_LIBRARY_AVAILABLE:
+        print("ERROR: PyMuPDF not available for PDF manipulation")
+        return b''
+    
+    if not pdf_contents_list:
+        print("No PDF contents to combine")
+        return b''
+    
+    try:
+        # Create new document for output
+        output_doc = fitz.open()
+        
+        for pdf_content in pdf_contents_list:
+            if pdf_content:
+                # Open each PDF from binary data
+                input_doc = fitz.open(stream=pdf_content, filetype="pdf")
+                
+                # Insert all pages from this PDF
+                output_doc.insert_pdf(input_doc)
+                
+                # Close the input document
+                input_doc.close()
+        
+        # Convert to bytes
+        combined_bytes = output_doc.write()
+        
+        # Close output document
+        output_doc.close()
+        
+        return combined_bytes
+        
+    except Exception as e:
+        print(f"Error in combine_pdfs: {str(e)}")
+        traceback.print_exc()
+        return b''
+
+
+def get_pdf_content_for_order(order_number):
+    """
+    Helper function to get PDF content for an order using PyMuPDF
+    Returns tuple of (pdf_content, platform, label_page_index)
+    """
+    try:
+        # Find the order across all platforms
+        order_data, platform = find_order_across_platforms(order_number)
+        
+        if not order_data:
+            print(f"Order {order_number} not found in any platform")
+            return None, None, None
+        
+        # Determine which page is the label page based on platform
+        label_page_index = 0  # Default - first page is label
+        
+        if platform.upper() == 'FIRSTCRY':
+            # For FirstCry, the label is typically the last page
+            label_page_index = -1  # Use -1 to indicate last page
+        
+        # Check if PDF exists in the OrderPDF model
+        pdf_record = OrderPDF.objects.filter(order_id=order_number).first()
+        
+        if pdf_record:
+            print(f"DEBUG: Using PDF from database for order {order_number}")
+            return pdf_record.pdf_content, platform, label_page_index
+        
+        # PDF not found in database - check if it exists in the file system via pdf_url
+        if not order_data.pdf_url:
+            print(f"No PDF file found for order {order_number}")
+            return None, None, None
+        
+        # Get the PDF from the file system
+        pdf_path = order_data.pdf_url
+        
+        # Check if it's a file path
+        if pdf_path.startswith('/') or pdf_path.startswith('C:'):
+            # It's a file path
+            if os.path.exists(pdf_path):
+                try:
+                    # Read the file
+                    with open(pdf_path, 'rb') as f:
+                        pdf_content = f.read()
+                    
+                    print(f"DEBUG: Read PDF from file system for order {order_number}")
+                    return pdf_content, platform, label_page_index
+                    
+                except Exception as e:
+                    print(f"DEBUG: Error reading PDF from file system: {str(e)}")
+                    return None, None, None
+            else:
+                print(f"DEBUG: PDF file not found at {pdf_path}")
+                return None, None, None
+        
+        print(f"WARNING: Unsupported PDF path format: {pdf_path}")
+        return None, None, None
+        
+    except Exception as e:
+        print(f"Error in get_pdf_content_for_order: {str(e)}")
+        traceback.print_exc()
+        return None, None, None
+
+
 @require_http_methods(["GET"])
 def search_picklist_api(request, picklist_id):
     """
@@ -236,26 +463,15 @@ def search_picklist_api(request, picklist_id):
         print(f"DEBUG: Returning empty response: {response_data}")
         return JsonResponse(response_data)
     
-    # Extract order numbers - try different possible field names for order_number
-    unique_orders = []
-    for item in picklist_items:
-        order_num = None
-        # Try different possible field names
-        for field_name in ['order_number', 'order_id', 'order', 'order_ref']:
-            if hasattr(item, field_name):
-                order_num = getattr(item, field_name)
-                if order_num:
-                    break
-        
-        if order_num and order_num not in unique_orders:
-            unique_orders.append(order_num)
+    # Extract order numbers with SKU sorting
+    unique_orders, unique_orders_data = extract_and_sort_orders_from_picklist(picklist_items, sort_by_sku=True)
     
     print(f"DEBUG: Found unique orders: {unique_orders}")
     
     total_orders = len(unique_orders)
     total_items = picklist_items.count()
     
-    # Get detailed order information
+    # Get detailed order information (orders are already sorted by SKU)
     orders_detail = []
     processed_orders = set()
     
@@ -295,7 +511,7 @@ def search_picklist_api(request, picklist_id):
     
     print(f"DEBUG: Final orders_detail has {len(orders_detail)} orders")
     
-    # Return detailed picklist data with orders
+    # Return detailed picklist data with orders sorted by SKU
     response_data = {
         'picklist_id': picklist.picklist_id,
         'picklist_type': getattr(picklist, 'picklist_type', 'SINGLE'),
@@ -304,7 +520,7 @@ def search_picklist_api(request, picklist_id):
         'total_orders': total_orders,
         'total_items': total_items,
         'created_at': picklist.created_at.isoformat() if hasattr(picklist, 'created_at') else '',
-        'orders': orders_detail  # Detailed orders list
+        'orders': orders_detail  # Orders are now sorted by SKU
     }
     
     print(f"DEBUG: Final response data: {response_data}")
@@ -487,13 +703,15 @@ def process_picklist_api(request):
         print(picklist_items)
 
         print(")+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-        unique_orders = list(set(item.order_number for item in picklist_items))
+        
+        # Extract unique orders with SKU sorting
+        unique_orders, unique_orders_data = extract_and_sort_orders_from_picklist(picklist_items, sort_by_sku=True)
         
         processing_results = []
         successful_orders = []
         failed_orders = []
         
-        # Process each unique order
+        # Process each unique order (now in SKU order)
         for order_number in unique_orders:
             try:
                 # Find the order across all platforms
@@ -526,7 +744,7 @@ def process_picklist_api(request):
         
         response_data = {
             'success': len(failed_orders) == 0,
-            'message': f'Processed {len(successful_orders)} out of {len(unique_orders)} orders',
+            'message': f'Processed {len(successful_orders)} out of {len(unique_orders)} orders (sorted by SKU)',
             'picklist_id': picklist_id,
             'total_orders': len(unique_orders),
             'successful_orders': len(successful_orders),
@@ -592,7 +810,6 @@ def mark_order_complete_api(request):
         
         # Delete OrderPDF record if it exists (cleanup)
         try:
-            from ..models import OrderPDF
             order_pdf = OrderPDF.objects.get(order_id=order_number)
             order_pdf.delete()
             print(f"Deleted OrderPDF record for order {order_number}")
@@ -640,172 +857,13 @@ def mark_order_complete_api(request):
     except Exception as e:
         print(f"Error in mark_order_complete_api: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
-    
-def get_pdf_content_for_order(order_number):
-    """
-    Helper function to get PDF content for an order (same logic as print_label/print_invoice)
-    Returns tuple of (pdf_content, platform, label_page_index)
-    """
-    try:
-        # Find the order across all platforms
-        order_data, platform = find_order_across_platforms(order_number)
-        
-        if not order_data:
-            print(f"Order {order_number} not found in any platform")
-            return None, None, None
-        
-        # Determine which page is the label page based on platform
-        label_page_index = 0  # Default - first page is label
-        
-        if platform.upper() == 'FIRSTCRY':
-            # For FirstCry, the label is typically the last page
-            label_page_index = -1  # Use -1 to indicate last page
-        
-        # Check if PDF exists in the OrderPDF model
-        pdf_record = OrderPDF.objects.filter(order_id=order_number).first()
-        
-        if pdf_record:
-            print(f"DEBUG: Using PDF from database for order {order_number}")
-            return pdf_record.pdf_content, platform, label_page_index
-        
-        # PDF not found in database - check if it exists in the file system via pdf_url
-        if not order_data.pdf_url:
-            print(f"No PDF file found for order {order_number}")
-            return None, None, None
-        
-        # Get the PDF from the file system
-        pdf_path = order_data.pdf_url
-        
-        # Check if it's a file path
-        if pdf_path.startswith('/') or pdf_path.startswith('C:'):
-            # It's a file path
-            if os.path.exists(pdf_path):
-                try:
-                    # Read the file
-                    with open(pdf_path, 'rb') as f:
-                        pdf_content = f.read()
-                    
-                    print(f"DEBUG: Read PDF from file system for order {order_number}")
-                    return pdf_content, platform, label_page_index
-                    
-                except Exception as e:
-                    print(f"DEBUG: Error reading PDF from file system: {str(e)}")
-                    return None, None, None
-            else:
-                print(f"DEBUG: PDF file not found at {pdf_path}")
-                return None, None, None
-        
-        print(f"WARNING: Unsupported PDF path format: {pdf_path}")
-        return None, None, None
-        
-    except Exception as e:
-        print(f"Error in get_pdf_content_for_order: {str(e)}")
-        traceback.print_exc()
-        return None, None, None
 
-
-def extract_pages_from_pdf(pdf_content, page_indices, is_label_extraction=True):
-    """
-    Extract specific pages from PDF content
-    Args:
-        pdf_content: bytes of the PDF file
-        page_indices: list of page indices to extract (0-based)
-        is_label_extraction: if True, extract only specified pages; if False, extract all except specified pages
-    Returns:
-        bytes of the new PDF with extracted pages
-    """
-    if PdfReader is None or PdfWriter is None:
-        print("ERROR: PyPDF2/PyPDF4 not available for PDF manipulation")
-        return pdf_content  # Return original PDF if can't manipulate
-    
-    try:
-        # Create input PDF reader
-        input_pdf = io.BytesIO(pdf_content)
-        reader = PdfReader(input_pdf)
-        writer = PdfWriter()
-        
-        total_pages = len(reader.pages)
-        
-        # Handle -1 index (last page)
-        processed_indices = []
-        for idx in page_indices:
-            if idx == -1:
-                processed_indices.append(total_pages - 1)
-            else:
-                processed_indices.append(idx)
-        
-        if is_label_extraction:
-            # Extract only the specified pages (for labels)
-            for page_idx in processed_indices:
-                if 0 <= page_idx < total_pages:
-                    writer.add_page(reader.pages[page_idx])
-        else:
-            # Extract all pages except the specified ones (for invoices)
-            for page_idx in range(total_pages):
-                if page_idx not in processed_indices:
-                    writer.add_page(reader.pages[page_idx])
-        
-        # Create output PDF
-        output_pdf = io.BytesIO()
-        writer.write(output_pdf)
-        output_pdf.seek(0)
-        
-        return output_pdf.getvalue()
-        
-    except Exception as e:
-        print(f"Error in extract_pages_from_pdf: {str(e)}")
-        traceback.print_exc()
-        return pdf_content  # Return original PDF if extraction fails
-
-
-def combine_pdfs(pdf_contents_list):
-    """
-    Combine multiple PDF contents into a single PDF
-    Args:
-        pdf_contents_list: list of PDF content bytes
-    Returns:
-        bytes of the combined PDF
-    """
-    if PdfReader is None or PdfWriter is None:
-        print("ERROR: PyPDF2/PyPDF4 not available for PDF manipulation")
-        return b''
-    
-    if not pdf_contents_list:
-        print("No PDF contents to combine")
-        return b''
-    
-    try:
-        writer = PdfWriter()
-        
-        for pdf_content in pdf_contents_list:
-            if pdf_content:
-                input_pdf = io.BytesIO(pdf_content)
-                reader = PdfReader(input_pdf)
-                
-                # Add all pages from this PDF
-                for page in reader.pages:
-                    writer.add_page(page)
-        
-        # Create output PDF
-        output_pdf = io.BytesIO()
-        writer.write(output_pdf)
-        output_pdf.seek(0)
-        
-        return output_pdf.getvalue()
-        
-    except Exception as e:
-        print(f"Error in combine_pdfs: {str(e)}")
-        traceback.print_exc()
-        return b''
-
-
-# NEW ENDPOINTS - ADD THESE TO YOUR EXISTING FILE
 
 @csrf_exempt
 @require_http_methods(["POST"])
 def download_picklist_labels_pdf_api(request):
     """
-    API endpoint to download consolidated labels PDF for a picklist
+    API endpoint to download consolidated labels PDF for a picklist (with SKU sorting)
     Applies same status updates as mark_multiple_orders_printed
     """
     try:
@@ -829,26 +887,15 @@ def download_picklist_labels_pdf_api(request):
         if not picklist_items.exists():
             return JsonResponse({'error': 'No items found in picklist'}, status=404)
         
-        # Extract unique order numbers
-        unique_orders = []
-        for item in picklist_items:
-            order_num = None
-            # Try different possible field names
-            for field_name in ['order_number', 'order_id', 'order', 'order_ref']:
-                if hasattr(item, field_name):
-                    order_num = getattr(item, field_name)
-                    if order_num:
-                        break
-            
-            if order_num and order_num not in unique_orders:
-                unique_orders.append(order_num)
+        # Extract unique order numbers with SKU sorting
+        unique_orders, unique_orders_data = extract_and_sort_orders_from_picklist(picklist_items, sort_by_sku=True)
         
         if not unique_orders:
             return JsonResponse({'error': 'No valid orders found in picklist'}, status=404)
         
-        print(f"Processing {len(unique_orders)} orders for labels")
+        print(f"Processing {len(unique_orders)} orders for labels (sorted by SKU)")
         
-        # Collect label pages from all orders
+        # Collect label pages from all orders (now in SKU order)
         label_pdf_contents = []
         processed_orders = []
         failed_orders = []
@@ -880,7 +927,7 @@ def download_picklist_labels_pdf_api(request):
         if not label_pdf_contents:
             return JsonResponse({'error': 'No labels could be extracted from any orders'}, status=404)
         
-        # Combine all label PDFs into one
+        # Combine all label PDFs into one using PyMuPDF
         print(f"Combining {len(label_pdf_contents)} label PDFs")
         combined_labels_pdf = combine_pdfs(label_pdf_contents)
         
@@ -964,7 +1011,7 @@ def download_picklist_labels_pdf_api(request):
         response = HttpResponse(combined_labels_pdf, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{picklist_id}_labels.pdf"'
         
-        print(f"Successfully generated labels PDF with {len(label_pdf_contents)} pages")
+        print(f"Successfully generated labels PDF with {len(label_pdf_contents)} pages (ordered by SKU)")
         return response
         
     except json.JSONDecodeError:
@@ -979,7 +1026,7 @@ def download_picklist_labels_pdf_api(request):
 @require_http_methods(["POST"])
 def download_picklist_invoices_pdf_api(request):
     """
-    API endpoint to download consolidated invoices PDF for a picklist
+    API endpoint to download consolidated invoices PDF for a picklist (with SKU sorting)
     No status updates (same as print_invoice behavior)
     """
     try:
@@ -1003,26 +1050,15 @@ def download_picklist_invoices_pdf_api(request):
         if not picklist_items.exists():
             return JsonResponse({'error': 'No items found in picklist'}, status=404)
         
-        # Extract unique order numbers
-        unique_orders = []
-        for item in picklist_items:
-            order_num = None
-            # Try different possible field names
-            for field_name in ['order_number', 'order_id', 'order', 'order_ref']:
-                if hasattr(item, field_name):
-                    order_num = getattr(item, field_name)
-                    if order_num:
-                        break
-            
-            if order_num and order_num not in unique_orders:
-                unique_orders.append(order_num)
+        # Extract unique order numbers with SKU sorting
+        unique_orders, unique_orders_data = extract_and_sort_orders_from_picklist(picklist_items, sort_by_sku=True)
         
         if not unique_orders:
             return JsonResponse({'error': 'No valid orders found in picklist'}, status=404)
         
-        print(f"Processing {len(unique_orders)} orders for invoices")
+        print(f"Processing {len(unique_orders)} orders for invoices (sorted by SKU)")
         
-        # Collect invoice pages from all orders
+        # Collect invoice pages from all orders (now in SKU order)
         invoice_pdf_contents = []
         processed_orders = []
         failed_orders = []
@@ -1054,7 +1090,7 @@ def download_picklist_invoices_pdf_api(request):
         if not invoice_pdf_contents:
             return JsonResponse({'error': 'No invoices could be extracted from any orders'}, status=404)
         
-        # Combine all invoice PDFs into one
+        # Combine all invoice PDFs into one using PyMuPDF
         print(f"Combining {len(invoice_pdf_contents)} invoice PDFs")
         combined_invoices_pdf = combine_pdfs(invoice_pdf_contents)
         
@@ -1062,13 +1098,13 @@ def download_picklist_invoices_pdf_api(request):
             return JsonResponse({'error': 'Failed to combine invoice PDFs'}, status=500)
         
         # No status updates for invoices (same as print_invoice behavior)
-        print(f"No status updates applied for invoice download (same as print_invoice)")
+        print(f"No status updates applied for invoice download")
         
         # Return the combined PDF as download with picklist_id in filename
         response = HttpResponse(combined_invoices_pdf, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{picklist_id}_invoices.pdf"'
         
-        print(f"Successfully generated invoices PDF with {len(invoice_pdf_contents)} sections")
+        print(f"Successfully generated invoices PDF with {len(invoice_pdf_contents)} sections (ordered by SKU)")
         return response
         
     except json.JSONDecodeError:
@@ -1077,5 +1113,3 @@ def download_picklist_invoices_pdf_api(request):
         print(f"Error in download_picklist_invoices_pdf_api: {str(e)}")
         traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
-
-
