@@ -169,13 +169,13 @@ def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio):
                         
                         # Use a try-except block for file operations
                         try:
-                            os.remove(output_pdf_path)
+                            #os.remove(output_pdf_path)
                             os.rename(output_pdf_path_temp, output_pdf_path)
                         except PermissionError:
                             # If the file is still locked, wait and try again
                             import time
                             time.sleep(1)
-                            os.remove(output_pdf_path)
+                            #os.remove(output_pdf_path)
                             os.rename(output_pdf_path_temp, output_pdf_path)
                     except Exception as e:
                         # Make sure to close the document even if an error occurs
@@ -429,14 +429,14 @@ def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio=0.4)
                 source_type="meesho"
             )
             saved_orders.append(order_pdf)
-            os.remove(output_pdf_path)
+            #os.remove(output_pdf_path)
         else:
             new_doc = fitz.open(output_pdf_path)
             new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
             new_doc.insert_page(-1) 
             output_pdf_path_temp = os.path.join(output_folder, f"Order_{orderid_name}_temp.pdf")
             new_doc.save(output_pdf_path_temp)
-            os.remove(output_pdf_path)
+            #os.remove(output_pdf_path)
             os.rename(output_pdf_path_temp, output_pdf_path)
         new_doc.close()
 

@@ -12,7 +12,7 @@ from .views.base import (
 from .views.packing_views import (
     search_picklist, search_product, mark_picklist_completed,
     mark_product_packed, get_picklist_barcode, get_product_image_by_sku,save_awb_and_dispatch,
-    validate_sku, get_validation_status
+    validate_sku, get_validation_status, assign_table_to_picklist,sign_message
 )
 from .views.printing_views import (
     get_printer_list, save_printer_preferences, get_printer_preferences,
@@ -113,6 +113,7 @@ urlpatterns = [
     path('api/picklist/<str:picklist_id>/barcode/', get_picklist_barcode, name='get_picklist_barcode'),
     path('api/product-image-by-sku/', get_product_image_by_sku, name='get_product_image_by_sku'),
     path('api/products/image-by-sku/', get_product_image_by_sku, name='products_image_by_sku'),
+    path('api/picklists/<str:picklist_id>/assign-table/', assign_table_to_picklist, name='assign_table_to_picklist'),
 
     path('api/download-picklist-labels/', download_picklist_labels_pdf_api, name='download_picklist_labels'),
     path('api/download-picklist-invoices/', download_picklist_invoices_pdf_api, name='download_picklist_invoices'),
@@ -167,9 +168,11 @@ urlpatterns = [
     path('api/orders/process/', process_order_api, name='process_order_api'),
     path('api/picklists/process/', process_picklist_api, name='process_picklist_api'),
 
+    path('api/sign-message/', sign_message, name='sign_message'),
 
 ]
 
 # Add media URL patterns for development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root='ordercycle/static/')

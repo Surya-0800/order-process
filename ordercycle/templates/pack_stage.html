@@ -1638,6 +1638,17 @@
     margin-bottom: 10px; /* Add space below product name */
 }
 
+/* SKU list cell styling */
+.sku-list-cell {
+    max-width: 300px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+    line-height: 1.4;
+    font-size: 13px;
+    color: #333;
+}
+
 .product-meta {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -2447,6 +2458,30 @@
     box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
 }
 
+/* Table Selection Popup Styles */
+.table-option-btn {
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.table-option-btn:hover {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.table-option-btn:active {
+    transform: translateY(0);
+}
+
 .header-top-row {
     display: flex !important;
     justify-content: space-between !important;
@@ -2555,6 +2590,9 @@
                 <strong>PICKLIST ID:</strong> <span id="picklist-id-display">-</span>
             </span>
             <span class="info-item">
+                <strong>TABLE:</strong> <span id="picklist-table-display">-</span>
+            </span>
+            <span class="info-item">
                 <strong>TOTAL ORDERS:</strong> <span id="total-orders-display">0</span>
             </span>
             <span class="info-item">
@@ -2576,7 +2614,7 @@
     <div class="printer-popup" onclick="event.stopPropagation()">
         <button class="popup-close-btn" onclick="closePrinterPopup()">&times;</button>
         <h3>🖨️ Select Your Printers</h3>
-        
+
         <div class="printer-controls-grid">
             <!-- Label Printer Selection -->
             <div class="printer-control-group label-printer">
@@ -2606,10 +2644,31 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="printer-actions">
             <button id="refresh-printers-popup" class="btn-refresh-printers">🔄 Refresh Printer List</button>
             <button onclick="savePrinterSettings()" class="btn-save-printers">💾 Save Settings</button>
+        </div>
+    </div>
+</div>
+
+<!-- Table Selection Popup -->
+<div id="table-selection-overlay" class="printer-popup-overlay">
+    <div class="printer-popup" onclick="event.stopPropagation()" style="max-width: 400px;">
+        <h3>🍽️ Select Table</h3>
+        <p style="color: #6c757d; margin-bottom: 20px;">Please select a table for this picklist</p>
+
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px;">
+            <button class="table-option-btn" data-table="1" onclick="selectTable('1')">Table 1</button>
+            <button class="table-option-btn" data-table="2" onclick="selectTable('2')">Table 2</button>
+            <button class="table-option-btn" data-table="3" onclick="selectTable('3')">Table 3</button>
+            <button class="table-option-btn" data-table="4" onclick="selectTable('4')">Table 4</button>
+            <button class="table-option-btn" data-table="5" onclick="selectTable('5')">Table 5</button>
+            <button class="table-option-btn" data-table="6" onclick="selectTable('6')">Table 6</button>
+        </div>
+
+        <div style="text-align: center; color: #dc3545; font-size: 14px;">
+            Table selection is mandatory to proceed
         </div>
     </div>
 </div>
@@ -2808,8 +2867,8 @@
         // Global variables
         let printServiceAvailable = false;
         let printServiceStatus = 'disconnected';
-        //let qzReady = false;
-       //let qzConnection = null;
+        let qzReady = false;
+        let qzConnection = null;
         let availablePrinters = [];
         let labelPrinters = [];
         let defaultPrinter = '';
@@ -2931,6 +2990,7 @@
             data: {
                 picklistId: data.picklist.picklist_id,
                 platform: data.picklist.platform,
+                table: data.picklist.table,
                 totalOrders: allOrders.length,
                 completedOrders: completedOrders,
                 activeOrders: activeOrders.length,
@@ -2977,15 +3037,16 @@ async function loadAndShowPicklistSummary(picklistId) {
 function showPicklistSummary(data) {
     const infoBar = document.getElementById('picklist-info-bar');
     if (!infoBar) return;
-    
+
     infoBar.style.display = 'block';
-    
+
     document.getElementById('picklist-id-display').textContent = data.picklistId || '-';
+    document.getElementById('picklist-table-display').textContent = data.table ? `Table ${data.table}` : '-';
     document.getElementById('total-orders-display').textContent = data.totalOrders || '0';
     document.getElementById('total-orders-display-2').textContent = data.totalOrders || '0';
     document.getElementById('picklist-platform-display').textContent = (data.platform || '-').toUpperCase();
     document.getElementById('completed-orders-display').textContent = data.completedOrders || '0';
-    
+
     const statusElement = document.getElementById('picklist-status-display');
     if (data.status === 'loading') {
         statusElement.className = 'status-badge status-loading';
@@ -3021,6 +3082,54 @@ function togglePrinterSelection() {
 function closePrinterPopup() {
     const overlay = document.getElementById('printer-popup-overlay');
     overlay.classList.remove('active');
+}
+
+// Table Selection Functions
+function showTableSelectionPopup() {
+    const overlay = document.getElementById('table-selection-overlay');
+    if (overlay) {
+        overlay.classList.add('active');
+    }
+}
+
+function closeTableSelectionPopup() {
+    const overlay = document.getElementById('table-selection-overlay');
+    if (overlay) {
+        overlay.classList.remove('active');
+    }
+}
+
+async function selectTable(tableNumber) {
+    if (!currentPicklistId) {
+        alert('No picklist loaded');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/picklists/${currentPicklistId}/assign-table/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                table: tableNumber
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            closeTableSelectionPopup();
+            // Reload the picklist to show the table and continue
+            searchPicklist();
+        } else {
+            alert('Failed to assign table: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error assigning table:', error);
+        alert('Error assigning table. Please try again.');
+    }
 }
 
 function detectPrintersForPopup() {
@@ -3244,32 +3353,9 @@ function hidePicklistSummary() {
 
         // Print Service Functions
         async function checkPrintServiceAvailability() {
-            debugLog('Checking Print Service availability...');
-            
-            try {
-                const response = await fetch('http://localhost:8081/', {
-                    method: 'GET',
-                    signal: AbortSignal.timeout(3000)
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    printServiceAvailable = true;
-                    printServiceStatus = 'connected';
-                    debugLog(`Print Service connected: ${data.message}`, 'success');
-                    updatePrintServiceStatus('Connected', 'connected');
-                    // Auto-detect printers when Print Service is available
-                    detectPrinters();
-
-                    return true;
-                }
-            } catch (error) {
-                debugLog(`Print Service not available: ${error.message}`, 'error');
-                printServiceAvailable = false;
-                printServiceStatus = 'disconnected';
-                updatePrintServiceStatus('Disconnected', 'disconnected');
-                return false;
-            }
+            debugLog('Print Service disabled - initializing QZ Tray instead...');
+            initQZ();
+            return false;
         }
 
         function updatePrintServiceStatus(message, status) {
@@ -3291,47 +3377,33 @@ function hidePicklistSummary() {
         }
 
 async function detectPrinters() {
-    console.log("Detecting available printers...");
-    showPrinterSelection();
+    console.log("Detecting available printers via QZ Tray...");
     
-    let servicePrinters = [];
-    
-    // QZ Tray detection commented out - using Print Service only
-    /*
-    let qzPrinters = [];
-    if (typeof qz !== 'undefined' && qzReady) {
-        try {
-            qzPrinters = await qz.printers.find();
-            console.log("QZ Tray printers:", qzPrinters);
-        } catch (error) {
-            console.error("QZ Tray printer detection failed:", error);
-        }
-    }
-    */
-    
-    // Check Print Service printers
-    if (printServiceAvailable) {
-        try {
-            const response = await fetch('http://localhost:8081/api/printers');
-            if (response.ok) {
-                const data = await response.json();
-                servicePrinters = data.printers ? data.printers.map(p => p.name || p) : [];
-                console.log("Print Service printers:", servicePrinters);
-            }
-        } catch (error) {
-            console.error("Print Service printer detection failed:", error);
-        }
-    }
-    
-    // Use only Print Service printers
-    const allPrinters = servicePrinters;
-    
-    if (allPrinters.length === 0) {
-        console.warn("No printers detected from Print Service");
+    if (!qzReady || typeof qz === 'undefined') {
+        console.error("QZ Tray not ready for printer detection");
         updatePrinterSelectionState('no-printers');
         return [];
     }
 
+    let qzPrinters = [];
+    
+    try {
+        qzPrinters = await qz.printers.find();
+        console.log("QZ Tray printers:", qzPrinters);
+    } catch (error) {
+        console.error("QZ Tray printer detection failed:", error);
+        updatePrinterSelectionState('no-printers');
+        return [];
+    }
+    
+    if (qzPrinters.length === 0) {
+        console.warn("No printers detected from QZ Tray");
+        updatePrinterSelectionState('no-printers');
+        return [];
+    }
+
+    // Use only QZ Tray printers
+    const allPrinters = qzPrinters;
     availablePrinters = allPrinters;
     console.log("All available printers:", availablePrinters);
 
@@ -3353,7 +3425,7 @@ async function detectPrinters() {
     populatePrinterSelections();
     updatePrinterSelectionState('printers-found');
 
-    console.log("Printer detection completed.");
+    console.log("QZ Tray printer detection completed.");
     return allPrinters;
 }
 
@@ -3881,11 +3953,11 @@ function arrayBufferToBase64(buffer) {
 }
 
 function printOrderLabel(platform, orderNumber) {
-    console.log(`🔍 printOrderLabel called with platform: ${platform}`);
+    console.log(`🔍 printOrderLabel called with platform: ${platform} - Using QZ Tray for ALL platforms`);
     
-    // Check if Print Service is available
-    if (!printServiceAvailable) {
-        alert('Print Service is required for printing but is not available. Please start the Print Service.');
+    // Check if QZ Tray is ready
+    if (!qzReady || typeof qz === 'undefined') {
+        alert('QZ Tray is required for printing but is not available. Please ensure QZ Tray is installed and running.');
         return;
     }
     
@@ -3894,8 +3966,8 @@ function printOrderLabel(platform, orderNumber) {
         return;
     }
     
-    console.log('🖨️ Using Print Service for all platforms');
-    printOrderLabelWithPrintService(platform, orderNumber);
+    console.log('🖨️ Using QZ Tray for all platforms including Meesho');
+    printLabelAndInvoice(platform, orderNumber, true);
 }
 
 function printOrderLabelWithPrintService(platform, orderNumber) {
@@ -4448,6 +4520,17 @@ function printLabelAndInvoice(platform, orderNumber, canPrint) {
                                 density: 300,
                                 scale: 'fit'
                             });
+                        } else if (platformUpper === 'MEESHO') {
+                            // ADDED: Meesho-specific QZ Tray configuration
+                            config = qz.configs.create(printerToUse, {
+                                size: { width: 4, height: 6, units: 'in' },
+                                margins: { top: 0, right: 0, bottom: 0, left: 0 },
+                                orientation: 'portrait',
+                                copies: 1,
+                                colorType: 'grayscale',
+                                density: 300,
+                                scale: 'fit'
+                            });
                         } else {
                             // Default configuration for other platforms (not Meesho)
                             config = qz.configs.create(printerToUse, {
@@ -4664,18 +4747,31 @@ function printInvoiceAfterLabel(platform, orderNumber, canPrint) {
                         let config;
                         
                         // Printer configuration for FLIPKART invoices - LANDSCAPE orientation
-                        if (platformUpper === 'FLIPKART') {
-                            config = qz.configs.create(printerToUse, {
-                                size: { width: 8.5, height: 7.5, units: 'in' },
-                                margins: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
-                                orientation: 'landscape',
-                                copies: 1,
-                                colorType: 'grayscale',
-                                scale: 'fit-to-page',
-                                scaleContent: true,
-                                density: 300
-                            });
-                        } else {
+                        // Printer configuration including MEESHO invoices
+                            if (platformUpper === 'FLIPKART') {
+                                config = qz.configs.create(printerToUse, {
+                                    size: { width: 8.5, height: 7.5, units: 'in' },
+                                    margins: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
+                                    orientation: 'landscape',
+                                    copies: 1,
+                                    colorType: 'grayscale',
+                                    scale: 'fit-to-page',
+                                    scaleContent: true,
+                                    density: 300
+                                });
+                            } else if (platformUpper === 'MEESHO') {
+                                // ADDED: Meesho invoice configuration
+                                config = qz.configs.create(printerToUse, {
+                                    size: { width: 8.5, height: 11, units: 'in' },
+                                    margins: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
+                                    orientation: 'portrait',
+                                    copies: 1,
+                                    colorType: 'grayscale',
+                                    scale: 'fit-to-page',
+                                    scaleContent: true,
+                                    density: 300
+                                });
+                            } else {
                             // Default configuration for other platforms (NOT Meesho - it doesn't reach here)
                             config = qz.configs.create(printerToUse, {
                                 size: { width: 4, height: 6, units: 'in' },
@@ -4989,47 +5085,75 @@ function reprintOrderLabel(orderNumber) {
 
 
         // QZ Tray Functions
-        {% comment %} function initQZ() {
-            debugLog('Initializing QZ Tray connection...');
+function initQZ() {
+    debugLog('Initializing QZ Tray connection with signing...');
 
-            if (typeof qz === 'undefined') {
-                debugLog('QZ Tray library not loaded', 'error');
-                updateQZStatus('Library not loaded', 'disconnected');
-                return;
-            }
+    if (typeof qz === 'undefined') {
+        debugLog('QZ Tray library not loaded', 'error');
+        updateQZStatus('Library not loaded', 'disconnected');
+        return;
+    }
 
-            updateQZStatus('Connecting...', 'connecting');
+    updateQZStatus('Connecting...', 'connecting');
 
-            try {
-                qz.security.setCertificatePromise(function (resolve, reject) {
-                    resolve();
-                });
+    try {
+        // Set signature algorithm for QZ Tray 2.1+
+        qz.security.setSignatureAlgorithm("SHA512");
 
-                qz.security.setSignaturePromise(function (toSign) {
-                    return function (resolve, reject) {
-                        resolve();
-                    };
-                });
+        // Set certificate promise - loads your digital certificate
+        qz.security.setCertificatePromise(function(resolve, reject) {
+            fetch("/static/certificates/digital-certificate.txt", {
+                cache: 'no-store', 
+                headers: {'Content-Type': 'text/plain'}
+            })
+            .then(function(response) { 
+                if (response.ok) {
+                    response.text().then(resolve);
+                } else {
+                    reject("Failed to load certificate");
+                }
+            })
+            .catch(reject);
+        });
 
-                qz.websocket.connect({
-                    retries: 2,
-                    delay: 500
-                }).then(function () {
-                    qzReady = true;
-                    qzConnection = qz.websocket;
-                    debugLog('QZ Tray connected successfully', 'success');
-                    updateQZStatus('Connected', 'connected');
+        // Set signature promise - signs each print request
+        qz.security.setSignaturePromise(function(toSign) {
+            return function(resolve, reject) {
+                fetch("/api/sign-message?request=" + encodeURIComponent(toSign), {
+                    cache: 'no-store', 
+                    headers: {'Content-Type': 'text/plain'}
+                })
+                .then(function(response) {
+                    if (response.ok) {
+                        response.text().then(resolve);
+                    } else {
+                        reject("Failed to sign message");
+                    }
+                })
+                .catch(reject);
+            };
+        });
 
-                    detectPrinters();
-                }).catch(function (err) {
-                    debugLog(`QZ Tray connection error: ${err.message}`, 'error');
-                    updateQZStatus('Disconnected', 'disconnected');
-                });
-            } catch (e) {
-                debugLog(`Unexpected QZ error: ${e.message}`, 'error');
-                updateQZStatus('Error', 'disconnected');
-            }
-        }
+        // Connect to QZ Tray
+        qz.websocket.connect({
+            retries: 2,
+            delay: 500
+        }).then(function () {
+            qzReady = true;
+            qzConnection = qz.websocket;
+            debugLog('QZ Tray connected successfully with signing', 'success');
+            updateQZStatus('Connected & Signed', 'connected');
+
+            detectPrinters();
+        }).catch(function (err) {
+            debugLog(`QZ Tray connection error: ${err.message}`, 'error');
+            updateQZStatus('Disconnected', 'disconnected');
+        });
+    } catch (e) {
+        debugLog(`Unexpected QZ error: ${e.message}`, 'error');
+        updateQZStatus('Error', 'disconnected');
+    }
+}
 
         function updateQZStatus(message, status) {
             const statusDiv = document.getElementById('qz-status');
@@ -5047,7 +5171,7 @@ function reprintOrderLabel(orderNumber) {
                     connectBtn.style.display = 'inline-block';
                 }
             }
-        } {% endcomment %}
+        }
 
         // Picklist Functions
 function searchPicklist() {
@@ -5094,17 +5218,25 @@ function searchPicklist() {
     })
     .then(data => {
         console.log('API Response:', data);
-        
+
+        // Set global variables first so they're available for table selection
+        currentPicklistId = data.picklist.picklist_id;
+        currentPicklistPlatform = data.picklist.platform;
+
+        // Check if table is assigned, if not show table selection popup
+        if (!data.picklist.table) {
+            showTableSelectionPopup();
+            return;
+        }
+
         // Filter out 'Dispatch' orders, but keep 'Complete' and 'Processed' orders
-        const activeItems = data.picklist.items.filter(item => 
+        const activeItems = data.picklist.items.filter(item =>
             item.order_status !== 'Dispatch'
         );
 
         console.log('Active items after filtering (excluding only Dispatch):', activeItems);
 
-        // Update global variables
-        currentPicklistId = data.picklist.picklist_id;
-        currentPicklistPlatform = data.picklist.platform;
+        // Update remaining global variables
         currentPicklistItems = activeItems;
 
         // FIXED: Check if all orders are dispatched using the backend flag
@@ -5168,6 +5300,7 @@ function searchPicklist() {
         updatePicklistSummaryWithProcessedOrders(
             data.picklist.picklist_id,
             data.picklist.platform,
+            data.picklist.table,
             uniqueUnprocessedOrders.length + uniqueProcessedOrders.length,
             uniqueProcessedOrders.length,
             status
@@ -5181,13 +5314,14 @@ function searchPicklist() {
     });
 }
 
-function updatePicklistSummaryWithProcessedOrders(picklistId, platform, totalOrders, completedOrders, status) {
+function updatePicklistSummaryWithProcessedOrders(picklistId, platform, table, totalOrders, completedOrders, status) {
     const infoBar = document.getElementById('picklist-info-bar');
     if (!infoBar) return;
-    
+
     infoBar.style.display = 'block';
-    
+
     document.getElementById('picklist-id-display').textContent = picklistId || '-';
+    document.getElementById('picklist-table-display').textContent = table ? `Table ${table}` : '-';
     document.getElementById('total-orders-display').textContent = totalOrders || '0';
     document.getElementById('total-orders-display-2').textContent = totalOrders || '0';
     document.getElementById('picklist-platform-display').textContent = (platform || '-').toUpperCase();
@@ -5558,7 +5692,7 @@ function showFilteredOrders(filterType) {
         tableHead.innerHTML = `
             <tr>
                 <th>📦 Order #</th>
-                <th>📋 Items</th>
+                <th>📋 SKUs</th>
                 <th>✅ Validation</th>
                 <th>⚡ Actions</th>
             </tr>
@@ -5937,7 +6071,7 @@ function populateUnprocessedOrders(tableBody) {
                     </div>
                 </div>
             </td>
-            <td>${totalItems} items (${totalSkus} SKUs)</td>
+            <td><div class="sku-list-cell">${order.skus.join(', ')}</div></td>
             <td>
                 <span class="validation-status ${validationStatusClass}">
                     ${validationStatusText} (${validatedSkus}/${totalSkus})
@@ -8715,7 +8849,7 @@ function getOrdersWithSku(sku) {
             
             // Auto-initialize print services
             setTimeout(() => {
-                checkPrintServiceAvailability();
+                initQZ();
             }, 1000);
             
             initializeProductSearch();
@@ -8725,7 +8859,7 @@ function getOrdersWithSku(sku) {
             const qzBtn = document.getElementById('connect-qz');
             
             if (printServiceBtn) {
-                printServiceBtn.addEventListener('click', checkPrintServiceAvailability);
+                printServiceBtn.addEventListener('click', initQZ); // Now connects to QZ Tray
             }
             //if (qzBtn) {
             //    qzBtn.addEventListener('click', initQZ);
@@ -8744,7 +8878,6 @@ function getOrdersWithSku(sku) {
         });
 
         // Load QZ Tray scripts
-        /*
         (function() {
             function loadScriptsSequentially(scripts, callback) {
                 if (scripts.length === 0) {
@@ -8785,7 +8918,6 @@ function getOrdersWithSku(sku) {
                 }
             });
         })();
-        */
     </script>
 </body>
 </html>

@@ -164,7 +164,7 @@ def split_pdf_by_orderid(pdf_path, output_folder, final_output_dict,data_exists)
             saved_orders.append(order_pdf)
             
             # Optionally delete the temporary file
-            os.remove(output_pdf_path)
+            # os.remove(output_pdf_path)
            
     return order_pages
 

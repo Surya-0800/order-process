@@ -4082,6 +4082,19 @@ function updateDispatchStatistics(picklists) {
         return;
       }
 
+      // Prompt for password
+      const enteredPassword = prompt('Enter password to delete picklists:');
+
+      if (enteredPassword === null) {
+        // User cancelled
+        return;
+      }
+
+      if (enteredPassword !== DELETE_PASSWORD) {
+        alert('Incorrect password. Picklists were not deleted.');
+        return;
+      }
+
       // Show loading
       const deleteBtn = document.getElementById('bulk-delete-btn');
       if (deleteBtn) {
@@ -4588,6 +4601,7 @@ document.addEventListener('change', function(event) {
                             <th>Type</th>
                             <th>Qty</th>
                             <th>Platform</th>
+                            <th>Table</th>
                             <th>Status</th>
                             <th>Created</th>
                             <th>Actions</th>
@@ -4597,6 +4611,7 @@ document.addEventListener('change', function(event) {
             `;
 
           packingPicklists.forEach(picklist => {
+            const tableDisplay = picklist.table ? `Table ${picklist.table}` : '-';
             html += `
                     <tr>
                         <td><input type="checkbox" class="picklist-checkbox" value="${picklist.picklist_id}"></td>
@@ -4608,6 +4623,7 @@ document.addEventListener('change', function(event) {
                         <td>${picklist.picklist_type}</td>
                         <td>${picklist.quantity}</td>
                         <td>${picklist.platform}</td>
+                        <td><strong>${tableDisplay}</strong></td>
                         <td>
                             <span class="status-badge status-packing">
                                 ${picklist.status}
@@ -5087,9 +5103,24 @@ function exportCurrentData() {
 }
 
 
+    // Delete password constant
+    const DELETE_PASSWORD = 'JIPL1318$';
+
     function confirmDeletePicklist(picklistId) {
       if (confirm(`WARNING: Are you sure you want to delete picklist ${picklistId}?\n\nThis will PERMANENTLY DELETE the picklist and all associated orders from the database.\n\nThis action cannot be undone.`)) {
-        deletePicklist(picklistId);
+        // Prompt for password
+        const enteredPassword = prompt('Enter password to delete picklist:');
+
+        if (enteredPassword === null) {
+          // User cancelled
+          return;
+        }
+
+        if (enteredPassword === DELETE_PASSWORD) {
+          deletePicklist(picklistId);
+        } else {
+          alert('Incorrect password. Picklist was not deleted.');
+        }
       }
     }
 

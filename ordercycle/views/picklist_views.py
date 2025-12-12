@@ -64,6 +64,7 @@ class PicklistViewSet(ViewSet):
             'quantity': picklist.quantity,
             'status': picklist.status,
             'platform': picklist.platform,
+            'table': picklist.table,
             'created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S')
         } for picklist in picklists_list]
         

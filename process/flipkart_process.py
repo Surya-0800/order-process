@@ -159,14 +159,14 @@ def split_pdf_custom(input_pdf, output_folder, final_output_dict, top_ratio=0.46
                 source_type="flipkart"
             )
             saved_orders.append(order_pdf)
-            os.remove(output_pdf_path)
+            # os.remove(output_pdf_path)
         else:
             new_doc = fitz.open(output_pdf_path)
             new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
             new_doc.insert_page(-1) 
             output_pdf_path_temp = os.path.join(output_folder, f"Order_{orderid_name}_temp.pdf")
             new_doc.save(output_pdf_path_temp)
-            os.remove(output_pdf_path)
+            # os.remove(output_pdf_path)
             os.rename(output_pdf_path_temp, output_pdf_path)
         new_doc.close()
         

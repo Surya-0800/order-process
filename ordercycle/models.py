@@ -99,20 +99,30 @@ class Picklist(models.Model):
         ('SINGLE', 'Single'),
         ('MULTI', 'Multi'),
     ]
-    
+
     STATUS_CHOICES = [
         ('CREATED', 'Created'),
         ('PRINTED', 'Printed'),
         ('PACKING', 'Packing'),
         ('PARTIAL_DISPATCH', 'Partial Dispatch'),
-        ('DISPATCH', 'Dispatch'),                   
+        ('DISPATCH', 'Dispatch'),
     ]
-    
+
+    TABLE_CHOICES = [
+        ('1', 'Table 1'),
+        ('2', 'Table 2'),
+        ('3', 'Table 3'),
+        ('4', 'Table 4'),
+        ('5', 'Table 5'),
+        ('6', 'Table 6'),
+    ]
+
     picklist_id = models.CharField(max_length=10, unique=True)
     picklist_type = models.CharField(max_length=10, choices=PICKLIST_TYPE_CHOICES)
     quantity = models.IntegerField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='CREATED')  # Increased max_length
     platform = models.CharField(max_length=20)  # AMAZON, FLIPKART, FIRSTCRY, MEESHO
+    table = models.CharField(max_length=10, choices=TABLE_CHOICES, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

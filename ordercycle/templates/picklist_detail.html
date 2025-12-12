@@ -106,6 +106,63 @@
       }
     }
 
+    /* Print info styling - hidden on screen, visible on right side when printing */
+    .print-info {
+      display: none;
+      padding: 10px;
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .print-info-item {
+      margin: 5px 0;
+      color: #333;
+    }
+
+    .print-info-item strong {
+      color: #000;
+    }
+
+    /* Show print info on the right side when printing */
+    @media print {
+      .print-info {
+        display: block !important;
+        background-color: #fff !important;
+        border: 1px solid #000 !important;
+        padding: 10px 15px !important;
+        margin: 0 !important;
+        margin-left: 20px !important;
+        min-width: 250px;
+        max-width: 350px;
+        flex-shrink: 0;
+        align-self: flex-start;
+      }
+
+      /* Ensure picklist header stays flexbox for print */
+      .picklist-header {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: flex-start !important;
+        flex-wrap: nowrap !important;
+        gap: 20px !important;
+      }
+
+      /* Make sure the left container doesn't take full width */
+      .picklist-header-container {
+        flex: 1 1 auto !important;
+        max-width: calc(100% - 390px) !important;
+        min-width: 400px !important;
+      }
+
+      /* Position picker selector is hidden anyway but ensure print-info shows */
+      .picker-selector {
+        display: none !important;
+      }
+    }
+
     /* Status table styles */
     .status-table {
       width: 100%;
@@ -467,6 +524,15 @@
             <svg id="picklist-barcode"></svg>
           </div>
         </div>
+        <!-- Print information (visible only when printing) - positioned on the right -->
+        <div class="print-info">
+          <div class="print-info-item">
+            <strong>Server:</strong> <span id="print-server-url"></span>
+          </div>
+          <div class="print-info-item">
+            <strong>Printed:</strong> <span id="print-timestamp"></span>
+          </div>
+        </div>
         <div class="picker-selector no-print">
           <label for="picker-select">ASSIGN PICKER:</label>
           <select id="picker-select">
@@ -558,6 +624,32 @@
         margin: 10
       });
 
+      // Populate print information
+      const serverUrlElement = document.getElementById('print-server-url');
+      const printTimestampElement = document.getElementById('print-timestamp');
+
+      // Get server URL (base URL from current location)
+      const serverUrl = window.location.origin;
+      serverUrlElement.textContent = serverUrl;
+
+      // Function to update print timestamp
+      function updatePrintTimestamp() {
+        const now = new Date();
+        const formattedDateTime = now.toLocaleString('en-US', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true
+        });
+        printTimestampElement.textContent = formattedDateTime;
+      }
+
+      // Update timestamp initially
+      updatePrintTimestamp();
+
       // Add sorting variables
       let allItems = []; // Store all items for sorting
       let currentSortField = 'sku'; // Default sort field
@@ -572,10 +664,25 @@
       deleteBtn.addEventListener('click', confirmDeletePicklist);
       deleteBtnBottom.addEventListener('click', confirmDeletePicklist);
 
+      // Delete password constant
+      const DELETE_PASSWORD = 'JIPL1318$';
+
       // Function to confirm and delete picklist
       function confirmDeletePicklist() {
         if (confirm(`Are you sure you want to delete this picklist (${picklistId})?`)) {
-          deletePicklist();
+          // Prompt for password
+          const enteredPassword = prompt('Enter password to delete picklist:');
+
+          if (enteredPassword === null) {
+            // User cancelled
+            return;
+          }
+
+          if (enteredPassword === DELETE_PASSWORD) {
+            deletePicklist();
+          } else {
+            alert('Incorrect password. Picklist was not deleted.');
+          }
         }
       }
 
@@ -789,6 +896,9 @@
 
               // Hide any existing status messages before printing
               statusMessage.style.display = 'none';
+
+              // Update print timestamp to current time before printing
+              updatePrintTimestamp();
 
               // After successfully updating status, initiate printing
               window.print();

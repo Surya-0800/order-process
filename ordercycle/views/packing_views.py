@@ -145,6 +145,7 @@ def search_picklist(request):
                 'quantity': picklist.quantity,
                 'status': picklist.status,
                 'platform': picklist.platform,
+                'table': picklist.table,
                 'created_at': picklist.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'items': items_data,
                 'validation_status': validation_status,
@@ -933,6 +934,44 @@ def get_product_image_by_sku(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+def assign_table_to_picklist(request, picklist_id):
+    """
+    Assign a table number to a picklist
+    """
+    try:
+        data = json.loads(request.body)
+        table = data.get('table')
+
+        if not table:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Table number is required'
+            }, status=400)
+
+        # Get the picklist
+        picklist = get_object_or_404(Picklist, picklist_id=picklist_id)
+
+        # Assign the table
+        picklist.table = table
+        picklist.save()
+
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Table {table} assigned to picklist {picklist_id}',
+            'picklist_id': picklist_id,
+            'table': table
+        })
+
+    except Exception as e:
+        print(f"Error in assign_table_to_picklist: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Error assigning table: {str(e)}'
+        }, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
 def save_awb_and_dispatch(request):
     """
     Validate the AWB number against existing records for an order.
@@ -1077,3 +1116,51 @@ def save_awb_and_dispatch(request):
             'status': 'error',
             'message': f'Error saving AWB number: {str(e)}'
         }, status=500)
+    
+
+# views.py
+import base64
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
+from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+import os
+
+@csrf_exempt
+def sign_message(request):
+    """Signs QZ Tray messages using your private key"""
+    
+    if request.method != 'GET':
+        return HttpResponse('Method not allowed', status=405)
+    
+    message_to_sign = request.GET.get('request', '')
+    if not message_to_sign:
+        return HttpResponse('No message to sign', status=400)
+    
+    try:
+        # Path to your downloaded private key
+        import os
+        from django.conf import settings
+        private_key_path = os.path.join(settings.BASE_DIR, 'ordercycle', 'static', 'certificates', 'private-key.pem')
+        # Load your private key
+        with open(private_key_path, 'rb') as key_file:
+            private_key = serialization.load_pem_private_key(
+                key_file.read(),
+                password=None,  # Add password if your key is encrypted
+            )
+        
+        # Sign the message
+        signature = private_key.sign(
+            message_to_sign.encode('utf-8'),
+            padding.PKCS1v15(),
+            hashes.SHA512()
+        )
+        
+        # Return base64 encoded signature
+        signature_b64 = base64.b64encode(signature).decode('utf-8')
+        
+        return HttpResponse(signature_b64, content_type='text/plain')
+        
+    except Exception as e:
+        print(f"Signing error: {str(e)}")
+        return HttpResponse(f'Signing failed: {str(e)}', status=500)

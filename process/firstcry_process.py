@@ -141,7 +141,7 @@ def split_pdf_by_orderid(pdf_path, output_folder, final_output_dict):
                 source_type="firstcry"
             )
             saved_orders.append(order_pdf)
-            os.remove(output_pdf_path)
+            # os.remove(output_pdf_path)
     return order_pages
 
 def excel_to_dataframe(file_path):
