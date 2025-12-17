@@ -4489,13 +4489,13 @@ function printLabelAndInvoice(platform, orderNumber, canPrint) {
                     const page = newPdf.addPage(selectedPage);
                     const { width, height } = page.getSize();
 
-                    if (platformUpper === 'FLIPKART') {
-                        const cropLeft = 180;
-                        const cropTop = 0;
-                        const cropWidth = width - 360;
-                        const cropHeight = height - 25;
-                        page.setCropBox(cropLeft, cropTop, cropWidth, cropHeight);
-                    }
+                    // if (platformUpper === 'FLIPKART') {
+                    //     const cropLeft = 0;
+                    //     const cropTop = 0;
+                    //     const cropWidth = width - 0;
+                    //     const cropHeight = height - 0;
+                    //     page.setCropBox(cropLeft, cropTop, cropWidth, cropHeight);
+                    // }
 
                     // NOTE: Meesho processing removed since it uses Print Service
                     // if (platformUpper === 'MEESHO') - REMOVED
@@ -4513,18 +4513,7 @@ function printLabelAndInvoice(platform, orderNumber, canPrint) {
                         if (platformUpper === 'FLIPKART') {
                             config = qz.configs.create(printerToUse, {
                                 size: { width: 4, height: 6, units: 'in' },
-                                margins: { top: 0, right: 0, bottom: 0, left: 0 },
-                                orientation: 'portrait',
-                                copies: 1,
-                                colorType: 'grayscale',
-                                density: 300,
-                                scale: 'fit'
-                            });
-                        } else if (platformUpper === 'MEESHO') {
-                            // ADDED: Meesho-specific QZ Tray configuration
-                            config = qz.configs.create(printerToUse, {
-                                size: { width: 4, height: 6, units: 'in' },
-                                margins: { top: 0, right: 0, bottom: 0, left: 0 },
+                                margins: { top: 0.1, right: 0, bottom: 0.1, left: 0.3 },
                                 orientation: 'portrait',
                                 copies: 1,
                                 colorType: 'grayscale',
@@ -4535,7 +4524,7 @@ function printLabelAndInvoice(platform, orderNumber, canPrint) {
                             // Default configuration for other platforms (not Meesho)
                             config = qz.configs.create(printerToUse, {
                                 size: { width: 4, height: 6, units: 'in' },
-                                margins: { top: 0, right: 0, bottom: 0, left: 0 },
+                                margins: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
                                 orientation: 'portrait',
                                 copies: 1,
                                 colorType: 'grayscale',
@@ -4747,31 +4736,18 @@ function printInvoiceAfterLabel(platform, orderNumber, canPrint) {
                         let config;
                         
                         // Printer configuration for FLIPKART invoices - LANDSCAPE orientation
-                        // Printer configuration including MEESHO invoices
-                            if (platformUpper === 'FLIPKART') {
-                                config = qz.configs.create(printerToUse, {
-                                    size: { width: 8.5, height: 7.5, units: 'in' },
-                                    margins: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
-                                    orientation: 'landscape',
-                                    copies: 1,
-                                    colorType: 'grayscale',
-                                    scale: 'fit-to-page',
-                                    scaleContent: true,
-                                    density: 300
-                                });
-                            } else if (platformUpper === 'MEESHO') {
-                                // ADDED: Meesho invoice configuration
-                                config = qz.configs.create(printerToUse, {
-                                    size: { width: 8.5, height: 11, units: 'in' },
-                                    margins: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
-                                    orientation: 'portrait',
-                                    copies: 1,
-                                    colorType: 'grayscale',
-                                    scale: 'fit-to-page',
-                                    scaleContent: true,
-                                    density: 300
-                                });
-                            } else {
+                        if (platformUpper === 'FLIPKART') {
+                            config = qz.configs.create(printerToUse, {
+                                size: { width: 8.5, height: 7.5, units: 'in' },
+                                margins: { top: 0.5, right: 0.5, bottom: 0.5, left: 0.5 },
+                                orientation: 'landscape',
+                                copies: 1,
+                                colorType: 'grayscale',
+                                scale: 'fit-to-page',
+                                scaleContent: true,
+                                density: 300
+                            });
+                        } else {
                             // Default configuration for other platforms (NOT Meesho - it doesn't reach here)
                             config = qz.configs.create(printerToUse, {
                                 size: { width: 4, height: 6, units: 'in' },
@@ -4779,7 +4755,7 @@ function printInvoiceAfterLabel(platform, orderNumber, canPrint) {
                                 orientation: 'portrait',
                                 copies: 1,
                                 colorType: 'grayscale',
-                                scale: 'fit',
+                                scale: 'fit-to-page',
                                 scaleContent: true,
                                 fitToPage: true,
                                 density: 300
@@ -5090,23 +5066,21 @@ function initQZ() {
 
     if (typeof qz === 'undefined') {
         debugLog('QZ Tray library not loaded', 'error');
-        updateQZStatus('Library not loaded', 'disconnected');
+        updatePrintServiceStatus('Library not loaded', 'disconnected');
         return;
     }
 
-    updateQZStatus('Connecting...', 'connecting');
+    updatePrintServiceStatus('Connecting...', 'connecting');
 
     try {
-        // Set signature algorithm for QZ Tray 2.1+
         qz.security.setSignatureAlgorithm("SHA512");
 
-        // Set certificate promise - loads your digital certificate
         qz.security.setCertificatePromise(function(resolve, reject) {
             fetch("/static/certificates/digital-certificate.txt", {
-                cache: 'no-store', 
+                cache: 'no-store',
                 headers: {'Content-Type': 'text/plain'}
             })
-            .then(function(response) { 
+            .then(function(response) {
                 if (response.ok) {
                     response.text().then(resolve);
                 } else {
@@ -5116,11 +5090,10 @@ function initQZ() {
             .catch(reject);
         });
 
-        // Set signature promise - signs each print request
         qz.security.setSignaturePromise(function(toSign) {
             return function(resolve, reject) {
                 fetch("/api/sign-message?request=" + encodeURIComponent(toSign), {
-                    cache: 'no-store', 
+                    cache: 'no-store',
                     headers: {'Content-Type': 'text/plain'}
                 })
                 .then(function(response) {
@@ -5134,7 +5107,6 @@ function initQZ() {
             };
         });
 
-        // Connect to QZ Tray
         qz.websocket.connect({
             retries: 2,
             delay: 500
@@ -5142,20 +5114,19 @@ function initQZ() {
             qzReady = true;
             qzConnection = qz.websocket;
             debugLog('QZ Tray connected successfully with signing', 'success');
-            updateQZStatus('Connected & Signed', 'connected');
-
+            updatePrintServiceStatus('Connected & Signed', 'connected');  // ✅ Fixed
             detectPrinters();
         }).catch(function (err) {
             debugLog(`QZ Tray connection error: ${err.message}`, 'error');
-            updateQZStatus('Disconnected', 'disconnected');
+            updatePrintServiceStatus('Disconnected', 'disconnected');  // ✅ Fixed
         });
     } catch (e) {
         debugLog(`Unexpected QZ error: ${e.message}`, 'error');
-        updateQZStatus('Error', 'disconnected');
+        updatePrintServiceStatus('Error', 'disconnected');  // ✅ Fixed
     }
 }
 
-        function updateQZStatus(message, status) {
+function updateQZStatus(message, status) {
             const statusDiv = document.getElementById('qz-status');
             const connectBtn = document.getElementById('connect-qz');
             
